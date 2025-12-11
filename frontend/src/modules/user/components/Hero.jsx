@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import Lenis from 'lenis';
+import { useNavigate } from 'react-router-dom';
 import Header from './Header';
 import PriceTicker from './PriceTicker';
 import TrustSignals from './TrustSignals';
@@ -18,6 +18,7 @@ import metalImage from '../assets/metal.jpg';
 import electronicImage from '../assets/electronicbg.png';
 
 const Hero = () => {
+  const navigate = useNavigate();
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -560,15 +561,19 @@ const Hero = () => {
       {showOTPModal && <OTPModal onClose={() => setShowOTPModal(false)} />}
       </div>
       )}
+    </AnimatePresence>
 
-      {/* Bottom Navigation (Mobile Only - Fixed to Viewport) */}
+      {/* Bottom Navigation (Mobile Only - Fixed to Viewport) - Always visible */}
       <div 
         className="fixed md:hidden bottom-0 left-0 right-0 w-full bg-green-700 shadow-2xl z-[9999]"
       >
         <div className="flex justify-around items-center py-3 px-4">
-          <div className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity">
+          <div 
+            className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity"
+            onClick={() => setShowProfile(false)}
+          >
             <div 
-              className="w-6 h-6 rounded-full mb-1 flex items-center justify-center bg-green-600"
+              className={`w-6 h-6 rounded-full mb-1 flex items-center justify-center ${!showProfile ? 'bg-green-600' : 'bg-transparent'}`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-white">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="2" fill="currentColor" />
@@ -577,16 +582,9 @@ const Hero = () => {
             </div>
             <span className="text-xs text-white font-medium">Home</span>
           </div>
-          <button
-            type="button"
-            className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity bg-transparent border-none outline-none p-0"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              console.log('Add Scrap button clicked - navigating to /add-scrap/category');
-              navigate('/add-scrap/category');
-            }}
-            style={{ background: 'transparent', border: 'none' }}
+          <div 
+            className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity"
+            onClick={() => navigate('/add-scrap/category')}
           >
             <div 
               className="w-12 h-12 rounded-full flex items-center justify-center -mt-4 shadow-lg bg-white"
@@ -597,12 +595,12 @@ const Hero = () => {
                 <path d="M2 12L12 17L22 12" stroke="currentColor" strokeWidth="2" />
               </svg>
             </div>
-          </button>
+          </div>
           <div 
             className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity"
             onClick={() => setShowProfile(true)}
           >
-            <div className="w-6 h-6 mb-1 flex items-center justify-center">
+            <div className={`w-6 h-6 mb-1 flex items-center justify-center ${showProfile ? 'bg-green-600 rounded-full' : ''}`}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" fill="none" />
                 <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" fill="none" />
@@ -612,7 +610,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-    </AnimatePresence>
     </>
   );
 };

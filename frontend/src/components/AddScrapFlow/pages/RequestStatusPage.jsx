@@ -1,0 +1,442 @@
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+const RequestStatusPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [requestData, setRequestData] = useState(null);
+  const [status, setStatus] = useState('pending'); // pending, accepted, on_way, arrived, completed
+  const [scrapperInfo, setScrapperInfo] = useState(null);
+  const [eta, setEta] = useState(null);
+
+  useEffect(() => {
+    // Load request data from sessionStorage or location state
+    const storedRequest = sessionStorage.getItem('scrapRequest');
+    if (storedRequest) {
+      const data = JSON.parse(storedRequest);
+      setRequestData(data);
+      
+      // Simulate status updates (in real app, this would come from API)
+      setTimeout(() => {
+        setStatus('accepted');
+        setScrapperInfo({
+          name: 'Rajesh Kumar',
+          rating: 4.8,
+          phone: '+91 98765 43210',
+          vehicle: 'Truck - MH-12-AB-1234',
+          distance: '2.5 km away'
+        });
+        setEta('30-45 minutes');
+      }, 3000);
+    } else if (location.state?.requestData) {
+      setRequestData(location.state.requestData);
+    } else {
+      // Redirect if no data
+      navigate('/');
+    }
+  }, [navigate, location]);
+
+  // Modern SVG Icons Component
+  const StatusIcon = ({ status, color }) => {
+    const iconSize = 32;
+    const icons = {
+      pending: (
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" opacity="0.2"/>
+          <path d="M12 6v6l4 2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      accepted: (
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
+          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      ),
+      on_way: (
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 17h14l-1-7H6l-1 7z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity="0.1"/>
+          <circle cx="7" cy="19" r="1.5" fill={color}/>
+          <circle cx="17" cy="19" r="1.5" fill={color}/>
+          <path d="M3 12h18" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      ),
+      arrived: (
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
+          <circle cx="12" cy="10" r="3" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.2"/>
+        </svg>
+      ),
+      completed: (
+        <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
+          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M12 2v4M12 18v4M22 12h-4M6 12H2" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+        </svg>
+      )
+    };
+    return icons[status] || icons.pending;
+  };
+
+  const statusConfig = {
+    pending: {
+      label: 'Pending',
+      color: '#f59e0b',
+      description: 'Waiting for scrapper to accept',
+      progress: 20
+    },
+    accepted: {
+      label: 'Accepted',
+      color: '#64946e',
+      description: 'Scrapper has accepted your request',
+      progress: 40
+    },
+    on_way: {
+      label: 'On the Way',
+      color: '#3b82f6',
+      description: 'Scrapper is coming to your location',
+      progress: 60
+    },
+    arrived: {
+      label: 'Arrived',
+      color: '#8b5cf6',
+      description: 'Scrapper has arrived at your location',
+      progress: 80
+    },
+    completed: {
+      label: 'Completed',
+      color: '#10b981',
+      description: 'Pickup completed successfully',
+      progress: 100
+    }
+  };
+
+  const currentStatus = statusConfig[status];
+
+  const timelineSteps = [
+    { id: 'pending', label: 'Request Sent', completed: true },
+    { id: 'accepted', label: 'Accepted', completed: status !== 'pending' },
+    { id: 'on_way', label: 'On the Way', completed: ['on_way', 'arrived', 'completed'].includes(status) },
+    { id: 'arrived', label: 'Arrived', completed: ['arrived', 'completed'].includes(status) },
+    { id: 'completed', label: 'Completed', completed: status === 'completed' }
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen w-full flex flex-col"
+      style={{ backgroundColor: '#f4ebe2' }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 md:p-6 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+        <button
+          onClick={() => navigate('/')}
+          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition-colors"
+          style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <h2 
+          className="text-lg md:text-2xl font-bold"
+          style={{ color: '#2d3748' }}
+        >
+          Request Status
+        </h2>
+        <div className="w-10"></div> {/* Spacer for centering */}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-3 md:p-6">
+        {/* Status Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="rounded-2xl p-4 md:p-6 mb-4 md:mb-6 shadow-lg relative overflow-hidden"
+          style={{ backgroundColor: '#ffffff' }}
+        >
+          {/* Background Pattern */}
+          <div 
+            className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mr-16 -mt-16"
+            style={{ backgroundColor: currentStatus.color }}
+          />
+          
+          <div className="relative z-10">
+            {/* Status Icon & Label */}
+            <div className="flex items-center gap-3 mb-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+                className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `${currentStatus.color}20` }}
+              >
+                <StatusIcon status={status} color={currentStatus.color} />
+              </motion.div>
+              <div className="flex-1">
+                <h3 
+                  className="text-xl md:text-2xl font-bold mb-1"
+                  style={{ color: currentStatus.color }}
+                >
+                  {currentStatus.label}
+                </h3>
+                <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                  {currentStatus.description}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs md:text-sm font-medium" style={{ color: '#718096' }}>
+                  Progress
+                </span>
+                <span className="text-xs md:text-sm font-bold" style={{ color: currentStatus.color }}>
+                  {currentStatus.progress}%
+                </span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${currentStatus.progress}%` }}
+                  transition={{ duration: 1, delay: 0.3 }}
+                  className="h-full rounded-full"
+                  style={{ backgroundColor: currentStatus.color }}
+                />
+              </div>
+            </div>
+
+            {/* Request ID */}
+            <div className="pt-4 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                Request ID: <span className="font-semibold" style={{ color: '#2d3748' }}>#{Date.now().toString().slice(-8)}</span>
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Timeline */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="rounded-2xl p-4 md:p-6 mb-4 md:mb-6 shadow-lg"
+          style={{ backgroundColor: '#ffffff' }}
+        >
+          <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
+            Timeline
+          </h3>
+          <div className="space-y-4">
+            {timelineSteps.map((step, index) => (
+              <div key={step.id} className="flex items-start gap-3">
+                {/* Timeline Line */}
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2 + index * 0.1 }}
+                    className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${
+                      step.completed ? 'shadow-md' : ''
+                    }`}
+                    style={{
+                      backgroundColor: step.completed ? '#64946e' : 'rgba(100, 148, 110, 0.2)',
+                      border: step.completed ? '2px solid #ffffff' : '2px solid transparent'
+                    }}
+                  />
+                  {index < timelineSteps.length - 1 && (
+                    <div
+                      className={`w-0.5 flex-1 mt-1 ${
+                        step.completed ? '' : 'opacity-30'
+                      }`}
+                      style={{
+                        backgroundColor: step.completed ? '#64946e' : 'rgba(100, 148, 110, 0.2)',
+                        minHeight: '40px'
+                      }}
+                    />
+                  )}
+                </div>
+                
+                {/* Step Content */}
+                <div className="flex-1 pb-4">
+                  <p 
+                    className={`text-sm md:text-base font-semibold mb-1 ${
+                      step.completed ? '' : 'opacity-50'
+                    }`}
+                    style={{ color: step.completed ? '#2d3748' : '#718096' }}
+                  >
+                    {step.label}
+                  </p>
+                  {step.id === status && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-xs md:text-sm"
+                      style={{ color: '#64946e' }}
+                    >
+                      In progress...
+                    </motion.p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Scrapper Info (if assigned) */}
+        {scrapperInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="rounded-2xl p-4 md:p-6 mb-4 md:mb-6 shadow-lg"
+            style={{ backgroundColor: '#ffffff' }}
+          >
+            <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
+              Assigned Scrapper
+            </h3>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-xl md:text-2xl font-bold"
+                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
+              >
+                {scrapperInfo.name.split(' ').map(n => n[0]).join('')}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="text-base md:text-lg font-semibold" style={{ color: '#2d3748' }}>
+                    {scrapperInfo.name}
+                  </h4>
+                  <div className="flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"/>
+                    </svg>
+                    <span className="text-xs md:text-sm font-semibold" style={{ color: '#64946e' }}>
+                      {scrapperInfo.rating}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
+                  {scrapperInfo.vehicle}
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#718096" strokeWidth="2" fill="none"/>
+                    <circle cx="12" cy="10" r="3" stroke="#718096" strokeWidth="2" fill="none"/>
+                  </svg>
+                  <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                    {scrapperInfo.distance}
+                  </p>
+                </div>
+                {eta && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-1.5 mt-2"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" stroke="#64946e" strokeWidth="2" fill="none"/>
+                      <path d="M12 6v6l4 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <p className="text-xs md:text-sm font-semibold" style={{ color: '#64946e' }}>
+                      ETA: {eta}
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Request Summary */}
+        {requestData && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="rounded-2xl p-4 md:p-6 mb-4 md:mb-6 shadow-lg"
+            style={{ backgroundColor: '#ffffff' }}
+          >
+            <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
+              Request Details
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Categories:</span>
+                <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                  {requestData.categories?.map(c => c.name).join(', ')}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Weight:</span>
+                <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                  {requestData.weight} kg
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Images:</span>
+                <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                  {requestData.images?.length || 0} photos
+                </span>
+              </div>
+              <div className="pt-3 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+                <div className="flex justify-between items-center">
+                  <span className="text-base md:text-lg font-bold" style={{ color: '#2d3748' }}>
+                    Estimated Payout:
+                  </span>
+                  <span className="text-xl md:text-2xl font-bold" style={{ color: '#64946e' }}>
+                    ₹{requestData.estimatedPayout?.toFixed(0) || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {scrapperInfo && (
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="w-full py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm md:text-base shadow-md hover:shadow-lg transition-all duration-300"
+              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Chat with Scrapper
+            </motion.button>
+          )}
+          
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            onClick={() => navigate('/')}
+            className="w-full py-3 md:py-4 rounded-xl border-2 font-semibold text-sm md:text-base transition-all duration-300"
+            style={{ borderColor: '#64946e', color: '#64946e', backgroundColor: 'transparent' }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = 'rgba(100, 148, 110, 0.1)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+            }}
+          >
+            Back to Home
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export default RequestStatusPage;
+
