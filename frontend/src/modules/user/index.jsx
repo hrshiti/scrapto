@@ -10,6 +10,7 @@ import SavedAddressesPage from './components/SavedAddressesPage';
 import MyRequestsPage from './components/MyRequestsPage';
 import PriceConfirmationPage from '../../components/AddScrapFlow/pages/PriceConfirmationPage';
 import RequestStatusPage from '../../components/AddScrapFlow/pages/RequestStatusPage';
+import ChatPage from './components/ChatPage';
 
 const UserModule = () => {
   const { isAuthenticated } = useAuth();
@@ -26,6 +27,7 @@ const UserModule = () => {
       <Route path="/add-scrap/weight" element={<WeightInputPage />} />
       <Route path="/add-scrap/confirm" element={<PriceConfirmationPage />} />
       <Route path="/request-status" element={<RequestStatusPage />} />
+      <Route path="/chat" element={<ChatPage />} />
       <Route path="/my-profile" element={<MyProfilePage />} />
       <Route path="/saved-addresses" element={<SavedAddressesPage />} />
       <Route path="/my-requests" element={<MyRequestsPage />} />

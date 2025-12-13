@@ -52,18 +52,28 @@ const Hero = () => {
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smooth: true,
-      smoothTouch: false,
+      smoothTouch: true,
       touchMultiplier: 2,
+      wheelMultiplier: 1,
+      infinite: false,
     });
 
     lenisRef.current = lenis;
 
+    // Connect Lenis to window scroll
     function raf(time) {
       lenis.raf(time);
       requestAnimationFrame(raf);
     }
 
     requestAnimationFrame(raf);
+
+    // Ensure smooth scrolling works properly
+    const htmlElement = document.documentElement;
+    
+    if (htmlElement) {
+      htmlElement.style.scrollBehavior = 'auto'; // Let Lenis handle it
+    }
 
     // Hero entrance animation
     gsap.from(heroRef.current, {
@@ -75,6 +85,9 @@ const Hero = () => {
     return () => {
       if (lenisRef.current) {
         lenisRef.current.destroy();
+      }
+      if (htmlElement) {
+        htmlElement.style.scrollBehavior = '';
       }
     };
   }, []);

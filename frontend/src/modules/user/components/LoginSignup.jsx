@@ -1,18 +1,29 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import leafImage from '../../../assets/leafs.jpg';
-import bgLeafImage from '../../../assets/bgleaf-removebg-preview.png';
+import leafImage from '../../../assets/leaf.jpg';
+import bgLeafImage from '../../../assets/earth-removebg-preview.png';
 
 const LoginSignup = () => {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
   const inputRefs = useRef([]);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+
+  // Redirect after authentication state updates
+  useEffect(() => {
+    if (isAuthenticated && shouldRedirect) {
+      navigate('/', { replace: true });
+      setShouldRedirect(false);
+    }
+  }, [isAuthenticated, shouldRedirect, navigate]);
 
   const handlePhoneSubmit = (e) => {
     e.preventDefault();
@@ -48,6 +59,7 @@ const LoginSignup = () => {
             phone: phone,
           };
           login(userData);
+          setShouldRedirect(true);
         }, 300);
       }
     }
@@ -67,6 +79,7 @@ const LoginSignup = () => {
         phone: phone,
       };
       login(userData);
+      setShouldRedirect(true);
     }
   };
 

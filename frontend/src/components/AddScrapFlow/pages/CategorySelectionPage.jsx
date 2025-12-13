@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import plasticImage from '../../../assets/plastic.jpg';
 import metalImage from '../../../assets/metal.jpg';
-import scrapImage2 from '../../../assets/scrab.png';
-import electronicImage from '../../../assets/electronicbg.png';
+import scrapImage2 from '../../../modules/user/assets/scrab.png';
+import electronicImage from '../../../modules/user/assets/electronicbg.png';
 
 const CategorySelectionPage = () => {
   const navigate = useNavigate();

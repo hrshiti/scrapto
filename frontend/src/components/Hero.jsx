@@ -10,12 +10,12 @@ import Testimonials from './Testimonials';
 import OTPModal from './OTPModal';
 import MicroDemo from './MicroDemo';
 import Profile from './Profile';
-import scrapImage from '../assets/scrap3-Photoroom.png';
-import scrapImage2 from '../assets/scrab.png';
-import scrapImage3 from '../assets/scrap5.png';
+import scrapImage from '../modules/user/assets/scrap3-Photoroom.png';
+import scrapImage2 from '../modules/user/assets/scrab.png';
+import scrapImage3 from '../modules/user/assets/scrap5.png';
 import plasticImage from '../assets/plastic.jpg';
 import metalImage from '../assets/metal.jpg';
-import electronicImage from '../assets/electronicbg.png';
+import electronicImage from '../modules/user/assets/electronicbg.png';
 
 const Hero = () => {
   const [showOTPModal, setShowOTPModal] = useState(false);

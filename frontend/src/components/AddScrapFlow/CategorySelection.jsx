@@ -2,8 +2,8 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import plasticImage from '../../assets/plastic.jpg';
 import metalImage from '../../assets/metal.jpg';
-import scrapImage2 from '../../assets/scrab.png';
-import electronicImage from '../../assets/electronicbg.png';
+import scrapImage2 from '../../modules/user/assets/scrab.png';
+import electronicImage from '../../modules/user/assets/electronicbg.png';
 
 const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCategory }) => {
   const [marketPrices, setMarketPrices] = useState({});

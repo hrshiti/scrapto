@@ -17,6 +17,7 @@ const Header = () => {
             className="text-xl md:text-2xl font-bold"
             style={{ color: '#2d3748' }}
           >
+            
             Hi, User!
           </h2>
           <p 

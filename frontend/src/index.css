@@ -54,10 +54,12 @@ img, svg {
     margin: 0;
   }
   
-  /* Prevent body scroll issues on mobile */
+  /* Allow vertical scrolling on mobile */
   html, body {
-    height: 100%;
+    min-height: 100%;
+    height: auto;
     overflow-x: hidden;
+    overflow-y: auto;
     position: relative;
   }
   

@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { FaCamera, FaPaperPlane, FaTruck } from 'react-icons/fa';
-import { HiArrowRight } from 'react-icons/hi';
 
 const MicroDemo = () => {
   const scrollRef = useRef(null);
@@ -9,27 +8,18 @@ const MicroDemo = () => {
   const steps = [
     { 
       icon: FaCamera, 
-      title: 'Upload Photo', 
-      desc: 'Take a picture of your scrap',
-      gradient: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      iconColor: 'text-blue-600'
+      title: 'SELECT CATEGORY', 
+      desc: 'Choose your scrap type from categories like Metal, Plastic, Electronics, or Paper. Select one or multiple categories for your pickup request.',
     },
     { 
       icon: FaPaperPlane, 
-      title: 'Request Sent', 
-      desc: 'We find nearby scrappers',
-      gradient: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      iconColor: 'text-purple-600'
+      title: 'UPLOAD IMAGES', 
+      desc: 'Take clear photos of your scrap materials. Upload multiple images to help scrappers understand what you have. Add weight and notes for better pricing.',
     },
     { 
       icon: FaTruck, 
-      title: 'Pickup Arrives', 
-      desc: 'Verified scrapper collects',
-      gradient: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
-      iconColor: 'text-green-600'
+      title: 'GET PICKED UP', 
+      desc: 'Verified scrappers accept your request and arrive at your location. Get real-time updates and cash payment on pickup. Track your scrapper in real-time.',
     },
   ];
 
@@ -89,7 +79,8 @@ const MicroDemo = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 1 }}
-        className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-12 text-center text-gray-900"
+        className="text-2xl md:text-3xl lg:text-4xl font-bold mb-8 md:mb-12 text-center"
+        style={{ color: '#2d3748' }}
       >
         How It Works
       </motion.h3>
@@ -107,59 +98,76 @@ const MicroDemo = () => {
         >
           {duplicatedSteps.map((step, index) => {
             const IconComponent = step.icon;
-            const originalIndex = index % steps.length;
+            const stepNumber = index % steps.length + 1;
             return (
               <motion.div
-                key={`${originalIndex}-${index}`}
+                key={`${step.title}-${index}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 1.1 + (originalIndex * 0.1) }}
+                transition={{ duration: 0.5, delay: 1.1 + (index % steps.length) * 0.1 }}
                 whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.3 } }}
-                className="flex-shrink-0 w-48 sm:w-56 md:w-64 lg:w-72"
+                className="shrink-0 w-36 sm:w-40 md:w-48 lg:w-56 relative group"
               >
-                {/* Beautiful Card */}
-                <div className={`relative ${step.bgColor} rounded-xl md:rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-200 h-full`}>
-                  {/* Gradient Top Border */}
-                  <div className={`h-1 bg-gradient-to-r ${step.gradient}`}></div>
-                  
-                  <div className="p-3 sm:p-4 md:p-5 lg:p-6">
-                    {/* Icon Container */}
-                    <motion.div
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                      className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-xl md:rounded-2xl bg-white flex items-center justify-center mb-3 sm:mb-4 md:mb-5 mx-auto shadow-sm"
+                {/* Modern Card Design */}
+                <div 
+                  className="overflow-hidden h-full flex flex-col rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  style={{ 
+                    backgroundColor: '#ffffff',
+                    border: '1px solid rgba(100, 148, 110, 0.2)',
+                  }}
+                >
+                  {/* Top Section with Gradient Background */}
+                  <div 
+                    className="p-3 md:p-4 flex-1 flex flex-col relative overflow-hidden"
+                    style={{ 
+                      background: 'linear-gradient(135deg, rgba(100, 148, 110, 0.1) 0%, rgba(100, 148, 110, 0.05) 100%)'
+                    }}
+                  >
+                    {/* Step Number Badge - Top Right */}
+                    <div 
+                      className="absolute top-2 right-2 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-[10px] md:text-xs shadow-md"
+                      style={{ 
+                        backgroundColor: '#64946e',
+                        color: '#ffffff'
+                      }}
                     >
-                      <IconComponent className={`text-lg sm:text-xl md:text-2xl lg:text-3xl ${step.iconColor}`} />
-                    </motion.div>
-
-                    {/* Content */}
-                    <div className="text-center">
-                      <h4 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-gray-900 mb-2">
-                        {step.title}
-                      </h4>
-                      <p className="text-gray-600 text-xs sm:text-sm md:text-sm leading-relaxed">
-                        {step.desc}
-                      </p>
+                      {String(stepNumber).padStart(2, '0')}
                     </div>
 
-                    {/* Step Number */}
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4">
-                      <div className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-r ${step.gradient} flex items-center justify-center text-white font-bold text-xs sm:text-xs md:text-sm shadow-md`}>
-                        {originalIndex + 1}
+                    {/* Icon - Centered */}
+                    <div className="flex justify-center mb-2 md:mb-3 mt-1">
+                      <div 
+                        className="w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                        style={{ 
+                          backgroundColor: '#64946e',
+                          color: '#ffffff',
+                          boxShadow: '0 4px 12px rgba(100, 148, 110, 0.3)'
+                        }}
+                      >
+                        <IconComponent 
+                          size={16} 
+                          className="md:w-6 md:h-6"
+                          style={{ color: '#ffffff' }}
+                        />
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Arrow Connector */}
-                <div className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 flex items-center justify-center">
-                  <motion.div
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="bg-white rounded-full p-2 shadow-lg border border-gray-200"
-                  >
-                    <HiArrowRight className="text-2xl text-green-600" />
-                  </motion.div>
+                    {/* Title */}
+                    <h3 
+                      className="text-center font-bold text-[10px] md:text-sm lg:text-base"
+                      style={{ color: '#2d3748' }}
+                    >
+                      {step.title}
+                    </h3>
+                  </div>
+
+                  {/* Bottom Accent Line */}
+                  <div 
+                    className="h-1.5 md:h-2"
+                    style={{ 
+                      background: 'linear-gradient(90deg, #64946e 0%, rgba(100, 148, 110, 0.6) 100%)'
+                    }}
+                  />
                 </div>
               </motion.div>
             );

@@ -6,7 +6,7 @@ const WeightInputPage = () => {
   const navigate = useNavigate();
   const [uploadedImages, setUploadedImages] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [weightMode, setWeightMode] = useState('auto'); // 'auto' or 'manual'
+  const [weightMode, setWeightMode] = useState('manual'); // 'auto' or 'manual'
   const [autoDetectedWeight, setAutoDetectedWeight] = useState(null);
   const [manualWeight, setManualWeight] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -42,19 +42,19 @@ const WeightInputPage = () => {
     });
   }, []);
 
-  // Auto-detect weight from images (mock API call)
-  useEffect(() => {
-    if (uploadedImages.length > 0 && weightMode === 'auto') {
-      setIsAnalyzing(true);
-      // Simulate API call for weight detection
-      setTimeout(() => {
-        // Mock: Generate random weight between 5-50 kg
-        const detectedWeight = (Math.random() * 45 + 5).toFixed(1);
-        setAutoDetectedWeight(parseFloat(detectedWeight));
-        setIsAnalyzing(false);
-      }, 2000);
-    }
-  }, [uploadedImages, weightMode]);
+  // Auto-detect weight from images (mock API call) - HIDDEN FOR NOW
+  // useEffect(() => {
+  //   if (uploadedImages.length > 0 && weightMode === 'auto') {
+  //     setIsAnalyzing(true);
+  //     // Simulate API call for weight detection
+  //     setTimeout(() => {
+  //       // Mock: Generate random weight between 5-50 kg
+  //       const detectedWeight = (Math.random() * 45 + 5).toFixed(1);
+  //       setAutoDetectedWeight(parseFloat(detectedWeight));
+  //       setIsAnalyzing(false);
+  //     }, 2000);
+  //   }
+  // }, [uploadedImages, weightMode]);
 
   // Calculate estimated payout
   useEffect(() => {
@@ -194,8 +194,8 @@ const WeightInputPage = () => {
           </motion.div>
         )}
 
-        {/* Weight Mode Toggle */}
-        <div className="mb-4 md:mb-6">
+        {/* Weight Mode Toggle - Auto Detect Hidden */}
+        {/* <div className="mb-4 md:mb-6">
           <div className="flex gap-2 p-1 rounded-xl" style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}>
             <button
               onClick={() => setWeightMode('auto')}
@@ -222,10 +222,10 @@ const WeightInputPage = () => {
               Manual Input
             </button>
           </div>
-        </div>
+        </div> */}
 
-        {/* Auto Detection Section */}
-        {weightMode === 'auto' && (
+        {/* Auto Detection Section - HIDDEN */}
+        {/* {weightMode === 'auto' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -283,10 +283,10 @@ const WeightInputPage = () => {
               </div>
             )}
           </motion.div>
-        )}
+        )} */}
 
         {/* Manual Input Section */}
-        {weightMode === 'manual' && (
+        {(
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -401,10 +401,7 @@ const WeightInputPage = () => {
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >
-            {weightMode === 'auto' 
-              ? (isAnalyzing ? 'Analyzing images...' : 'Enter weight to continue')
-              : 'Enter weight to continue'
-            }
+            Enter weight to continue
           </p>
         )}
       </div>

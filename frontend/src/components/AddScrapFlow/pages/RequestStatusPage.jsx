@@ -404,6 +404,7 @@ const RequestStatusPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
+              onClick={() => navigate('/chat', { state: { scrapperInfo } })}
               className="w-full py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm md:text-base shadow-md hover:shadow-lg transition-all duration-300"
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
