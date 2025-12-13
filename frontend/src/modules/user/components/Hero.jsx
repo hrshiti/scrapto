@@ -215,8 +215,10 @@ const Hero = () => {
             {/* Left Side - Text and Button */}
             <div className="flex-1 text-left">
               <h1 
-                className={`text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 md:mb-4 lg:mb-6 leading-tight ${isWebView ? 'text-left' : 'text-right'}`}
-                style={{ color: '#2d3748' }}
+                className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-2 md:mb-4 lg:mb-6 leading-tight text-left"
+                style={{ 
+                  color: '#2d3748'
+                }}
               >
                 Sell Your Scrap
                 <br />
@@ -238,7 +240,7 @@ const Hero = () => {
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
-                className={`flex mb-4 md:mb-8 lg:mb-12 ${isWebView ? 'justify-start' : 'justify-end'}`}
+                className="flex mb-4 md:mb-8 lg:mb-12 justify-start"
               >
                 <button
                   onClick={() => setShowOTPModal(true)}
