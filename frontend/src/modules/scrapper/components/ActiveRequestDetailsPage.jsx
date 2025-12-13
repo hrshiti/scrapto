@@ -50,6 +50,16 @@ const ActiveRequestDetailsPage = () => {
   const [confirmAction, setConfirmAction] = useState(null); // 'pickup', 'payment', 'complete'
   const [confirmMessage, setConfirmMessage] = useState('');
 
+  // Check authentication first
+  useEffect(() => {
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    if (scrapperAuth !== 'true' || !scrapperUser) {
+      navigate('/scrapper/login', { replace: true });
+      return;
+    }
+  }, [navigate]);
+
   // Get request data from navigation state or localStorage
   useEffect(() => {
     const request = location.state?.request || JSON.parse(localStorage.getItem('activeRequest') || 'null');

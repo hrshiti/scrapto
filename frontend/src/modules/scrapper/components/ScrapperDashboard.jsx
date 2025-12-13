@@ -82,6 +82,14 @@ const ScrapperDashboard = () => {
 
   // Check KYC and Subscription status on mount
   useEffect(() => {
+    // Check if user is authenticated as scrapper
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    if (scrapperAuth !== 'true' || !scrapperUser) {
+      navigate('/scrapper/login', { replace: true });
+      return;
+    }
+    
     const kycStatus = localStorage.getItem('scrapperKYCStatus');
     const kycData = localStorage.getItem('scrapperKYC');
     const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');

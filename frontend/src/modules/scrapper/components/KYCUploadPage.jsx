@@ -1,11 +1,20 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 
 const KYCUploadPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Check if user is authenticated as scrapper
+  useEffect(() => {
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    if (scrapperAuth !== 'true' || !scrapperUser) {
+      navigate('/scrapper/login', { replace: true });
+    }
+  }, [navigate]);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarPhoto, setAadhaarPhoto] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);

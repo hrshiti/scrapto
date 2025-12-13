@@ -11,6 +11,14 @@ const KYCStatusPage = () => {
   const [countdown, setCountdown] = useState(10); // For testing: countdown timer
 
   useEffect(() => {
+    // Check if user is authenticated as scrapper
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    if (scrapperAuth !== 'true' || !scrapperUser) {
+      navigate('/scrapper/login', { replace: true });
+      return;
+    }
+    
     // Load KYC data from localStorage
     const storedKYC = localStorage.getItem('scrapperKYC');
     const storedStatus = localStorage.getItem('scrapperKYCStatus');

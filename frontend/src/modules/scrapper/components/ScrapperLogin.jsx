@@ -93,6 +93,9 @@ const ScrapperLogin = () => {
             vehicleInfo: vehicleInfo || 'Not provided'
           };
           login(userData);
+          // Set scrapper-specific authentication
+          localStorage.setItem('scrapperAuthenticated', 'true');
+          localStorage.setItem('scrapperUser', JSON.stringify(userData));
           setShouldRedirect(true);
         }, 300);
       }

@@ -34,6 +34,16 @@ const ActiveRequestsPage = () => {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioRef, setAudioRef] = useState(null);
 
+  // Check authentication first
+  useEffect(() => {
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    if (scrapperAuth !== 'true' || !scrapperUser) {
+      navigate('/scrapper/login', { replace: true });
+      return;
+    }
+  }, [navigate]);
+
   // Get current location
   useEffect(() => {
     if (navigator.geolocation) {

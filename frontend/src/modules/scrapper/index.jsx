@@ -41,14 +41,24 @@ const getSubscriptionStatus = () => {
 
 const ScrapperModule = () => {
   const { isAuthenticated } = useAuth();
-  const kycStatus = isAuthenticated ? getKYCStatus() : 'not_submitted';
-  const subscriptionStatus = isAuthenticated && kycStatus === 'verified' ? getSubscriptionStatus() : 'not_subscribed';
+  
+  // Check if user is specifically authenticated as scrapper
+  const isScrapperAuthenticated = () => {
+    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+    const scrapperUser = localStorage.getItem('scrapperUser');
+    return scrapperAuth === 'true' && scrapperUser !== null;
+  };
+  
+  const scrapperIsAuthenticated = isScrapperAuthenticated();
+  const kycStatus = scrapperIsAuthenticated ? getKYCStatus() : 'not_submitted';
+  const subscriptionStatus = scrapperIsAuthenticated && kycStatus === 'verified' ? getSubscriptionStatus() : 'not_subscribed';
 
-  // If not authenticated, show login
-  if (!isAuthenticated) {
+  // If not authenticated as scrapper, show login
+  if (!scrapperIsAuthenticated) {
     return (
       <Routes>
         <Route path="/login" element={<ScrapperLogin />} />
+        <Route path="/" element={<Navigate to="/scrapper/login" replace />} />
         <Route path="*" element={<Navigate to="/scrapper/login" replace />} />
       </Routes>
     );
