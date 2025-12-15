@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { validateReferralCode, createReferral, processSignupBonus } from '../../shared/utils/referralUtils';
+import { validateReferralCode, createReferral, processSignupBonus, getReferralSettings } from '../../shared/utils/referralUtils';
 import leafImage from '../../../assets/leaf.jpg';
 import bgLeafImage from '../../../assets/earth-removebg-preview.png';
 
@@ -12,6 +12,8 @@ const LoginSignup = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [heardFrom, setHeardFrom] = useState('');
+  const [heardFromOther, setHeardFromOther] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [referralCodeError, setReferralCodeError] = useState('');
   const [referrerName, setReferrerName] = useState('');
@@ -95,9 +97,19 @@ const LoginSignup = () => {
       setReferralCodeError(validation.error);
       setReferrerName('');
     } else {
-      setReferralCodeError('');
-      // Get referrer name (mock for now, in real app would fetch from API)
-      setReferrerName('Friend'); // Placeholder
+      // Check if cross-referrals are allowed
+      const settings = getReferralSettings();
+      if (!settings.allowCrossReferrals && validation.referrerType !== 'user') {
+        setReferralCodeError('This code is for scrappers only. Please use a user referral code.');
+        setReferrerName('');
+      } else {
+        setReferralCodeError('');
+        if (validation.referrerType === 'scrapper') {
+          setReferrerName('Scrapper Friend'); // Cross-referral
+        } else {
+          setReferrerName('User Friend');
+        }
+      }
     }
   };
 
@@ -115,11 +127,17 @@ const LoginSignup = () => {
   };
 
   const handleRegistration = (otpArray) => {
+    const computedHeardFrom =
+      heardFrom === 'other' && heardFromOther.trim()
+        ? `other:${heardFromOther.trim()}`
+        : heardFrom || null;
+
     const userData = {
       name: isLogin ? 'User Name' : name,
       phone: phone,
       id: `user_${Date.now()}`,
-      walletBalance: 0
+      walletBalance: 0,
+      heardFrom: computedHeardFrom
     };
     
     login(userData);
@@ -142,101 +160,141 @@ const LoginSignup = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-hidden"
-      style={{ backgroundColor: '#ffffff' }}
+      className="min-h-screen w-full flex items-center justify-center px-4 py-6 md:px-6 md:py-10 lg:py-12 relative overflow-hidden"
+      style={{
+        backgroundImage:
+          'radial-gradient(circle at top left, #bbf7d0 0, transparent 50%), radial-gradient(circle at bottom right, #86efac 0, transparent 55%), linear-gradient(135deg, #022c22 0%, #064e3b 40%, #052e16 100%)'
+      }}
     >
-      {/* Dark Green Overlay for Better Contrast - Covers entire screen including form */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundColor: 'rgba(45, 80, 22, 0.6)',
-        }}
-      />
-      
-      {/* Top Section - Green Leafy Background (Increased height) */}
-      <div 
-        className="relative h-[45vh] md:h-[50vh] overflow-hidden z-10"
-        style={{ 
-          backgroundColor: '#2d5016',
-        }}
-      >
-        {/* Main Leaf Image Background */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${leafImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            opacity: 0.7,
-            filter: 'brightness(0.4) saturate(1.3)',
-          }}
-        />
-        
-        {/* Leaf Pattern Overlay for More Depth */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${bgLeafImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            opacity: 0.5,
-            mixBlendMode: 'overlay',
-          }}
-        />
-        
-        {/* Back Button */}
-        <button
-          className="absolute top-4 md:top-6 left-4 md:left-6 w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center z-10 transition-transform hover:scale-110"
-          style={{ backgroundColor: '#a8d5a3' }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
+      {/* Soft background orbs */}
+      <div className="pointer-events-none absolute -top-32 -left-24 w-72 h-72 rounded-full bg-emerald-400/30 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-24 w-80 h-80 rounded-full bg-lime-300/20 blur-3xl" />
 
-        {/* Wavy Separator */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-12 md:h-16">
-            <path d="M0,60 C240,0 480,120 720,60 C960,0 1200,120 1440,60 L1440,120 L0,120 Z" fill="#ffffff"/>
-          </svg>
-        </div>
-      </div>
-
-      {/* Main Content Area - Project Theme Background */}
-      <div 
-        className="relative -mt-8 md:-mt-12 rounded-t-3xl z-10"
-        style={{ backgroundColor: '#f4ebe2', minHeight: '55vh' }}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="relative w-full max-w-5xl grid md:grid-cols-2 gap-0 bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/40 overflow-hidden"
       >
-        <div className="px-6 md:px-8 lg:px-12 pt-8 md:pt-12 pb-20 md:pb-12 max-w-md mx-auto">
-          {/* Header */}
-          <div className="mb-6 md:mb-8">
-            <h1 
-              className="text-3xl md:text-4xl font-bold mb-2"
-              style={{ color: '#2d3748' }}
-            >
-              {isLogin ? 'Welcome Back' : 'Get Started'}
-            </h1>
-            <p 
-              className="text-sm md:text-base"
-              style={{ color: '#718096' }}
-            >
-              {isLogin ? 'Login to your account' : 'Create your account'}
+        {/* Left panel – illustration & selling points */}
+        <div className="hidden md:flex flex-col justify-between p-8 lg:p-10 bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-800 text-white relative">
+          <div>
+            <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              Cleaner city, smarter scrap
+            </p>
+            <h2 className="mt-4 text-3xl lg:text-4xl font-extrabold leading-tight">
+              Turn your scrap
+              <br />
+              into instant value.
+            </h2>
+            <p className="mt-3 text-sm lg:text-base text-emerald-100/90">
+              Book doorstep pickups at live market prices. Trusted scrappers, fair weights, and quick payouts.
             </p>
           </div>
 
-          {/* Decorative Leaf Sprig */}
-          <div className="absolute top-16 md:top-20 right-6 md:right-8 opacity-60">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
-              <path d="M12 2C8 2 5 5 5 9c0 4 3 7 7 7s7-3 7-7c0-4-3-7-7-7z" fill="currentColor" opacity="0.3"/>
-              <path d="M8 12c-2 0-4-1-4-3s2-3 4-3 4 1 4 3-2 3-4 3z" fill="currentColor"/>
-            </svg>
+          <div className="mt-6 space-y-3 text-xs lg:text-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>No bargaining – transparent rates synced with admin price feed.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>Track your referrals & rewards directly from your profile.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>Login with OTP – no passwords, no hassle.</p>
+            </div>
           </div>
 
-          <motion.form
-            initial={{ opacity: 0, y: 10 }}
+          {/* Floating leaf image */}
+          <motion.div
+            initial={{ opacity: 0, y: 30, rotate: -4 }}
+            animate={{ opacity: 0.12, y: 0, rotate: 0 }}
+            transition={{ duration: 1.2, delay: 0.2 }}
+            className="pointer-events-none absolute -right-10 bottom-4 w-56 h-56 rounded-full overflow-hidden border border-white/10"
+          >
+            <div
+              className="w-full h-full bg-cover bg-center"
+              style={{ backgroundImage: `url(${leafImage})` }}
+            />
+          </motion.div>
+        </div>
+
+        {/* Right panel – actual form */}
+        <motion.div
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="relative w-full bg-white px-6 py-7 sm:px-7 sm:py-8 lg:px-8 lg:py-10"
+        >
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
+            className="mb-6 md:mb-8 text-center md:text-left"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold mb-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {isLogin ? 'Welcome back to Scrapto' : 'New here? Join Scrapto in 30 seconds'}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#1f2933' }}>
+              {isLogin ? 'Login to your account' : 'Create your Scrapto account'}
+            </h1>
+            <p className="text-xs md:text-sm" style={{ color: '#6b7280' }}>
+              Use your mobile number for a fast, secure OTP‑based login. No passwords required.
+            </p>
+          </motion.div>
+
+          {/* Toggle Login/Signup */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.18 }}
+            className="flex items-center justify-center md:justify-start gap-3 mb-6"
+          >
+            <button
+              onClick={() => {
+                setIsLogin(true);
+                setOtpSent(false);
+                setOtp(['', '', '', '', '', '']);
+              }}
+              className={`px-5 py-2.5 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 ${
+                isLogin
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => {
+                setIsLogin(false);
+                setOtpSent(false);
+                setOtp(['', '', '', '', '', '']);
+              }}
+              className={`px-5 py-2.5 rounded-full text-xs md:text-sm font-semibold transition-all duration-300 ${
+                !isLogin
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Sign Up
+            </button>
+          </motion.div>
+
+          <motion.form
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.22 }}
             onSubmit={otpSent && otp.every(d => d !== '') ? handleOtpSubmit : handlePhoneSubmit}
             className="space-y-4 md:space-y-5"
           >
@@ -275,6 +333,60 @@ const LoginSignup = () => {
                     style={{ color: '#2d3748' }}
                   />
                 </div>
+              </motion.div>
+            )}
+
+            {/* How did you hear about Scrapto? (Signup only) */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="relative"
+              >
+                <label className="block text-xs md:text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                  How did you hear about Scrapto?
+                </label>
+                <div 
+                  className="flex items-center px-4 py-3 md:py-3.5 rounded-xl border transition-all mb-2"
+                  style={{ 
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e5ddd4',
+                  }}
+                >
+                  <select
+                    value={heardFrom}
+                    onChange={(e) => setHeardFrom(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-sm md:text-base"
+                    style={{ color: '#2d3748' }}
+                  >
+                    <option value="">Select an option</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="google_search">Google Search</option>
+                    <option value="friend_family">Friends / Family</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                {heardFrom === 'other' && (
+                  <div 
+                    className="flex items-center px-4 py-3 md:py-3.5 rounded-xl border transition-all"
+                    style={{ 
+                      backgroundColor: '#ffffff',
+                      borderColor: '#e5ddd4',
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={heardFromOther}
+                      onChange={(e) => setHeardFromOther(e.target.value)}
+                      placeholder="Please specify (e.g., college event, poster)"
+                      className="flex-1 bg-transparent border-none outline-none text-sm md:text-base"
+                      style={{ color: '#2d3748' }}
+                    />
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -406,7 +518,7 @@ const LoginSignup = () => {
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
-                  <div className="flex-1 flex gap-2 justify-center">
+                  <div className="flex-1 flex flex-wrap justify-between gap-1.5 max-w-xs mx-auto">
                     {otp.map((digit, index) => (
                       <input
                         key={index}
@@ -417,7 +529,7 @@ const LoginSignup = () => {
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-10 h-10 md:w-12 md:h-12 text-center text-xl md:text-2xl font-bold border-2 rounded-lg focus:outline-none transition-all bg-white"
+                        className="w-9 h-10 md:w-11 md:h-11 text-center text-lg md:text-2xl font-bold border-2 rounded-lg focus:outline-none transition-all bg-white"
                         style={{ 
                           borderColor: digit ? '#64946e' : '#e5ddd4',
                           color: '#2d3748',
@@ -530,8 +642,8 @@ const LoginSignup = () => {
               </button>
             </p>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };

@@ -136,6 +136,51 @@ const ReferralSettings = () => {
         </div>
       </motion.div>
 
+      {/* Cross-Referral Toggle */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg md:text-xl font-bold mb-1" style={{ color: '#2d3748' }}>
+              Cross-Referral System
+            </h2>
+            <p className="text-sm" style={{ color: '#718096' }}>
+              Allow users to refer scrappers and vice versa
+            </p>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              setSettings(prev => ({
+                ...prev,
+                allowCrossReferrals: !prev.allowCrossReferrals
+              }));
+            }}
+            className="flex items-center gap-2"
+          >
+            {settings.allowCrossReferrals ? (
+              <FaToggleOn className="text-4xl" style={{ color: '#10b981' }} />
+            ) : (
+              <FaToggleOff className="text-4xl" style={{ color: '#cbd5e0' }} />
+            )}
+          </motion.button>
+        </div>
+        <div
+          className={`p-3 rounded-lg ${
+            settings.allowCrossReferrals ? 'bg-green-50' : 'bg-gray-50'
+          }`}
+        >
+          <p className="text-sm font-medium" style={{ color: settings.allowCrossReferrals ? '#10b981' : '#718096' }}>
+            {settings.allowCrossReferrals ? '✓ Cross-referrals are enabled' : '✗ Cross-referrals are disabled'}
+          </p>
+        </div>
+      </motion.div>
+
       {/* User Rewards */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -269,6 +314,127 @@ const ReferralSettings = () => {
           </div>
         </div>
       </motion.div>
+
+      {/* Cross-Referral Rewards */}
+      {settings.allowCrossReferrals && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <FaGift className="text-2xl" style={{ color: '#3b82f6' }} />
+            <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
+              Cross-Referral Rewards
+            </h2>
+          </div>
+          
+          <div className="space-y-6">
+            {/* User to Scrapper */}
+            <div>
+              <h3 className="text-base font-semibold mb-3" style={{ color: '#2d3748' }}>
+                User → Scrapper Referrals
+              </h3>
+              <div className="space-y-4 pl-4 border-l-2" style={{ borderColor: '#e2e8f0' }}>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Referrer Bonus (User gets)
+                  </label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={settings.crossReferralRewards?.userToScrapper?.referrerBonus || 0}
+                      onChange={(e) => handleChange('crossReferralRewards.userToScrapper.referrerBonus', e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Welcome Bonus (Scrapper gets)
+                  </label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={settings.crossReferralRewards?.userToScrapper?.refereeWelcomeBonus || 0}
+                      onChange={(e) => handleChange('crossReferralRewards.userToScrapper.refereeWelcomeBonus', e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Scrapper to User */}
+            <div>
+              <h3 className="text-base font-semibold mb-3" style={{ color: '#2d3748' }}>
+                Scrapper → User Referrals
+              </h3>
+              <div className="space-y-4 pl-4 border-l-2" style={{ borderColor: '#e2e8f0' }}>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Referrer Bonus (Scrapper gets)
+                  </label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={settings.crossReferralRewards?.scrapperToUser?.referrerBonus || 0}
+                      onChange={(e) => handleChange('crossReferralRewards.scrapperToUser.referrerBonus', e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Welcome Bonus (User gets)
+                  </label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={settings.crossReferralRewards?.scrapperToUser?.refereeWelcomeBonus || 0}
+                      onChange={(e) => handleChange('crossReferralRewards.scrapperToUser.refereeWelcomeBonus', e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Save Button */}
       <motion.div

@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -130,6 +131,26 @@ const ActiveRequestDetailsPage = () => {
     }
   }, []);
 
+  const renderPickupSlot = () => {
+    const slot = requestData.pickupSlot;
+    if (!slot && !requestData.preferredTime) return null;
+
+    const label = slot
+      ? `${slot.dayName}, ${slot.date} • ${slot.slot}`
+      : requestData.preferredTime;
+
+    return (
+      <div className="mb-4">
+        <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
+          Pickup Slot:
+        </p>
+        <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+          {label}
+        </p>
+      </div>
+    );
+  };
+
   if (!requestData) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
@@ -234,6 +255,7 @@ const ActiveRequestDetailsPage = () => {
       
       // Get existing orders from localStorage
       const existingOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
+      const wasFirstPickup = existingOrders.length === 0; // check before adding this one
       
       // Add new completed order
       existingOrders.push(completedOrder);
@@ -273,6 +295,33 @@ const ActiveRequestDetailsPage = () => {
       }
       
       localStorage.setItem('scrapperEarnings', JSON.stringify(earningsData));
+      
+      // Check if this is scrapper's first pickup and process milestone
+      const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
+      if (scrapperUser.phone || scrapperUser.id) {
+        if (wasFirstPickup) {
+          try {
+            checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'firstPickup');
+          } catch (error) {
+            console.error('Error processing milestone:', error);
+          }
+        }
+      }
+      
+      // Check if this is user's first completion and process milestone
+      if (requestData.userId) {
+        const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
+        const userCompletedRequests = userRequests.filter(req => req.status === 'completed');
+        const isFirstCompletion = userCompletedRequests.length === 0;
+        
+        if (isFirstCompletion) {
+          try {
+            checkAndProcessMilestone(requestData.userId, 'user', 'firstCompletion');
+          } catch (error) {
+            console.error('Error processing milestone:', error);
+          }
+        }
+      }
       
       // Clear active request
       localStorage.removeItem('activeRequest');
@@ -470,10 +519,13 @@ const ActiveRequestDetailsPage = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
           className="absolute inset-0 z-40 flex flex-col"
-          style={{ backgroundColor: '#f4ebe2' }}
+          style={{ backgroundColor: '#020617' }}
         >
           {/* Header */}
-          <div className="p-4 flex items-center gap-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)', backgroundColor: '#ffffff' }}>
+          <div
+            className="p-4 flex items-center gap-4 border-b"
+            style={{ borderColor: 'rgba(31, 41, 55, 0.9)', backgroundColor: '#020617' }}
+          >
             <button
               onClick={() => {
                 setShowPaymentInput(false);
@@ -481,43 +533,43 @@ const ActiveRequestDetailsPage = () => {
                 setPaymentStatus('pending');
               }}
               className="w-10 h-10 rounded-full flex items-center justify-center shadow-md"
-              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+              style={{ backgroundColor: 'rgba(15, 23, 42, 0.9)' }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
                 <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <h1 className="text-xl font-bold" style={{ color: '#2d3748' }}>Make Payment</h1>
+            <h1 className="text-xl font-bold" style={{ color: '#e5e7eb' }}>Make Payment</h1>
           </div>
 
           {/* Payment Content */}
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-md mx-auto">
               {/* Customer Info */}
-              <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#ffffff' }}>
+              <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: '#0b1120' }}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-                    <span className="text-lg font-bold" style={{ color: '#64946e' }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)' }}>
+                    <span className="text-lg font-bold" style={{ color: '#bbf7d0' }}>
                       {requestData.userName[0]}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-base font-semibold" style={{ color: '#2d3748' }}>{requestData.userName}</p>
-                    <p className="text-sm" style={{ color: '#718096' }}>{requestData.scrapType}</p>
+                    <p className="text-base font-semibold" style={{ color: '#f9fafb' }}>{requestData.userName}</p>
+                    <p className="text-sm" style={{ color: '#9ca3af' }}>{requestData.scrapType}</p>
                   </div>
                 </div>
-                <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(100, 148, 110, 0.05)' }}>
-                  <p className="text-xs mb-1" style={{ color: '#718096' }}>Estimated Amount</p>
-                  <p className="text-xl font-bold" style={{ color: '#64946e' }}>{finalAmount || requestData?.estimatedEarnings || '₹450'}</p>
+                <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
+                  <p className="text-xs mb-1" style={{ color: '#9ca3af' }}>Estimated Amount</p>
+                  <p className="text-xl font-bold" style={{ color: '#4ade80' }}>{finalAmount || requestData?.estimatedEarnings || '₹450'}</p>
                 </div>
               </div>
 
               {/* Payment Input */}
-              <div className="mb-6 p-6 rounded-2xl shadow-lg" style={{ backgroundColor: '#ffffff' }}>
-                <h2 className="text-lg font-bold mb-4" style={{ color: '#2d3748' }}>Enter Payment Amount</h2>
+              <div className="mb-6 p-6 rounded-2xl shadow-lg" style={{ backgroundColor: '#020617' }}>
+                <h2 className="text-lg font-bold mb-4" style={{ color: '#e5e7eb' }}>Enter Payment Amount</h2>
                 
                 <div className="mb-4">
-                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>
                     Amount Paid (₹)
                   </label>
                   <input
@@ -526,18 +578,17 @@ const ActiveRequestDetailsPage = () => {
                     value={paidAmount}
                     onChange={(e) => setPaidAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-2xl font-bold text-center"
+                    className="w-full px-4 py-4 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-2xl font-bold text-center bg-transparent"
                     style={{
-                      borderColor: paidAmount ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                      color: '#2d3748',
-                      backgroundColor: '#f9f9f9'
+                      borderColor: paidAmount ? '#22c55e' : 'rgba(148, 163, 184, 0.5)',
+                      color: '#f9fafb'
                     }}
                     min="0"
                     step="0.01"
                     autoFocus
                   />
                   {paidAmount && (
-                    <p className="text-sm mt-2 text-center" style={{ color: '#718096' }}>
+                    <p className="text-sm mt-2 text-center" style={{ color: '#9ca3af' }}>
                       You will pay ₹{parseFloat(paidAmount) || 0} to the customer
                     </p>
                   )}
@@ -553,8 +604,8 @@ const ActiveRequestDetailsPage = () => {
                       onClick={() => setPaidAmount(amount.toString())}
                       className="py-2 rounded-lg font-semibold text-sm"
                       style={{
-                        backgroundColor: paidAmount === amount.toString() ? '#64946e' : 'rgba(100, 148, 110, 0.1)',
-                        color: paidAmount === amount.toString() ? '#ffffff' : '#64946e'
+                        backgroundColor: paidAmount === amount.toString() ? '#22c55e' : 'rgba(31, 41, 55, 1)',
+                        color: paidAmount === amount.toString() ? '#0f172a' : '#e5e7eb'
                       }}
                     >
                       ₹{amount}
@@ -568,7 +619,7 @@ const ActiveRequestDetailsPage = () => {
                   onClick={handlePaymentMade}
                   disabled={!paidAmount || parseFloat(paidAmount) <= 0}
                   className="w-full py-4 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                  style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor"/>
@@ -587,45 +638,45 @@ const ActiveRequestDetailsPage = () => {
             animate={{ y: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="absolute bottom-0 left-0 right-0 z-30 rounded-t-2xl shadow-2xl flex flex-col"
-            style={{ backgroundColor: '#ffffff', maxHeight: '65vh', overflow: 'hidden' }}
+            style={{ backgroundColor: '#020617', maxHeight: '65vh', overflow: 'hidden' }}
           >
             {/* Slide Handle */}
-            <div className="w-12 h-1.5 mx-auto mt-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#cbd5e0' }} />
+            <div className="w-12 h-1.5 mx-auto mt-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#4b5563' }} />
 
             {/* Request Content - Compact - Scrollable */}
             <div className="p-4 pb-2 overflow-y-auto flex-1" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold" style={{ color: '#2d3748' }}>Pickup Details</h2>
+                <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>Pickup Details</h2>
               </div>
 
               {/* Request Details - Compact */}
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-                    <span className="text-sm font-bold" style={{ color: '#64946e' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)' }}>
+                    <span className="text-sm font-bold" style={{ color: '#bbf7d0' }}>
                       {requestData.userName[0]}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>{requestData.userName}</p>
-                    <p className="text-xs truncate" style={{ color: '#718096' }}>{requestData.scrapType}</p>
+                    <p className="text-sm font-semibold truncate" style={{ color: '#f9fafb' }}>{requestData.userName}</p>
+                    <p className="text-xs truncate" style={{ color: '#9ca3af' }}>{requestData.scrapType}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold" style={{ color: '#64946e' }}>{requestData.estimatedEarnings}</p>
+                    <p className="text-sm font-bold" style={{ color: '#4ade80' }}>{requestData.estimatedEarnings}</p>
                   </div>
                 </div>
 
                 {/* Scrap Images */}
                 {requestData.images && requestData.images.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>Scrap Images</p>
+                    <p className="text-xs font-semibold mb-2" style={{ color: '#e5e7eb' }}>Scrap Images</p>
                     <div className="grid grid-cols-3 gap-2">
                       {requestData.images.slice(0, 6).map((image, idx) => (
                         <motion.div
                           key={image.id || idx}
                           whileHover={{ scale: 1.05 }}
                           className="relative aspect-square rounded-lg overflow-hidden"
-                          style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+                          style={{ backgroundColor: 'rgba(15, 23, 42, 1)' }}
                         >
                           <img
                             src={image.preview || image}
@@ -652,12 +703,12 @@ const ActiveRequestDetailsPage = () => {
 
               {/* Payment Made Status - Step 3 */}
               {paymentStatus === 'paid' && (
-                <div className="mb-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                <div className="mb-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(22, 163, 74, 0.15)' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>Payment Status</span>
-                    <span className="text-sm font-bold" style={{ color: '#10b981' }}>Paid ✓</span>
+                    <span className="text-sm font-semibold" style={{ color: '#bbf7d0' }}>Payment Status</span>
+                    <span className="text-sm font-bold" style={{ color: '#4ade80' }}>Paid ✓</span>
                   </div>
-                  <p className="text-xs mb-3" style={{ color: '#718096' }}>
+                  <p className="text-xs mb-3" style={{ color: '#e5e7eb' }}>
                     Payment of ₹{paidAmount || requestData?.paidAmount || '0'} made successfully to customer
                   </p>
                   <motion.button
@@ -665,7 +716,7 @@ const ActiveRequestDetailsPage = () => {
                     whileTap={{ scale: 0.98 }}
                     onClick={handleCompleteOrder}
                     className="w-full py-3 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2"
-                    style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                    style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -677,22 +728,22 @@ const ActiveRequestDetailsPage = () => {
 
               {/* Order Completed Status */}
               {paymentStatus === 'completed' && (
-                <div className="mb-3 p-4 rounded-xl text-center" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="mx-auto mb-2" style={{ color: '#10b981' }}>
+                <div className="mb-3 p-4 rounded-xl text-center" style={{ backgroundColor: 'rgba(22, 163, 74, 0.15)' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="mx-auto mb-2" style={{ color: '#4ade80' }}>
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  <p className="text-sm font-bold mb-1" style={{ color: '#10b981' }}>Order Completed!</p>
-                  <p className="text-xs" style={{ color: '#718096' }}>Redirecting to dashboard...</p>
+                  <p className="text-sm font-bold mb-1" style={{ color: '#bbf7d0' }}>Order Completed!</p>
+                  <p className="text-xs" style={{ color: '#e5e7eb' }}>Redirecting to dashboard...</p>
                 </div>
               )}
             </div>
 
         {/* Contact Buttons - Fixed at Bottom */}
-        <div 
-          className="px-4 pb-4 pt-2 border-t flex-shrink-0" 
-          style={{ 
-            borderColor: 'rgba(100, 148, 110, 0.2)', 
-            backgroundColor: '#ffffff'
+        <div
+          className="px-4 pb-4 pt-2 border-t flex-shrink-0"
+          style={{
+            borderColor: 'rgba(31, 41, 55, 0.9)',
+            backgroundColor: '#020617'
           }}
         >
           {/* Scrap Picked Up Button - Primary Action */}
@@ -702,7 +753,7 @@ const ActiveRequestDetailsPage = () => {
               whileTap={{ scale: 0.98 }}
               onClick={handleScrapPickedUp}
               className="w-full py-4 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2 mb-3"
-              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+              style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -710,7 +761,10 @@ const ActiveRequestDetailsPage = () => {
               Scrap Picked Up
             </motion.button>
           ) : (
-            <div className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 mb-3" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <div
+              className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 mb-3"
+              style={{ backgroundColor: 'rgba(22, 163, 74, 0.2)', color: '#bbf7d0' }}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -725,7 +779,7 @@ const ActiveRequestDetailsPage = () => {
               whileTap={{ scale: 0.98 }}
               onClick={handleCall}
               className="flex items-center justify-center gap-2 p-3 rounded-xl shadow-sm"
-              style={{ backgroundColor: '#e6ffe6', color: '#10b981' }}
+              style={{ backgroundColor: '#022c22', color: '#6ee7b7' }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M22 16.92V20C22 20.5304 21.7893 21.0391 21.4142 21.4142C21.0391 21.7893 20.5304 22 20 22H4C3.46957 22 2.96086 21.7893 2.58579 21.4142C2.21071 21.0391 2 20.5304 2 20V16.92C2 16.4099 2.1841 15.9196 2.52016 15.5455C2.85622 15.1714 3.30751 14.9416 3.78 14.88L7.22 14.32C7.7301 14.2441 8.2204 14.4282 8.5945 14.7642C8.9686 15.1003 9.1984 15.5516 9.26 16.02L9.72 19.46C9.78 19.93 10.01 20.38 10.35 20.72C10.69 21.06 11.14 21.29 11.61 21.35L12.39 21.46C12.86 21.52 13.31 21.29 13.65 20.95C13.99 20.61 14.22 20.16 14.28 19.69L14.74 16.25C14.8 15.78 15.03 15.33 15.37 14.99C15.71 14.65 16.16 14.42 16.63 14.36L20.07 13.8C20.5405 13.7384 21.0099 13.9682 21.3798 14.3043C21.7497 14.6404 21.9795 15.0917 22 15.5996V16.92Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -738,7 +792,7 @@ const ActiveRequestDetailsPage = () => {
               whileTap={{ scale: 0.98 }}
               onClick={handleMessage}
               className="flex items-center justify-center gap-2 p-3 rounded-xl shadow-sm"
-              style={{ backgroundColor: '#e6f7ff', color: '#3b82f6' }}
+              style={{ backgroundColor: '#0b1120', color: '#60a5fa' }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 15V9C21 8.46957 20.7893 7.96086 20.4142 7.58579C20.0391 7.21071 19.5304 7 19 7H5C4.46957 7 3.96086 7.21071 3.58579 7.58579C3.21071 7.96086 3 8.46957 3 9V15C3 15.5304 3.21071 16.0391 3.58579 16.4142C3.96086 16.7893 4.46957 17 5 17H19C19.5304 17 20.0391 16.7893 20.4142 16.4142C20.7893 16.0391 21 15.5304 21 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

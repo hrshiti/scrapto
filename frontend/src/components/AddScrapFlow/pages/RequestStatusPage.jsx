@@ -383,6 +383,16 @@ const RequestStatusPage = () => {
                   {requestData.images?.length || 0} photos
                 </span>
               </div>
+              {(requestData.pickupSlot || requestData.preferredTime) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Pickup Slot:</span>
+                  <span className="text-xs md:text-sm font-semibold text-right" style={{ color: '#2d3748' }}>
+                    {requestData.pickupSlot
+                      ? `${requestData.pickupSlot.dayName}, ${requestData.pickupSlot.date} • ${requestData.pickupSlot.slot}`
+                      : requestData.preferredTime}
+                  </span>
+                </div>
+              )}
               <div className="pt-3 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
                 <div className="flex justify-between items-center">
                   <span className="text-base md:text-lg font-bold" style={{ color: '#2d3748' }}>

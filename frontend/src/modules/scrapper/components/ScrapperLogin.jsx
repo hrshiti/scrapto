@@ -2,7 +2,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { validateReferralCode, createReferral, processSignupBonus } from '../../shared/utils/referralUtils';
+import { validateReferralCode, createReferral, processSignupBonus, getReferralSettings } from '../../shared/utils/referralUtils';
+import { linkLeadToScrapper } from '../../shared/utils/leadUtils';
 
 const ScrapperLogin = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const ScrapperLogin = () => {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [vehicleInfo, setVehicleInfo] = useState('');
+  const [heardFrom, setHeardFrom] = useState('');
+  const [heardFromOther, setHeardFromOther] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [referralCodeError, setReferralCodeError] = useState('');
   const [referrerName, setReferrerName] = useState('');
@@ -76,6 +79,12 @@ const ScrapperLogin = () => {
   const handlePhoneSubmit = (e) => {
     e.preventDefault();
     if (phone.length === 10) {
+      // Check if scrapper is blocked
+      const scrapperStatus = localStorage.getItem('scrapperStatus');
+      if (scrapperStatus === 'blocked') {
+        alert('Your scrapper account has been blocked by admin. Please contact support.');
+        return;
+      }
       if (!isLogin && (!name.trim() || !vehicleInfo.trim())) {
         return;
       }
@@ -133,13 +142,18 @@ const ScrapperLogin = () => {
       setReferralCodeError(validation.error);
       setReferrerName('');
     } else {
-      // Only accept scrapper codes for scrapper signup
-      if (validation.referrerType !== 'scrapper') {
+      // Check if cross-referrals are allowed
+      const settings = getReferralSettings();
+      if (!settings.allowCrossReferrals && validation.referrerType !== 'scrapper') {
         setReferralCodeError('This code is for users only. Please use a scrapper referral code.');
         setReferrerName('');
       } else {
         setReferralCodeError('');
-        setReferrerName('Friend'); // Placeholder
+        if (validation.referrerType === 'user') {
+          setReferrerName('User Friend'); // Cross-referral
+        } else {
+          setReferrerName('Scrapper Friend');
+        }
       }
     }
   };
@@ -151,18 +165,34 @@ const ScrapperLogin = () => {
   };
 
   const handleRegistration = (otpArray) => {
+    const computedHeardFrom =
+      heardFrom === 'other' && heardFromOther.trim()
+        ? `other:${heardFromOther.trim()}`
+        : heardFrom || null;
+
     const userData = {
       name: isLogin ? 'Scrapper Name' : name,
       phone: phone,
       role: 'scrapper',
       vehicleInfo: vehicleInfo || 'Not provided',
-      id: `scrapper_${Date.now()}`
+      id: `scrapper_${Date.now()}`,
+      heardFrom: computedHeardFrom
     };
     
     login(userData);
     // Set scrapper-specific authentication
     localStorage.setItem('scrapperAuthenticated', 'true');
     localStorage.setItem('scrapperUser', JSON.stringify(userData));
+
+    // If this is a new registration, try to link any existing lead by phone
+    if (!isLogin) {
+      try {
+        linkLeadToScrapper(phone, userData.id);
+      } catch (error) {
+        // Non-blocking
+        console.error('Error linking scrapper lead:', error);
+      }
+    }
     
     // Process referral if code is provided and valid
     if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
@@ -181,91 +211,133 @@ const ScrapperLogin = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ backgroundColor: '#f4ebe2' }}>
+    <div
+      className="min-h-screen w-full flex items-stretch sm:items-center justify-center p-4 relative overflow-hidden"
+      style={{
+        backgroundImage: 'linear-gradient(135deg, #14532d 0%, #22c55e 40%, #bbf7d0 100%)'
+      }}
+    >
+      {/* Soft glow circles */}
+      <div className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -right-24 w-80 h-80 rounded-full bg-emerald-200/40 blur-3xl" />
+
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="relative w-full max-w-4xl grid md:grid-cols-2 gap-0 bg-white/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border border-white/40 max-h-[calc(100vh-2rem)] overflow-y-auto md:max-h-none md:overflow-visible"
       >
-        {/* Logo/Header */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-          className="text-center mb-8"
-        >
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: '#64946e' }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 17h14l-1-7H6l-1 7z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2"/>
-              <circle cx="7" cy="19" r="1.5" fill="white"/>
-              <circle cx="17" cy="19" r="1.5" fill="white"/>
-              <path d="M3 12h18" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
+        {/* Left panel - hero content */}
+        <div className="hidden md:flex flex-col justify-between p-8 lg:p-10 bg-gradient-to-br from-emerald-600 via-emerald-500 to-emerald-700 text-white">
+          <div>
+            <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              Join Scrapto Scrapper Network
+            </p>
+            <h2 className="mt-4 text-3xl lg:text-4xl font-extrabold leading-tight">
+              Earn more from
+              <br />
+              every scrap pickup.
+            </h2>
+            <p className="mt-3 text-sm lg:text-base text-emerald-100/90">
+              Get verified leads, transparent pricing, and on‑time payments. Designed for serious scrap collectors.
+            </p>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ color: '#2d3748' }}>
-            Scrapper Portal
-          </h1>
-          <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-            {isLogin ? 'Welcome back!' : 'Start earning with us'}
-          </p>
-        </motion.div>
 
-        {/* Toggle Login/Signup */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-4 mb-6"
-        >
-          <button
-            onClick={() => {
-              setIsLogin(true);
-              setOtpSent(false);
-              setOtp(['', '', '', '', '', '']);
-            }}
-            className={`px-6 py-2 rounded-full font-semibold text-sm md:text-base transition-all duration-300 ${
-              isLogin
-                ? 'shadow-md'
-                : 'opacity-50 hover:opacity-70'
-            }`}
-            style={{
-              backgroundColor: isLogin ? '#64946e' : 'transparent',
-              color: isLogin ? '#ffffff' : '#718096',
-              border: isLogin ? 'none' : '2px solid rgba(100, 148, 110, 0.3)'
-            }}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => {
-              setIsLogin(false);
-              setOtpSent(false);
-              setOtp(['', '', '', '', '', '']);
-            }}
-            className={`px-6 py-2 rounded-full font-semibold text-sm md:text-base transition-all duration-300 ${
-              !isLogin
-                ? 'shadow-md'
-                : 'opacity-50 hover:opacity-70'
-            }`}
-            style={{
-              backgroundColor: !isLogin ? '#64946e' : 'transparent',
-              color: !isLogin ? '#ffffff' : '#718096',
-              border: !isLogin ? 'none' : '2px solid rgba(100, 148, 110, 0.3)'
-            }}
-          >
-            Register
-          </button>
-        </motion.div>
+          <div className="mt-6 space-y-3 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>Real‑time market price updates linked with your dashboard.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>Priority access to high‑value pickups near your area.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="w-2 h-2 rounded-full bg-emerald-300" />
+              </div>
+              <p>Simple OTP login – no passwords, no complications.</p>
+            </div>
+          </div>
+        </div>
 
-        {/* Form Card */}
+        {/* Right panel - auth form */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="rounded-2xl p-6 md:p-8 shadow-xl"
-          style={{ backgroundColor: '#ffffff' }}
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full bg-white/95 px-5 py-6 sm:p-7 md:p-8 lg:p-9"
         >
+          {/* Logo/Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="mb-6 md:mb-8 text-center md:text-left"
+          >
+            <div className="inline-flex items-center gap-3 px-3 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold mb-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              {isLogin ? 'Login to continue pickups' : 'New to Scrapto? Register now'}
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#1f2933' }}>
+              {isLogin ? 'Scrapper Login' : 'Create Scrapper Account'}
+            </h1>
+            <p className="text-xs md:text-sm" style={{ color: '#6b7280' }}>
+              {isLogin
+                ? 'Enter your phone number to receive a one‑time OTP.'
+                : 'Quick signup – just your basic details and phone number.'}
+            </p>
+          </motion.div>
+
+          {/* Toggle Login/Signup */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-center md:justify-start gap-3 mb-6"
+          >
+            <button
+              onClick={() => {
+                setIsLogin(true);
+                setOtpSent(false);
+                setOtp(['', '', '', '', '', '']);
+              }}
+              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
+                isLogin
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => {
+                setIsLogin(false);
+                setOtpSent(false);
+                setOtp(['', '', '', '', '', '']);
+              }}
+              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
+                !isLogin
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              Register
+            </button>
+          </motion.div>
+
+          {/* Form Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.4 }}
+            className="rounded-2xl p-4 md:p-5 lg:p-6 bg-white shadow-sm border border-gray-100"
+          >
           <AnimatePresence mode="wait">
             {!otpSent ? (
               <motion.form
@@ -299,6 +371,52 @@ const ScrapperLogin = () => {
                       }}
                       required={!isLogin}
                     />
+                  </motion.div>
+                )}
+
+                {/* How did you hear about Scrapto? (Signup only) */}
+                {!isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                      How did you hear about Scrapto?
+                    </label>
+                    <select
+                      value={heardFrom}
+                      onChange={(e) => setHeardFrom(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                      style={{
+                        borderColor: heardFrom ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                        color: '#2d3748',
+                        backgroundColor: '#f9f9f9'
+                      }}
+                    >
+                      <option value="">Select an option</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="google_search">Google Search</option>
+                      <option value="friend_family">Friends / Family</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="other">Other</option>
+                    </select>
+                    {heardFrom === 'other' && (
+                      <input
+                        type="text"
+                        value={heardFromOther}
+                        onChange={(e) => setHeardFromOther(e.target.value)}
+                        placeholder="Please specify (e.g., association, poster)"
+                        className="mt-2 w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                        style={{
+                          borderColor: heardFromOther ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          color: '#2d3748',
+                          backgroundColor: '#f9f9f9'
+                        }}
+                      />
+                    )}
                   </motion.div>
                 )}
 
@@ -447,7 +565,7 @@ const ScrapperLogin = () => {
                   </p>
                 </div>
 
-                <div className="flex justify-center gap-2 md:gap-3">
+                <div className="flex justify-center flex-wrap gap-1.5 md:gap-3 px-2 max-w-xs mx-auto">
                   {otp.map((digit, index) => (
                     <motion.input
                       key={index}
@@ -461,7 +579,7 @@ const ScrapperLogin = () => {
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.1 + index * 0.05 }}
-                      className="w-12 h-12 md:w-14 md:h-14 text-center text-xl md:text-2xl font-bold rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                      className="w-9 h-11 text-lg md:w-12 md:h-12 md:text-2xl text-center font-bold rounded-lg md:rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
                       style={{
                         borderColor: digit ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                         color: '#2d3748',
@@ -510,19 +628,18 @@ const ScrapperLogin = () => {
           </AnimatePresence>
         </motion.div>
 
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-center mt-6"
-        >
-          <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-center mt-4 text-xs md:text-sm text-gray-500"
+          >
             By continuing, you agree to our{' '}
-            <span className="font-semibold" style={{ color: '#64946e' }}>
-              Terms & Conditions
+            <span className="font-semibold text-emerald-600">
+              Terms &amp; Conditions
             </span>
-          </p>
+          </motion.div>
         </motion.div>
       </motion.div>
     </div>

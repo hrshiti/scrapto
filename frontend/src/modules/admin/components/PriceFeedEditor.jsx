@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { DEFAULT_PRICE_FEED } from '../../shared/utils/priceFeedUtils';
 
 const PriceFeedEditor = () => {
   const [prices, setPrices] = useState([]);
@@ -14,22 +15,17 @@ const PriceFeedEditor = () => {
   }, []);
 
   const loadPrices = () => {
-    // Load prices from localStorage or use defaults
+    // Load prices from localStorage or use shared defaults
     const storedPrices = localStorage.getItem('adminPriceFeed');
     if (storedPrices) {
       setPrices(JSON.parse(storedPrices));
     } else {
-      // Default prices
-      const defaultPrices = [
-        { id: 'price_001', category: 'Plastic', pricePerKg: 45, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_002', category: 'Metal', pricePerKg: 180, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_003', category: 'Paper', pricePerKg: 12, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_004', category: 'Electronics', pricePerKg: 85, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_005', category: 'Copper', pricePerKg: 650, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_006', category: 'Aluminium', pricePerKg: 180, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_007', category: 'Steel', pricePerKg: 35, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: 'price_008', category: 'Brass', pricePerKg: 420, region: 'All', effectiveDate: new Date().toISOString(), updatedAt: new Date().toISOString() }
-      ];
+      const nowIso = new Date().toISOString();
+      const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
+        ...p,
+        effectiveDate: p.effectiveDate || nowIso,
+        updatedAt: p.updatedAt || nowIso
+      }));
       setPrices(defaultPrices);
       localStorage.setItem('adminPriceFeed', JSON.stringify(defaultPrices));
     }

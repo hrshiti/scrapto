@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
 
 const KYCStatusPage = () => {
   const navigate = useNavigate();
@@ -47,6 +48,16 @@ const KYCStatusPage = () => {
           localStorage.setItem('scrapperKYCStatus', 'verified');
           setKycStatus('verified');
           
+          // Process KYC verified milestone
+          const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
+          if (scrapperUser.phone || scrapperUser.id) {
+            try {
+              checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'kycVerified');
+            } catch (error) {
+              console.error('Error processing milestone:', error);
+            }
+          }
+          
           // Redirect to subscription page after verification
           setTimeout(() => {
             const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
@@ -69,6 +80,17 @@ const KYCStatusPage = () => {
       const currentStatus = localStorage.getItem('scrapperKYCStatus');
       if (currentStatus === 'verified' && kycStatus !== 'verified') {
         setKycStatus('verified');
+        
+        // Process KYC verified milestone
+        const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
+        if (scrapperUser.phone || scrapperUser.id) {
+          try {
+            checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'kycVerified');
+          } catch (error) {
+            console.error('Error processing milestone:', error);
+          }
+        }
+        
         const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
         if (subscriptionStatus === 'active') {
           navigate('/scrapper', { replace: true });

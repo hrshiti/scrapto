@@ -38,13 +38,22 @@ const AdminLayout = () => {
     { icon: FaHome, label: 'Dashboard', path: '/admin', exact: true },
     { icon: FaUserShield, label: 'KYC Queue', path: '/admin/kyc' },
     { icon: FaUsers, label: 'Users', path: '/admin/users' },
-    { icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers' },
+    { icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers', submenu: [
+      { label: 'All Scrappers', path: '/admin/scrappers' },
+      { label: 'Leads', path: '/admin/scrappers/leads' }
+    ]},
     { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
     { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
     { icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions' },
     { icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
       { label: 'All Referrals', path: '/admin/referrals' },
-      { label: 'Settings', path: '/admin/referrals/settings' }
+      { label: 'Settings', path: '/admin/referrals/settings' },
+      { label: 'Milestone Rewards', path: '/admin/referrals/milestones' },
+      { label: 'Tier Management', path: '/admin/referrals/tiers' },
+      { label: 'Leaderboard', path: '/admin/referrals/leaderboard' },
+      { label: 'Analytics', path: '/admin/referrals/analytics' },
+      { label: 'Fraud Detection', path: '/admin/referrals/fraud' },
+      { label: 'Campaigns', path: '/admin/referrals/campaigns' }
     ]},
     { icon: FaChartBar, label: 'Reports', path: '/admin/reports' },
     { icon: FaCog, label: 'Settings', path: '/admin/settings' }
@@ -88,26 +97,70 @@ const AdminLayout = () => {
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item);
+            const hasSubmenu = Array.isArray(item.submenu) && item.submenu.length > 0;
+            const isParentActive =
+              hasSubmenu && item.submenu.some((sub) => location.pathname === sub.path);
+
             return (
-              <motion.button
-                key={item.path}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  active ? 'shadow-md' : ''
-                }`}
-                style={{
-                  backgroundColor: active ? '#64946e' : 'transparent',
-                  color: active ? '#ffffff' : '#2d3748'
-                }}
-              >
-                <Icon className="text-lg" />
-                <span className="font-medium">{item.label}</span>
-              </motion.button>
+              <div key={item.path}>
+                <motion.button
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    if (!hasSubmenu) {
+                      navigate(item.path);
+                    } else if (!isParentActive) {
+                      navigate(item.submenu[0].path);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    active || isParentActive ? 'shadow-md' : ''
+                  }`}
+                  style={{
+                    backgroundColor: active || isParentActive ? '#64946e' : 'transparent',
+                    color: active || isParentActive ? '#ffffff' : '#2d3748'
+                  }}
+                >
+                  <Icon className="text-lg" />
+                  <span className="font-medium">{item.label}</span>
+                </motion.button>
+
+                {hasSubmenu && (active || isParentActive) && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="ml-6 mt-2 space-y-1"
+                  >
+                    {item.submenu.map((sub, subIndex) => (
+                      <motion.button
+                        key={sub.path}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: subIndex * 0.03 }}
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => navigate(sub.path)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm transition-all ${
+                          location.pathname === sub.path ? 'font-semibold' : ''
+                        }`}
+                        style={{
+                          backgroundColor:
+                            location.pathname === sub.path
+                              ? 'rgba(100, 148, 110, 0.08)'
+                              : 'transparent',
+                          color:
+                            location.pathname === sub.path ? '#64946e' : '#718096'
+                        }}
+                      >
+                        <span>{sub.label}</span>
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                )}
+              </div>
             );
           })}
         </nav>

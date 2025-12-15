@@ -9,7 +9,7 @@ import {
 const ScrappersList = () => {
   const navigate = useNavigate();
   const [scrappers, setScrappers] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, verified, pending, rejected
+  const [filter, setFilter] = useState('all'); // all, verified, pending, rejected, blocked
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -22,6 +22,7 @@ const ScrappersList = () => {
     const scrapperUser = localStorage.getItem('scrapperUser');
     const kycStatus = localStorage.getItem('scrapperKYCStatus');
     const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
+    const scrapperStatus = localStorage.getItem('scrapperStatus') || 'active'; // active | blocked
     const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
 
     const scrapperList = [];
@@ -35,6 +36,7 @@ const ScrappersList = () => {
         name: user.name || 'Scrapper',
         phone: user.phone || 'N/A',
         kycStatus: kycStatus || 'not_submitted',
+        status: scrapperStatus,
         subscriptionStatus: subscriptionStatus || 'not_subscribed',
         rating: 4.8,
         totalPickups: completedOrders.length,
@@ -100,7 +102,12 @@ const ScrappersList = () => {
   };
 
   const filteredScrappers = scrappers.filter(scrapper => {
-    const matchesFilter = filter === 'all' || scrapper.kycStatus === filter;
+    const matchesFilter =
+      filter === 'all'
+        ? true
+        : filter === 'blocked'
+        ? scrapper.status === 'blocked'
+        : scrapper.kycStatus === filter;
     const matchesSearch = 
       scrapper.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       scrapper.phone.includes(searchQuery) ||
@@ -112,7 +119,7 @@ const ScrappersList = () => {
     navigate(`/admin/scrappers/${scrapperId}`);
   };
 
-  const getKYCStatusBadge = (status) => {
+  const getKYCStatusBadge = (status, scrapperStatus) => {
     const styles = {
       verified: { bg: '#d1fae5', color: '#10b981', icon: FaCheckCircle },
       pending: { bg: '#fef3c7', color: '#f59e0b', icon: FaClock },
@@ -127,8 +134,20 @@ const ScrappersList = () => {
         style={{ backgroundColor: style.bg, color: style.color }}
       >
         <Icon className="text-xs" />
-        <span className="hidden sm:inline">{status === 'not_submitted' ? 'Not Submitted' : status.charAt(0).toUpperCase() + status.slice(1)}</span>
-        <span className="sm:hidden">{status === 'not_submitted' ? 'N' : status.charAt(0).toUpperCase()}</span>
+        <span className="hidden sm:inline">
+          {scrapperStatus === 'blocked'
+            ? 'Blocked'
+            : status === 'not_submitted'
+            ? 'Not Submitted'
+            : status.charAt(0).toUpperCase() + status.slice(1)}
+        </span>
+        <span className="sm:hidden">
+          {scrapperStatus === 'blocked'
+            ? 'B'
+            : status === 'not_submitted'
+            ? 'N'
+            : status.charAt(0).toUpperCase()}
+        </span>
       </span>
     );
   };
@@ -206,7 +225,7 @@ const ScrappersList = () => {
 
           {/* Filter Buttons */}
           <div className="flex gap-1.5 md:gap-2 flex-wrap">
-            {['all', 'verified', 'pending', 'rejected'].map((status) => (
+            {['all', 'verified', 'pending', 'rejected', 'blocked'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
@@ -217,8 +236,12 @@ const ScrappersList = () => {
                   backgroundColor: filter === status ? '#64946e' : '#f7fafc',
                   color: filter === status ? '#ffffff' : '#2d3748'
                 }}
-              >
-                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                >
+                {status === 'all'
+                  ? 'All'
+                  : status === 'blocked'
+                  ? 'Blocked'
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>
@@ -274,7 +297,7 @@ const ScrappersList = () => {
                           <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
                             {scrapper.name}
                           </h3>
-                          {getKYCStatusBadge(scrapper.kycStatus)}
+                          {getKYCStatusBadge(scrapper.kycStatus, scrapper.status)}
                           {getSubscriptionBadge(scrapper.subscriptionStatus)}
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
@@ -313,6 +336,54 @@ const ScrappersList = () => {
                     >
                       <FaEye className="text-xs md:text-sm" />
                       <span className="hidden sm:inline">View</span>
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => {
+                        const nextStatus = scrapper.status === 'blocked' ? 'active' : 'blocked';
+                        if (
+                          window.confirm(
+                            `Are you sure you want to ${scrapper.status === 'blocked' ? 'unblock' : 'block'} this scrapper?`
+                          )
+                        ) {
+                          // Persist status for primary scrapper stored in localStorage
+                          const stored = localStorage.getItem('scrapperUser');
+                          if (stored) {
+                            const parsed = JSON.parse(stored);
+                            // add status field to scrapperUser so future login checks can read it if needed
+                            parsed.status = nextStatus;
+                            localStorage.setItem('scrapperUser', JSON.stringify(parsed));
+                          }
+                          localStorage.setItem('scrapperStatus', nextStatus);
+
+                          // Update local state list
+                          setScrappers((prev) =>
+                            prev.map((s) =>
+                              s.id === scrapper.id
+                                ? {
+                                    ...s,
+                                    status: nextStatus
+                                  }
+                                : s
+                            )
+                          );
+                        }
+                      }}
+                      className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
+                      style={{
+                        backgroundColor: scrapper.status === 'blocked' ? '#dcfce7' : '#fee2e2',
+                        color: scrapper.status === 'blocked' ? '#166534' : '#b91c1c'
+                      }}
+                    >
+                      {scrapper.status === 'blocked' ? (
+                        <FaUserCheck className="text-xs md:text-sm" />
+                      ) : (
+                        <FaUserTimes className="text-xs md:text-sm" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {scrapper.status === 'blocked' ? 'Unblock' : 'Block'}
+                      </span>
                     </motion.button>
                   </div>
                 </div>

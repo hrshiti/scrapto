@@ -17,13 +17,35 @@ const ActiveRequests = () => {
   }, []);
 
   const loadRequests = () => {
-    // Load active requests from localStorage
-    const activeRequest = localStorage.getItem('activeRequest');
-    const requestList = [];
+    const list = [];
 
+    // 1) Load real user requests created from frontend flow
+    const storedUserRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
+    storedUserRequests.forEach((req) => {
+      list.push({
+        id: req.id,
+        requestId: req.id,
+        userId: req.userId,
+        userName: req.userName || 'User',
+        userPhone: req.userPhone || (req.userId ? `+91 ${req.userId}` : ''),
+        categories: (req.categories || []).map((c) => (typeof c === 'string' ? c : c.name)),
+        weight: req.weight,
+        estimatedPrice: req.estimatedPayout,
+        status: req.status || 'pending',
+        location: req.location || { address: req.address || 'N/A' },
+        images: req.images || [],
+        createdAt: req.createdAt || req.timestamp,
+        assignmentStatus: req.assignmentStatus || 'unassigned',
+        assignedScrapperId: req.assignedScrapperId || null,
+        assignedScrapperName: req.assignedScrapperName || null
+      });
+    });
+
+    // 2) Load any single activeRequest (legacy demo data)
+    const activeRequest = localStorage.getItem('activeRequest');
     if (activeRequest) {
       const request = JSON.parse(activeRequest);
-      requestList.push({
+      list.push({
         id: request.id || 'req_001',
         requestId: request.requestId || 'REQ-2024-001',
         userId: request.userId || 'user_001',
@@ -38,11 +60,14 @@ const ActiveRequests = () => {
         createdAt: request.createdAt || new Date().toISOString(),
         acceptedAt: request.acceptedAt,
         scrapperId: request.scrapperId,
-        scrapperName: request.scrapperName
+        scrapperName: request.scrapperName,
+        assignmentStatus: request.assignmentStatus || (request.scrapperId ? 'admin_assigned' : 'unassigned'),
+        assignedScrapperId: request.scrapperId || null,
+        assignedScrapperName: request.scrapperName || null
       });
     }
 
-    // Add mock data
+    // 3) Add mock data (for demo)
     const mockRequests = [
       {
         id: 'req_002',
@@ -94,7 +119,7 @@ const ActiveRequests = () => {
       }
     ];
 
-    setRequests([...requestList, ...mockRequests]);
+    setRequests([...list, ...mockRequests]);
   };
 
   const filteredRequests = requests.filter(request => {
@@ -114,6 +139,42 @@ const ActiveRequests = () => {
       // Show alert with request details if no userId
       alert(`Request Details:\n\nRequest ID: ${request.requestId}\nUser: ${request.userName}\nStatus: ${request.status}\nWeight: ${request.weight} kg\nEstimated Price: ₹${request.estimatedPrice}`);
     }
+  };
+
+  const handleAssignRequest = (request) => {
+    const scrapperName = window.prompt('Assign to scrapper (enter name):');
+    if (!scrapperName) return;
+
+    // Update in userRequests storage
+    const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
+    const index = userRequests.findIndex((r) => r.id === request.id);
+    if (index !== -1) {
+      const scrapperId = `scrapper_manual_${scrapperName.replace(/\s+/g, '_').toLowerCase()}`;
+      const historyEntry = {
+        scrapperId,
+        scrapperName,
+        assignedBy: 'admin',
+        assignedAt: new Date().toISOString(),
+        status: 'admin_assigned'
+      };
+
+      const existing = userRequests[index];
+      const history = Array.isArray(existing.assignmentHistory)
+        ? existing.assignmentHistory
+        : [];
+
+      userRequests[index] = {
+        ...existing,
+        assignedScrapperId: scrapperId,
+        assignedScrapperName: scrapperName,
+        assignmentStatus: 'admin_assigned',
+        assignmentHistory: [...history, historyEntry]
+      };
+
+      localStorage.setItem('userRequests', JSON.stringify(userRequests));
+    }
+
+    loadRequests();
   };
 
   const handleCancelRequest = (requestId) => {
@@ -294,11 +355,23 @@ const ActiveRequests = () => {
                       <div>
                         Estimated: ₹{request.estimatedPrice}
                       </div>
+                      {request.assignmentStatus && (
+                        <div>
+                          Assignment:{' '}
+                          <span className="font-semibold">
+                            {request.assignmentStatus === 'unassigned'
+                              ? 'Unassigned'
+                              : request.assignmentStatus === 'admin_assigned'
+                              ? 'Admin Assigned'
+                              : request.assignmentStatus}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-xs">
                         Created: {getTimeAgo(request.createdAt)}
                       </div>
                     </div>
-                    {request.scrapperName && (
+                    {request.assignedScrapperName && (
                       <div className="mt-1 md:mt-2 text-xs md:text-sm" style={{ color: '#718096' }}>
                         <span className="font-semibold">Assigned Scrapper:</span> {request.scrapperName}
                       </div>
@@ -306,7 +379,7 @@ const ActiveRequests = () => {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -317,6 +390,18 @@ const ActiveRequests = () => {
                       <FaEye className="text-xs md:text-sm" />
                       <span className="hidden sm:inline">View</span>
                     </motion.button>
+                    {(!request.assignmentStatus || request.assignmentStatus === 'unassigned') && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleAssignRequest(request)}
+                        className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
+                        style={{ backgroundColor: '#e0f2fe', color: '#0369a1' }}
+                      >
+                        <FaTruck className="text-xs md:text-sm" />
+                        <span className="hidden sm:inline">Assign</span>
+                      </motion.button>
+                    )}
                     {request.status !== 'completed' && request.status !== 'cancelled' && (
                       <motion.button
                         whileHover={{ scale: 1.05 }}

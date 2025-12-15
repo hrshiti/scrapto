@@ -1,0 +1,429 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { 
+  getFlaggedReferrals, 
+  approveFlaggedReferral, 
+  rejectFlaggedReferral,
+  checkFraudPatterns
+} from '../../shared/utils/referralUtils';
+import {
+  FaShieldAlt,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaExclamationTriangle,
+  FaEye,
+  FaSearch,
+  FaFilter
+} from 'react-icons/fa';
+
+const FraudDetection = () => {
+  const [flaggedReferrals, setFlaggedReferrals] = useState([]);
+  const [filteredReferrals, setFilteredReferrals] = useState([]);
+  const [selectedReferral, setSelectedReferral] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSeverity, setFilterSeverity] = useState('all'); // all, high, medium, low
+
+  useEffect(() => {
+    loadFlaggedReferrals();
+  }, []);
+
+  useEffect(() => {
+    filterReferrals();
+  }, [searchTerm, filterSeverity, flaggedReferrals]);
+
+  const loadFlaggedReferrals = () => {
+    const flagged = getFlaggedReferrals();
+    setFlaggedReferrals(flagged);
+    setFilteredReferrals(flagged);
+  };
+
+  const filterReferrals = () => {
+    let filtered = [...flaggedReferrals];
+
+    // Filter by severity
+    if (filterSeverity !== 'all') {
+      filtered = filtered.filter(ref => {
+        const hasSeverity = ref.fraudFlags?.some(flag => flag.severity === filterSeverity);
+        return hasSeverity;
+      });
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(ref =>
+        ref.referrerCode.toLowerCase().includes(term) ||
+        ref.referrerId.toLowerCase().includes(term) ||
+        ref.refereeId.toLowerCase().includes(term)
+      );
+    }
+
+    setFilteredReferrals(filtered);
+  };
+
+  const handleApprove = (referralId) => {
+    const result = approveFlaggedReferral(referralId);
+    if (result.success) {
+      loadFlaggedReferrals();
+      setShowDetailModal(false);
+      alert('Referral approved successfully');
+    } else {
+      alert(result.error || 'Failed to approve referral');
+    }
+  };
+
+  const handleReject = (referralId, reason) => {
+    const reasonText = reason || prompt('Enter rejection reason:');
+    if (reasonText) {
+      const result = rejectFlaggedReferral(referralId, reasonText);
+      if (result.success) {
+        loadFlaggedReferrals();
+        setShowDetailModal(false);
+        alert('Referral rejected successfully');
+      } else {
+        alert(result.error || 'Failed to reject referral');
+      }
+    }
+  };
+
+  const getSeverityBadge = (severity) => {
+    const badges = {
+      high: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', icon: FaExclamationTriangle },
+      medium: { bg: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', icon: FaExclamationTriangle },
+      low: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', icon: FaExclamationTriangle }
+    };
+    const badge = badges[severity] || badges.medium;
+    const Icon = badge.icon;
+    
+    return (
+      <span
+        className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
+        style={{ backgroundColor: badge.bg, color: badge.color }}
+      >
+        <Icon />
+        {severity.toUpperCase()}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+            >
+              <FaShieldAlt className="text-3xl" style={{ color: '#ef4444' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
+                Fraud Detection
+              </h1>
+              <p className="text-sm md:text-base" style={{ color: '#718096' }}>
+                Review and manage flagged referrals
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold" style={{ color: '#ef4444' }}>
+              {flaggedReferrals.length}
+            </p>
+            <p className="text-xs" style={{ color: '#718096' }}>
+              Flagged Referrals
+            </p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#718096' }} />
+            <input
+              type="text"
+              placeholder="Search by code, referrer, or referee..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+              style={{
+                borderColor: '#e2e8f0',
+                backgroundColor: '#f7fafc',
+                color: '#2d3748'
+              }}
+            />
+          </div>
+          <select
+            value={filterSeverity}
+            onChange={(e) => setFilterSeverity(e.target.value)}
+            className="px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+            style={{
+              borderColor: '#e2e8f0',
+              backgroundColor: '#f7fafc',
+              color: '#2d3748'
+            }}
+          >
+            <option value="all">All Severities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </motion.div>
+
+      {/* Flagged Referrals List */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl shadow-lg overflow-hidden"
+      >
+        <AnimatePresence>
+          {filteredReferrals.length === 0 ? (
+            <div className="p-12 text-center">
+              <FaShieldAlt className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
+              <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
+                No Flagged Referrals
+              </h3>
+              <p className="text-sm" style={{ color: '#718096' }}>
+                {searchTerm || filterSeverity !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'All referrals are clean!'}
+              </p>
+            </div>
+          ) : (
+            filteredReferrals.map((referral, index) => {
+              const highestSeverity = referral.fraudFlags?.reduce((highest, flag) => {
+                const severityOrder = { high: 3, medium: 2, low: 1 };
+                return severityOrder[flag.severity] > (severityOrder[highest?.severity] || 0) 
+                  ? flag 
+                  : highest;
+              }, null);
+
+              return (
+                <motion.div
+                  key={referral.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all cursor-pointer ${
+                    index !== filteredReferrals.length - 1 ? 'border-b' : ''
+                  }`}
+                  style={{ borderColor: '#e2e8f0' }}
+                  onClick={() => {
+                    setSelectedReferral(referral);
+                    setShowDetailModal(true);
+                  }}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                        >
+                          <FaShieldAlt style={{ color: '#ef4444', fontSize: '20px' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                              {referral.referrerCode}
+                            </h3>
+                            {highestSeverity && getSeverityBadge(highestSeverity.severity)}
+                            {referral.isCrossReferral && (
+                              <span
+                                className="px-2 py-1 rounded-full text-xs font-semibold"
+                                style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}
+                              >
+                                Cross-Referral
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
+                            <div>
+                              <span className="font-semibold">Referrer:</span> {referral.referrerId}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Referee:</span> {referral.refereeId}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Type:</span> {referral.referrerType} → {referral.refereeType}
+                            </div>
+                            <div>
+                              <span className="font-semibold">Date:</span> {new Date(referral.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <p className="text-xs font-semibold mb-1" style={{ color: '#2d3748' }}>
+                              Fraud Flags ({referral.fraudFlags?.length || 0}):
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {referral.fraudFlags?.map((flag, flagIndex) => (
+                                <span
+                                  key={flagIndex}
+                                  className="px-2 py-1 rounded text-xs"
+                                  style={{ 
+                                    backgroundColor: flag.severity === 'high' 
+                                      ? 'rgba(239, 68, 68, 0.1)' 
+                                      : flag.severity === 'medium'
+                                      ? 'rgba(251, 191, 36, 0.1)'
+                                      : 'rgba(59, 130, 246, 0.1)',
+                                    color: flag.severity === 'high'
+                                      ? '#ef4444'
+                                      : flag.severity === 'medium'
+                                      ? '#fbbf24'
+                                      : '#3b82f6'
+                                  }}
+                                >
+                                  {flag.type}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedReferral(referral);
+                          setShowDetailModal(true);
+                        }}
+                        className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
+                        style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                      >
+                        <FaEye className="text-xs md:text-sm" />
+                        <span className="hidden sm:inline">Review</span>
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {showDetailModal && selectedReferral && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowDetailModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
+                    Referral Details
+                  </h2>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="p-2 rounded-full hover:bg-gray-100"
+                  >
+                    <FaTimesCircle style={{ color: '#718096' }} />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referral Code</p>
+                    <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrerCode}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referrer</p>
+                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrerId} ({selectedReferral.referrerType})</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referee</p>
+                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.refereeId} ({selectedReferral.refereeType})</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Created At</p>
+                    <p className="text-base" style={{ color: '#2d3748' }}>{new Date(selectedReferral.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold mb-2" style={{ color: '#718096' }}>Fraud Flags</p>
+                    <div className="space-y-2">
+                      {selectedReferral.fraudFlags?.map((flag, index) => (
+                        <div
+                          key={index}
+                          className="p-3 rounded-lg border"
+                          style={{ 
+                            borderColor: flag.severity === 'high' ? '#ef4444' : flag.severity === 'medium' ? '#fbbf24' : '#3b82f6',
+                            backgroundColor: flag.severity === 'high' ? 'rgba(239, 68, 68, 0.05)' : flag.severity === 'medium' ? 'rgba(251, 191, 36, 0.05)' : 'rgba(59, 130, 246, 0.05)'
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {getSeverityBadge(flag.severity)}
+                            <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>
+                              {flag.type}
+                            </span>
+                          </div>
+                          <p className="text-xs" style={{ color: '#718096' }}>{flag.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {selectedReferral.deviceInfo && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Device Info</p>
+                      <p className="text-xs" style={{ color: '#2d3748' }}>{selectedReferral.deviceInfo}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleApprove(selectedReferral.id)}
+                    className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                    style={{ backgroundColor: '#10b981', color: '#ffffff' }}
+                  >
+                    <FaCheckCircle />
+                    Approve
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleReject(selectedReferral.id)}
+                    className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                    style={{ backgroundColor: '#ef4444', color: '#ffffff' }}
+                  >
+                    <FaTimesCircle />
+                    Reject
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default FraudDetection;
+

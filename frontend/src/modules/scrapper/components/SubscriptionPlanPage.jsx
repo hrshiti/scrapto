@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
 
 const SubscriptionPlanPage = () => {
   const navigate = useNavigate();
@@ -83,6 +84,16 @@ const SubscriptionPlanPage = () => {
       // Store subscription in localStorage (frontend only)
       localStorage.setItem('scrapperSubscription', JSON.stringify(subscriptionData));
       localStorage.setItem('scrapperSubscriptionStatus', 'active');
+
+      // Process subscription milestone
+      const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
+      if (scrapperUser.phone || scrapperUser.id) {
+        try {
+          checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'subscription');
+        } catch (error) {
+          console.error('Error processing milestone:', error);
+        }
+      }
 
       setIsProcessing(false);
       

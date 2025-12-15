@@ -2,7 +2,8 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { FaGift } from 'react-icons/fa';
+import { FaGift, FaChartLine } from 'react-icons/fa';
+import PriceTicker from '../../user/components/PriceTicker';
 
 const ScrapperDashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const ScrapperDashboard = () => {
     rating: 4.8,
     activeRequests: 0
   });
+  const [marketSubStatus, setMarketSubStatus] = useState('inactive'); // for real-time market price subscription
 
   const [completedOrders, setCompletedOrders] = useState([]);
 
@@ -67,6 +69,11 @@ const ScrapperDashboard = () => {
       ...prev,
       activeRequests: activeRequest ? 1 : 0
     }));
+
+    // Load separate market price subscription status (different from onboarding subscription)
+    const marketStatus =
+      localStorage.getItem('scrapperMarketPriceSubscriptionStatus') || 'inactive';
+    setMarketSubStatus(marketStatus);
   };
   
   // Handle availability toggle
@@ -189,11 +196,20 @@ const ScrapperDashboard = () => {
               Ready to start earning?
             </p>
           </div>
-          <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-md" style={{ backgroundColor: '#64946e' }}>
-            <span className="text-white font-bold text-lg">
-              {(user?.name || 'S')[0].toUpperCase()}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/scrapper/profile')}
+            className="focus:outline-none"
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-shadow"
+              style={{ backgroundColor: '#64946e' }}
+            >
+              <span className="text-white font-bold text-lg">
+                {(user?.name || 'S')[0].toUpperCase()}
+              </span>
+            </div>
+          </button>
         </div>
 
         {/* Availability Toggle */}
@@ -231,6 +247,50 @@ const ScrapperDashboard = () => {
           >
             {isAvailable ? 'ON' : 'OFF'}
           </motion.button>
+        </motion.div>
+
+        {/* Live Market Prices for Scrappers (base admin feed / real-time with add-on) */}
+        <div className="mt-4">
+          <PriceTicker />
+        </div>
+
+        {/* Market Price Subscription (separate from onboarding subscription) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mt-3 rounded-2xl shadow-md p-4 md:p-5 border border-gray-800"
+          style={{ backgroundColor: '#020617' }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex gap-3">
+              <div className="mt-1 w-10 h-10 rounded-full flex items-center justify-center"
+                   style={{ backgroundColor: 'rgba(148, 163, 184, 0.15)' }}>
+                <FaChartLine className="text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold mb-1" style={{ color: '#a5b4fc' }}>
+                  Market Price Add‑On
+                </p>
+                <h3 className="text-sm md:text-base font-bold mb-1" style={{ color: '#e5e7eb' }}>
+                  Unlock real‑time scrap rates
+                </h3>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                type="button"
+                className="mt-1 px-3 py-1.5 rounded-full text-[11px] md:text-xs font-semibold border transition-colors"
+                style={{
+                  borderColor: '#4b5563',
+                  color: '#e5e7eb',
+                  backgroundColor: 'transparent'
+                }}
+              >
+                View plans
+              </button>
+            </div>
+          </div>
         </motion.div>
       </div>
 

@@ -8,6 +8,8 @@ import SubscriptionPlanPage from './components/SubscriptionPlanPage';
 import ActiveRequestsPage from './components/ActiveRequestsPage';
 import ActiveRequestDetailsPage from './components/ActiveRequestDetailsPage';
 import ReferAndEarn from './components/ReferAndEarn';
+import ScrapperHelpSupport from './components/ScrapperHelpSupport';
+import ScrapperProfile from './components/ScrapperProfile';
 
 // Helper function to check KYC status
 const getKYCStatus = () => {
@@ -47,7 +49,8 @@ const ScrapperModule = () => {
   const isScrapperAuthenticated = () => {
     const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
     const scrapperUser = localStorage.getItem('scrapperUser');
-    return scrapperAuth === 'true' && scrapperUser !== null;
+    const scrapperStatus = localStorage.getItem('scrapperStatus') || 'active';
+    return scrapperAuth === 'true' && scrapperUser !== null && scrapperStatus !== 'blocked';
   };
   
   const scrapperIsAuthenticated = isScrapperAuthenticated();
@@ -87,6 +90,12 @@ const ScrapperModule = () => {
       
       {/* Active Request Details Route - after accepting a request */}
       <Route path="/active-request/:requestId" element={<ActiveRequestDetailsPage />} />
+      
+      {/* Help & Support */}
+      <Route path="/help" element={<ScrapperHelpSupport />} />
+      
+      {/* Profile */}
+      <Route path="/profile" element={<ScrapperProfile />} />
       
       {/* Refer & Earn Route */}
       <Route path="/refer" element={<ReferAndEarn />} />

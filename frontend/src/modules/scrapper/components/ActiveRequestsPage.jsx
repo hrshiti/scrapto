@@ -32,7 +32,6 @@ const ActiveRequestsPage = () => {
   const [incomingRequest, setIncomingRequest] = useState(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioRef, setAudioRef] = useState(null);
 
   // Check authentication first
   useEffect(() => {
@@ -93,6 +92,17 @@ const ActiveRequestsPage = () => {
   useEffect(() => {
     // Simulate request after 3 seconds for testing
     const requestTimer = setTimeout(() => {
+      // Try to use latest user request (with pickupSlot) if available
+      let latestUserRequest = null;
+      try {
+        const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
+        if (Array.isArray(userRequests) && userRequests.length > 0) {
+          latestUserRequest = userRequests[userRequests.length - 1];
+        }
+      } catch (e) {
+        console.error('Error reading userRequests for incoming request mock:', e);
+      }
+
       // Mock scrap images (for now, using placeholder images)
       const mockImages = [
         {
@@ -112,20 +122,33 @@ const ActiveRequestsPage = () => {
         }
       ];
 
+      // Derive pickup slot & readable time string from latest user request (new or old data)
+      const latestPickupSlot = latestUserRequest?.pickupSlot || null;
+      const latestPreferredTime =
+        latestUserRequest?.preferredTime ||
+        (latestPickupSlot
+          ? `${latestPickupSlot.dayName}, ${latestPickupSlot.date} • ${latestPickupSlot.slot}`
+          : '');
+
       const mockRequest = {
-        id: 'REQ-' + Date.now(),
-        userName: 'Rajesh Kumar',
-        userPhone: '+919876543210',
-        userEmail: 'rajesh.k@example.com',
-        scrapType: 'Metal Scrap',
-        images: mockImages, // Add images to request
-        location: {
+        id: latestUserRequest?.id || 'REQ-' + Date.now(),
+        userName: latestUserRequest?.userName || 'Rajesh Kumar',
+        userPhone: latestUserRequest?.userPhone || '+919876543210',
+        userEmail: latestUserRequest?.userEmail || 'rajesh.k@example.com',
+        scrapType: latestUserRequest?.categories?.map?.((c) => c.name).join(', ') || 'Metal Scrap',
+        weight: latestUserRequest?.weight || undefined,
+        pickupSlot: latestPickupSlot,
+        preferredTime: latestPreferredTime,
+        images: latestUserRequest?.images || mockImages, // Prefer real images if present
+        location: latestUserRequest?.location || {
           address: '123, MG Road, Mumbai',
           lat: 19.0760 + (Math.random() - 0.5) * 0.1,
           lng: 72.8777 + (Math.random() - 0.5) * 0.1
         },
-        distance: '2.5 km',
-        estimatedEarnings: '₹450'
+        distance: latestUserRequest?.distance || '2.5 km',
+        estimatedEarnings: latestUserRequest?.estimatedPayout
+          ? `₹${latestUserRequest.estimatedPayout.toFixed(0)}`
+          : '₹450'
       };
       
       setIncomingRequest(mockRequest);
@@ -137,162 +160,82 @@ const ActiveRequestsPage = () => {
     return () => clearTimeout(requestTimer);
   }, []);
 
-  // Handle sound playback - Fast, vibrating ringtone
+  // Handle sound playback - Voice alert + vibration instead of ringtone
   useEffect(() => {
-    let audioContext;
-    let ringtoneInterval;
+    let voiceInterval;
     let vibrateInterval;
 
-    const playRingtone = async () => {
-      if (!audioPlaying || !incomingRequest || !audioContext) return;
-      
-      try {
-        // Ensure audio context is running
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-        
-        if (audioContext.state !== 'running') return;
-        
-        // First beep - higher pitch
-        const osc1 = audioContext.createOscillator();
-        const gain1 = audioContext.createGain();
-        osc1.connect(gain1);
-        gain1.connect(audioContext.destination);
-        
-        osc1.frequency.value = 1000; // Higher pitch
-        osc1.type = 'sine';
-        
-        gain1.gain.setValueAtTime(0.4, audioContext.currentTime);
-        gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-        
-        osc1.start(audioContext.currentTime);
-        osc1.stop(audioContext.currentTime + 0.15);
-        
-        // Second beep - slightly lower, creates vibration effect
-        setTimeout(() => {
-          if (!audioPlaying || !incomingRequest || !audioContext) return;
-          if (audioContext.state === 'suspended') {
-            audioContext.resume().then(() => {
-              const osc2 = audioContext.createOscillator();
-              const gain2 = audioContext.createGain();
-              osc2.connect(gain2);
-              gain2.connect(audioContext.destination);
-              
-              osc2.frequency.value = 900; // Slightly lower for vibration
-              osc2.type = 'sine';
-              
-              gain2.gain.setValueAtTime(0.4, audioContext.currentTime);
-              gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-              
-              osc2.start(audioContext.currentTime);
-              osc2.stop(audioContext.currentTime + 0.15);
-            }).catch(console.error);
-          } else {
-            const osc2 = audioContext.createOscillator();
-            const gain2 = audioContext.createGain();
-            osc2.connect(gain2);
-            gain2.connect(audioContext.destination);
-            
-            osc2.frequency.value = 900; // Slightly lower for vibration
-            osc2.type = 'sine';
-            
-            gain2.gain.setValueAtTime(0.4, audioContext.currentTime);
-            gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-            
-            osc2.start(audioContext.currentTime);
-            osc2.stop(audioContext.currentTime + 0.15);
-          }
-        }, 150);
-      } catch (error) {
-        console.error('Error playing ringtone:', error);
-      }
-    };
-
-    if (audioPlaying && incomingRequest) {
-      // Create audio context
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Resume audio context if suspended (required for autoplay policies)
-        if (audioContext.state === 'suspended') {
-          audioContext.resume().then(() => {
-            // Play initial ringtone after resume
-            playRingtone();
-            
-            // Play ringtone every 0.5 seconds (faster)
-            ringtoneInterval = setInterval(() => {
-              playRingtone();
-            }, 500);
-            
-            // Also trigger vibration if supported
-            if (navigator.vibrate) {
-              const vibratePattern = [100, 50, 100, 50, 100]; // Vibrate pattern
-              vibrateInterval = setInterval(() => {
-                if (audioPlaying && incomingRequest) {
-                  navigator.vibrate(vibratePattern);
-                }
-              }, 500);
-            }
-            
-            setAudioRef({ audioContext, ringtoneInterval, vibrateInterval });
-          }).catch(console.error);
-        } else {
-          // Play initial ringtone immediately
-          playRingtone();
-          
-          // Play ringtone every 0.5 seconds (faster)
-          ringtoneInterval = setInterval(() => {
-            playRingtone();
-          }, 500);
-          
-          // Also trigger vibration if supported
-          if (navigator.vibrate) {
-            const vibratePattern = [100, 50, 100, 50, 100]; // Vibrate pattern
-            vibrateInterval = setInterval(() => {
-              if (audioPlaying && incomingRequest) {
-                navigator.vibrate(vibratePattern);
-              }
-            }, 500);
-          }
-          
-          setAudioRef({ audioContext, ringtoneInterval, vibrateInterval });
-        }
-      } catch (error) {
-        console.error('Error creating audio context:', error);
-      }
-    } else {
-      // Stop audio when not playing
-      if (audioRef) {
-        if (audioRef.ringtoneInterval) {
-          clearInterval(audioRef.ringtoneInterval);
-        }
-        if (audioRef.vibrateInterval) {
-          clearInterval(audioRef.vibrateInterval);
-        }
-        if (audioRef.audioContext) {
-          audioRef.audioContext.close().catch(console.error);
-        }
-        setAudioRef(null);
-      }
-      if (navigator.vibrate) {
-        navigator.vibrate(0); // Stop vibration
-      }
-    }
-
-    return () => {
-      if (ringtoneInterval) {
-        clearInterval(ringtoneInterval);
+    const stopAll = () => {
+      if (voiceInterval) {
+        clearInterval(voiceInterval);
       }
       if (vibrateInterval) {
         clearInterval(vibrateInterval);
       }
-      if (audioContext) {
-        audioContext.close().catch(console.error);
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
       }
       if (navigator.vibrate) {
         navigator.vibrate(0);
       }
+    };
+
+    if (audioPlaying && incomingRequest) {
+      // Build announcement text in Hindi: user name, category, location and pickup time
+      const name = incomingRequest.userName || 'नाम उपलब्ध नहीं है';
+      const scrapType = incomingRequest.scrapType || 'कैटेगरी उपलब्ध नहीं है';
+      const address =
+        incomingRequest.location?.address || 'लोकेशन उपलब्ध नहीं है';
+      const slot =
+        incomingRequest.pickupSlot?.slot ||
+        incomingRequest.preferredTime ||
+        'पिकअप समय चुना नहीं गया है';
+
+      let text = 'नई स्क्रैपटो रिक्वेस्ट आई है।';
+      text += ` यूज़र का नाम: ${name}।`;
+      text += ` प्रोडक्ट कैटेगरी: ${scrapType}।`;
+      text += ` लोकेशन: ${address}।`;
+      text += ` पिकअप टाइम: ${slot}।`;
+
+      if (typeof window !== 'undefined' && window.speechSynthesis && window.SpeechSynthesisUtterance) {
+        const speakOnce = () => {
+          try {
+            // Cancel any ongoing speech to avoid overlap
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'hi-IN';
+            utterance.rate = 1;
+            utterance.pitch = 1;
+            window.speechSynthesis.speak(utterance);
+          } catch (err) {
+            console.error('Speech synthesis error:', err);
+          }
+        };
+
+        // Speak immediately, then repeat every 6 seconds while ringing
+        speakOnce();
+        voiceInterval = setInterval(() => {
+          if (audioPlaying && incomingRequest) {
+            speakOnce();
+          }
+        }, 6000);
+      } else {
+        console.warn('Speech synthesis not supported in this browser.');
+      }
+
+      // Vibrate pattern (optional, same as before)
+      if (navigator.vibrate) {
+        const vibratePattern = [200, 100, 200];
+        vibrateInterval = setInterval(() => {
+          if (audioPlaying && incomingRequest) {
+            navigator.vibrate(vibratePattern);
+          }
+        }, 4000);
+      }
+    }
+
+    return () => {
+      stopAll();
     };
   }, [audioPlaying, incomingRequest]);
 
@@ -307,25 +250,8 @@ const ActiveRequestsPage = () => {
   const handleAcceptRequest = () => {
     console.log('✅ Request accepted!', incomingRequest);
     
-    // Stop sound immediately
+    // Stop sound & vibration immediately
     setAudioPlaying(false);
-    if (audioRef) {
-      if (audioRef.ringtoneInterval) {
-        clearInterval(audioRef.ringtoneInterval);
-      }
-      if (audioRef.vibrateInterval) {
-        clearInterval(audioRef.vibrateInterval);
-      }
-      if (audioRef.audioContext) {
-        audioRef.audioContext.close().catch(console.error);
-      }
-      setAudioRef(null);
-    }
-    
-    // Stop vibration
-    if (navigator.vibrate) {
-      navigator.vibrate(0);
-    }
     
     // Store request in localStorage
     if (incomingRequest) {
@@ -341,25 +267,8 @@ const ActiveRequestsPage = () => {
 
   // Handle request reject
   const handleRejectRequest = () => {
-    // Stop sound immediately
+    // Stop sound & vibration immediately
     setAudioPlaying(false);
-    if (audioRef) {
-      if (audioRef.ringtoneInterval) {
-        clearInterval(audioRef.ringtoneInterval);
-      }
-      if (audioRef.vibrateInterval) {
-        clearInterval(audioRef.vibrateInterval);
-      }
-      if (audioRef.audioContext) {
-        audioRef.audioContext.close().catch(console.error);
-      }
-      setAudioRef(null);
-    }
-    
-    // Stop vibration
-    if (navigator.vibrate) {
-      navigator.vibrate(0);
-    }
     
     setIsSlideOpen(false);
     setIncomingRequest(null);
@@ -450,24 +359,27 @@ const ActiveRequestsPage = () => {
 
       {/* Incoming Request Slide - Bottom */}
       {incomingRequest && (
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: isSlideOpen ? 0 : '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 z-30 rounded-t-2xl shadow-2xl flex flex-col"
-              style={{ backgroundColor: '#ffffff', maxHeight: '55vh', height: '55vh' }}
-            >
-              {/* Slide Handle */}
-              <div className="w-12 h-1.5 mx-auto mt-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#cbd5e0' }} />
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: isSlideOpen ? 0 : '100%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="absolute bottom-0 left-0 right-0 z-30 rounded-t-2xl shadow-2xl flex flex-col"
+          style={{ backgroundColor: '#020617', maxHeight: '55vh', height: '55vh' }}
+        >
+          {/* Slide Handle */}
+          <div className="w-12 h-1.5 mx-auto mt-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#4b5563' }} />
 
-              {/* Request Content - Compact - Scrollable */}
-              <div className="p-4 pb-2 overflow-y-auto flex-1 pb-24 md:pb-2" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
+          {/* Request Content - Compact - Scrollable */}
+          <div
+            className="p-4 pb-2 overflow-y-auto flex-1 pb-24 md:pb-2"
+            style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}
+          >
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold" style={{ color: '#2d3748' }}>New Request</h2>
+              <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>New Request</h2>
               <button
                 onClick={handleRejectRequest}
                 className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444' }}>
                   <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -478,37 +390,64 @@ const ActiveRequestsPage = () => {
             {/* Request Details - Compact */}
             <div className="space-y-2 mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-                  <span className="text-sm font-bold" style={{ color: '#64946e' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)' }}>
+                  <span className="text-sm font-bold" style={{ color: '#bbf7d0' }}>
                     {incomingRequest.userName[0]}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>{incomingRequest.userName}</p>
-                  <p className="text-xs truncate" style={{ color: '#718096' }}>{incomingRequest.scrapType}</p>
+                  <p className="text-sm font-semibold truncate" style={{ color: '#f9fafb' }}>{incomingRequest.userName}</p>
+                  <p className="text-xs truncate" style={{ color: '#9ca3af' }}>{incomingRequest.scrapType}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold" style={{ color: '#64946e' }}>{incomingRequest.estimatedEarnings}</p>
+                  <p className="text-sm font-bold" style={{ color: '#4ade80' }}>{incomingRequest.estimatedEarnings}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(100, 148, 110, 0.05)' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e', flexShrink: 0 }}>
+              <div className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#9ca3af', flexShrink: 0 }}>
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
                 </svg>
-                <p className="text-xs flex-1 truncate" style={{ color: '#2d3748' }}>{incomingRequest.location.address}</p>
-                <p className="text-xs" style={{ color: '#718096' }}>{incomingRequest.distance}</p>
+                <p className="text-xs flex-1 truncate" style={{ color: '#e5e7eb' }}>{incomingRequest.location.address}</p>
+                <p className="text-xs" style={{ color: '#9ca3af' }}>
+                  {incomingRequest.distance}
+                  {(incomingRequest.pickupSlot || incomingRequest.preferredTime) && (
+                    <span className="ml-1">
+                      •{' '}
+                      {incomingRequest.pickupSlot
+                        ? incomingRequest.pickupSlot.slot
+                        : incomingRequest.preferredTime}
+                    </span>
+                  )}
+                </p>
               </div>
+
+              {/* Pickup slot / preferred time info (always show if user sent any time) */}
+              {(incomingRequest.pickupSlot || incomingRequest.preferredTime) && (
+                <div className="flex items-center gap-2 mt-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#9ca3af', flexShrink: 0 }}>
+                    <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs" style={{ color: '#9ca3af' }}>Pickup slot</p>
+                    <p className="text-xs font-semibold truncate" style={{ color: '#e5e7eb' }}>
+                      {incomingRequest.pickupSlot
+                        ? `${incomingRequest.pickupSlot.dayName}, ${incomingRequest.pickupSlot.date} • ${incomingRequest.pickupSlot.slot}`
+                        : incomingRequest.preferredTime}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
 
           {/* Accept Button - Fixed at Bottom (Always Visible) */}
-          <div 
-            className="fixed md:relative bottom-0 left-0 right-0 px-4 pb-4 pt-2 border-t flex-shrink-0 z-50" 
-            style={{ 
-              borderColor: 'rgba(100, 148, 110, 0.2)', 
-              backgroundColor: '#ffffff'
+          <div
+            className="fixed md:relative bottom-0 left-0 right-0 px-4 pb-4 pt-2 border-t flex-shrink-0 z-50"
+            style={{
+              borderColor: 'rgba(55, 65, 81, 0.7)',
+              backgroundColor: '#020617'
             }}
           >
             <motion.button
@@ -516,7 +455,7 @@ const ActiveRequestsPage = () => {
               whileTap={{ scale: 0.98 }}
               onClick={handleAcceptRequest}
               className="w-full py-4 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2"
-              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+              style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

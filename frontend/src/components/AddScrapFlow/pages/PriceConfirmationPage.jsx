@@ -1,14 +1,19 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../modules/shared/context/AuthContext';
+import { checkAndProcessMilestone } from '../../../modules/shared/utils/referralUtils';
 
 const PriceConfirmationPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [weightData, setWeightData] = useState(null);
   const [notes, setNotes] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
+  const [selectedDate, setSelectedDate] = useState(null); // ISO date string
+  const [selectedSlot, setSelectedSlot] = useState('');
   const [marketPrices, setMarketPrices] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
@@ -51,6 +56,21 @@ const PriceConfirmationPage = () => {
     });
   }, []);
 
+  // Helper: generate next 7 days (including today)
+  const getNextDays = (count = 7) => {
+    const days = [];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    for (let i = 0; i < count; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      const iso = date.toISOString().split('T')[0];
+      const dayName = dayNames[date.getDay()];
+      const display = `${dayName}, ${date.getDate()}`;
+      days.push({ iso, dayName, display });
+    }
+    return days;
+  };
+
   const handleSubmit = async (e) => {
     if (e) {
       e.preventDefault();
@@ -65,6 +85,23 @@ const PriceConfirmationPage = () => {
     console.log('handleSubmit called');
     setIsSubmitting(true);
     
+    // Require user to manually select pickup date & time slot
+    if (!selectedDate || !selectedSlot) {
+      alert('Please select a pickup date and time slot before applying.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Prepare pickup slot object (date + day + time window)
+    const dateObj = new Date(selectedDate);
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[dateObj.getDay()];
+    const pickupSlot = {
+      date: selectedDate,
+      dayName,
+      slot: selectedSlot
+    };
+
     // Prepare submission data
     const submissionData = {
       categories: selectedCategories,
@@ -73,6 +110,7 @@ const PriceConfirmationPage = () => {
       estimatedPayout: estimatedPayout,
       notes: notes,
       preferredTime: preferredTime,
+      pickupSlot,
       timestamp: new Date().toISOString()
     };
 
@@ -81,6 +119,36 @@ const PriceConfirmationPage = () => {
       // Store in sessionStorage for now (in real app, send to backend)
       sessionStorage.setItem('scrapRequest', JSON.stringify(submissionData));
       console.log('Data stored successfully');
+      
+      // Check if this is user's first request and process milestone
+      if (user) {
+        const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
+        const isFirstRequest = userRequests.length === 0;
+        
+        if (isFirstRequest) {
+          // Process first request milestone
+          try {
+            checkAndProcessMilestone(user.phone || user.id, 'user', 'firstRequest');
+          } catch (error) {
+            console.error('Error processing milestone:', error);
+          }
+        }
+        
+        // Add to user requests with admin-assignable fields
+        const newRequest = {
+          id: `req_${Date.now()}`,
+          ...submissionData,
+          userId: user.phone || user.id,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          assignedScrapperId: null,
+          assignedScrapperName: null,
+          assignmentStatus: 'unassigned', // unassigned | admin_assigned | accepted | rejected
+          assignmentHistory: [] // [{ scrapperId, scrapperName, assignedBy, assignedAt, status }]
+        };
+        userRequests.push(newRequest);
+        localStorage.setItem('userRequests', JSON.stringify(userRequests));
+      }
       
       // Simulate brief API call delay (reduced for better UX)
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -116,12 +184,14 @@ const PriceConfirmationPage = () => {
   };
 
   const timeSlots = [
-    '9:00 AM - 12:00 PM',
-    '12:00 PM - 3:00 PM',
-    '3:00 PM - 6:00 PM',
-    '6:00 PM - 9:00 PM',
-    'Anytime'
+    '9:00 AM - 11:00 AM',
+    '11:00 AM - 1:00 PM',
+    '1:00 PM - 3:00 PM',
+    '3:00 PM - 5:00 PM',
+    '5:00 PM - 7:00 PM'
   ];
+
+  const dayOptions = getNextDays(7);
 
   return (
     <motion.div
@@ -299,7 +369,7 @@ const PriceConfirmationPage = () => {
             />
           </motion.div>
 
-          {/* Preferred Time Section */}
+          {/* Preferred Pickup Date & Time Section */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -308,36 +378,162 @@ const PriceConfirmationPage = () => {
             style={{ backgroundColor: '#ffffff' }}
           >
             <label className="block text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Preferred Pickup Time (Optional)
+              Preferred Pickup Date & Time
             </label>
-            <div className="flex flex-wrap gap-2">
-              {timeSlots.map((slot) => (
-                <button
-                  key={slot}
-                  onClick={() => setPreferredTime(slot === preferredTime ? '' : slot)}
-                  className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${
-                    preferredTime === slot ? 'shadow-md' : ''
-                  }`}
+
+            {/* Date selection */}
+            <div className="mb-3">
+              <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
+                Select a day (today or upcoming days)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {dayOptions.map((day) => (
+                  <button
+                    key={day.iso}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(day.iso);
+                      // Keep preferredTime string in sync for older consumers
+                      if (selectedSlot) {
+                        setPreferredTime(`${day.dayName}, ${day.iso} • ${selectedSlot}`);
+                      }
+                    }}
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${
+                      selectedDate === day.iso ? 'shadow-md' : ''
+                    }`}
+                    style={{
+                      borderColor: selectedDate === day.iso ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                      backgroundColor: selectedDate === day.iso ? '#64946e' : 'transparent',
+                      color: selectedDate === day.iso ? '#ffffff' : '#64946e'
+                    }}
+                  >
+                    {day.display}
+                  </button>
+                ))}
+              </div>
+
+              {/* Manual date input (theme-styled, no native picker) */}
+              <div className="mt-3">
+                <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
+                  Or type a specific date
+                </p>
+                <input
+                  type="text"
+                  placeholder="e.g. 2025-01-20"
+                  value={selectedDate || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedDate(value);
+                    if (value && selectedSlot) {
+                      const dateObj = new Date(value);
+                      if (!isNaN(dateObj)) {
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const dayName = dayNames[dateObj.getDay()];
+                        setPreferredTime(`${dayName}, ${value} • ${selectedSlot}`);
+                      } else {
+                        setPreferredTime(`${value} • ${selectedSlot}`);
+                      }
+                    } else {
+                      setPreferredTime('');
+                    }
+                  }}
+                  className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg border-2 focus:outline-none focus:ring-2 text-xs md:text-sm"
                   style={{
-                    borderColor: preferredTime === slot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                    backgroundColor: preferredTime === slot ? '#64946e' : 'transparent',
-                    color: preferredTime === slot ? '#ffffff' : '#64946e'
+                    borderColor: selectedDate ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                    color: '#2d3748',
+                    backgroundColor: '#f9f9f9'
                   }}
-                  onMouseEnter={(e) => {
-                    if (preferredTime !== slot) {
-                      e.target.style.backgroundColor = 'rgba(100, 148, 110, 0.1)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (preferredTime !== slot) {
-                      e.target.style.backgroundColor = 'transparent';
-                    }
-                  }}
-                >
-                  {slot}
-                </button>
-              ))}
+                />
+              </div>
             </div>
+
+            {/* Time slot selection */}
+            <div>
+              <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
+                Select a time window
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {timeSlots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => {
+                      const newSlot = slot === selectedSlot ? '' : slot;
+                      setSelectedSlot(newSlot);
+                      if (selectedDate && newSlot) {
+                        const dateObj = new Date(selectedDate);
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const dayName = dayNames[dateObj.getDay()];
+                        setPreferredTime(`${dayName}, ${selectedDate} • ${newSlot}`);
+                      } else if (!newSlot) {
+                        setPreferredTime('');
+                      }
+                    }}
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${
+                      selectedSlot === slot ? 'shadow-md' : ''
+                    }`}
+                    style={{
+                      borderColor: selectedSlot === slot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                      backgroundColor: selectedSlot === slot ? '#64946e' : 'transparent',
+                      color: selectedSlot === slot ? '#ffffff' : '#64946e'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (selectedSlot !== slot) {
+                        e.target.style.backgroundColor = 'rgba(100, 148, 110, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (selectedSlot !== slot) {
+                        e.target.style.backgroundColor = 'transparent';
+                      }
+                    }}
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+
+              {/* Manual time input (theme-styled, no native picker) */}
+              <div className="mt-3">
+                <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
+                  Or type a specific time
+                </p>
+                <input
+                  type="text"
+                  placeholder="e.g. 14:30 or 2:30 PM"
+                  value={selectedSlot || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedSlot(value);
+                    if (selectedDate && value) {
+                      const dateObj = new Date(selectedDate);
+                      if (!isNaN(dateObj)) {
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        const dayName = dayNames[dateObj.getDay()];
+                        setPreferredTime(`${dayName}, ${selectedDate} • ${value}`);
+                      } else {
+                        setPreferredTime(`${selectedDate} • ${value}`);
+                      }
+                    } else {
+                      setPreferredTime('');
+                    }
+                  }}
+                  className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg border-2 focus:outline-none focus:ring-2 text-xs md:text-sm"
+                  style={{
+                    borderColor: selectedSlot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                    color: '#2d3748',
+                    backgroundColor: '#f9f9f9'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Small summary line when both selected */}
+            {selectedDate && selectedSlot && (
+              <p className="mt-3 text-xs md:text-sm" style={{ color: '#718096' }}>
+                You selected: <span className="font-semibold" style={{ color: '#2d3748' }}>{preferredTime}</span>
+              </p>
+            )}
           </motion.div>
         </div>
       </div>

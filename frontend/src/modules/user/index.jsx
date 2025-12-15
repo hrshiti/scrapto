@@ -8,6 +8,7 @@ import WeightInputPage from '../../components/AddScrapFlow/pages/WeightInputPage
 import MyProfilePage from './components/MyProfilePage';
 import SavedAddressesPage from './components/SavedAddressesPage';
 import MyRequestsPage from './components/MyRequestsPage';
+import HelpSupport from './components/HelpSupport';
 import PriceConfirmationPage from '../../components/AddScrapFlow/pages/PriceConfirmationPage';
 import RequestStatusPage from '../../components/AddScrapFlow/pages/RequestStatusPage';
 import ChatPage from './components/ChatPage';
@@ -33,6 +34,7 @@ const UserModule = () => {
       <Route path="/my-profile" element={<MyProfilePage />} />
       <Route path="/saved-addresses" element={<SavedAddressesPage />} />
       <Route path="/my-requests" element={<MyRequestsPage />} />
+      <Route path="/help" element={<HelpSupport />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

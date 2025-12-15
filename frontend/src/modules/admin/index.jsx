@@ -7,6 +7,7 @@ import KYCQueue from './components/KYCQueue';
 import UsersList from './components/UsersList';
 import UserDetail from './components/UserDetail';
 import ScrappersList from './components/ScrappersList';
+import ScrapperLeads from './components/ScrapperLeads';
 import ScrapperDetail from './components/ScrapperDetail';
 import PriceFeedEditor from './components/PriceFeedEditor';
 import ActiveRequests from './components/ActiveRequests';
@@ -16,6 +17,13 @@ import Reports from './components/Reports';
 import AdminProfile from './components/AdminProfile';
 import ReferralsList from './components/ReferralsList';
 import ReferralSettings from './components/ReferralSettings';
+import MilestoneRewards from './components/MilestoneRewards';
+import TierManagement from './components/TierManagement';
+import LeaderboardManagement from './components/LeaderboardManagement';
+import FraudDetection from './components/FraudDetection';
+import ReferralAnalytics from './components/ReferralAnalytics';
+import CampaignManagement from './components/CampaignManagement';
+import HelpSupport from './components/HelpSupport';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -59,6 +67,7 @@ const AdminModuleRoutes = () => {
         <Route path="users/:userId" element={<UserDetail />} />
         {/* Scrapper Management */}
         <Route path="scrappers" element={<ScrappersList />} />
+        <Route path="scrappers/leads" element={<ScrapperLeads />} />
         <Route path="scrappers/:scrapperId" element={<ScrapperDetail />} />
         {/* Price Feed Management */}
         <Route path="prices" element={<PriceFeedEditor />} />
@@ -70,8 +79,16 @@ const AdminModuleRoutes = () => {
         {/* Referral Management */}
         <Route path="referrals" element={<ReferralsList />} />
         <Route path="referrals/settings" element={<ReferralSettings />} />
+        <Route path="referrals/milestones" element={<MilestoneRewards />} />
+        <Route path="referrals/tiers" element={<TierManagement />} />
+        <Route path="referrals/leaderboard" element={<LeaderboardManagement />} />
+        <Route path="referrals/fraud" element={<FraudDetection />} />
+        <Route path="referrals/analytics" element={<ReferralAnalytics />} />
+        <Route path="referrals/campaigns" element={<CampaignManagement />} />
         {/* Reports & Analytics */}
         <Route path="reports" element={<Reports />} />
+        {/* Help & Support */}
+        <Route path="support" element={<HelpSupport />} />
         {/* Profile */}
         <Route path="profile" element={<AdminProfile />} />
         {/* Placeholder routes for future pages */}

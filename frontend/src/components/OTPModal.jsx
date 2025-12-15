@@ -143,7 +143,7 @@ const OTPModal = ({ onClose }) => {
                 >
                   Enter the 6-digit OTP sent to {phone}
                 </p>
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-1.5 justify-between max-w-[260px] mx-auto">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
@@ -154,7 +154,7 @@ const OTPModal = ({ onClose }) => {
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
-                      className="text-center text-xl font-bold border-2 rounded-lg focus:outline-none transition-all"
+                      className="w-8 h-9 text-center text-base font-bold border-2 rounded-lg focus:outline-none transition-all"
                       style={{ 
                         borderColor: '#e5ddd4',
                         color: '#2d3748',

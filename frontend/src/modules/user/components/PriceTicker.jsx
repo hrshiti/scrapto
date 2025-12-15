@@ -1,29 +1,19 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { getEffectivePriceFeed } from '../../shared/utils/priceFeedUtils';
 
 const PriceTicker = () => {
-  const [prices, setPrices] = useState([
-    { type: 'Copper', price: 650, unit: 'kg', change: '+2.5%' },
-    { type: 'Aluminium', price: 180, unit: 'kg', change: '+1.2%' },
-    { type: 'Plastic', price: 45, unit: 'kg', change: '+0.8%' },
-    { type: 'Paper', price: 12, unit: 'kg', change: '-0.3%' },
-    { type: 'Steel', price: 35, unit: 'kg', change: '+1.5%' },
-    { type: 'Brass', price: 420, unit: 'kg', change: '+3.1%' },
-  ]);
+  const [prices, setPrices] = useState([]);
 
   useEffect(() => {
-    // Simulate live price updates
-    const interval = setInterval(() => {
-      setPrices((prev) =>
-        prev.map((item) => ({
-          ...item,
-          price: item.price + (Math.random() - 0.5) * 2,
-          change: `${Math.random() > 0.5 ? '+' : '-'}${(Math.random() * 3).toFixed(1)}%`,
-        }))
-      );
-    }, 5000);
-
-    return () => clearInterval(interval);
+    const feed = getEffectivePriceFeed();
+    const mapped = feed.map((item) => ({
+      type: item.category,
+      price: item.pricePerKg,
+      unit: 'kg',
+      change: null
+    }));
+    setPrices(mapped);
   }, []);
 
   return (
@@ -48,7 +38,7 @@ const PriceTicker = () => {
             className="text-xs md:text-sm"
             style={{ color: '#718096' }}
           >
-            Updated: {new Date().toLocaleTimeString()}
+            Source: Admin price feed
           </span>
         </div>
         <div className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide pb-2">
@@ -73,12 +63,14 @@ const PriceTicker = () => {
               >
                 ₹{item.price.toFixed(0)}/{item.unit}
               </p>
-              <p 
-                className="text-xs"
-                style={{ color: item.change.startsWith('+') ? '#64946e' : '#e53e3e' }}
-              >
-                {item.change}
-              </p>
+              {item.change !== undefined && item.change !== null && (
+                <p 
+                  className="text-xs"
+                  style={{ color: item.change.startsWith('+') ? '#64946e' : '#e53e3e' }}
+                >
+                  {item.change}
+                </p>
+              )}
             </motion.div>
           ))}
         </div>

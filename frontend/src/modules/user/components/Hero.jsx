@@ -22,20 +22,136 @@ const Hero = () => {
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
   const [isWebView, setIsWebView] = useState(false);
+  const [userLocation, setUserLocation] = useState({ lat: null, lng: null });
+  const [locationAddress, setLocationAddress] = useState('');
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const heroRef = useRef(null);
   const lenisRef = useRef(null);
   const bannerIntervalRef = useRef(null);
-  const placeholderIntervalRef = useRef(null);
+  const locationInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
+  const debounceTimerRef = useRef(null);
 
-  const placeholders = [
-    'Search here...',
-    'Search for scrap types...',
-    'Find nearby scrappers...',
-    'Search by material...',
-    'Look for pickup services...',
-  ];
+  // Function to get live location
+  const getLiveLocation = () => {
+    if (navigator.geolocation) {
+      setIsLoadingLocation(true);
+      setShowSuggestions(false);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          
+          // Reverse geocode to get address
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+            );
+            const data = await response.json();
+            if (data && data.display_name) {
+              // Extract a shorter address
+              const address = data.display_name.split(',').slice(0, 3).join(', ') || data.display_name;
+              setLocationAddress(address);
+              setSearchQuery(address);
+            } else {
+              const coords = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              setLocationAddress(coords);
+              setSearchQuery(coords);
+            }
+          } catch (error) {
+            console.error('Error reverse geocoding:', error);
+            const coords = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            setLocationAddress(coords);
+            setSearchQuery(coords);
+          }
+          setIsLoadingLocation(false);
+          setIsEditingLocation(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setLocationAddress('Location not available');
+          setIsLoadingLocation(false);
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser');
+      setIsLoadingLocation(false);
+    }
+  };
+
+  // Fetch location suggestions
+  const fetchLocationSuggestions = async (query) => {
+    if (!query || query.length < 2) {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=in`
+      );
+      const data = await response.json();
+      if (data && Array.isArray(data)) {
+        setLocationSuggestions(data);
+        setShowSuggestions(true);
+      } else {
+        setLocationSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  // Debounced search for suggestions
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (isEditingLocation && searchQuery) {
+      debounceTimerRef.current = setTimeout(() => {
+        fetchLocationSuggestions(searchQuery);
+      }, 300);
+    } else {
+      setLocationSuggestions([]);
+      setShowSuggestions(false);
+    }
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, isEditingLocation]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target) &&
+        locationInputRef.current &&
+        !locationInputRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     // Detect if running in webview
@@ -105,18 +221,56 @@ const Hero = () => {
     };
   }, []);
 
-  // Auto-rotate placeholder text with fast animation
-  useEffect(() => {
-    placeholderIntervalRef.current = setInterval(() => {
-      setCurrentPlaceholder((prev) => (prev + 1) % placeholders.length);
-    }, 2000); // Change placeholder every 2 seconds (faster)
+  const handleLocationClick = () => {
+    setIsEditingLocation(true);
+    setSearchQuery(locationAddress);
+    setTimeout(() => {
+      locationInputRef.current?.focus();
+    }, 100);
+  };
 
-    return () => {
-      if (placeholderIntervalRef.current) {
-        clearInterval(placeholderIntervalRef.current);
+  const handleLocationChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setLocationAddress(value);
+  };
+
+  const handleLocationBlur = () => {
+    // Delay to allow suggestion click
+    setTimeout(() => {
+      if (locationAddress.trim()) {
+        setIsEditingLocation(false);
+        setShowSuggestions(false);
       }
-    };
-  }, []);
+    }, 200);
+  };
+
+  const handleLocationKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      if (locationSuggestions.length > 0) {
+        handleSelectSuggestion(locationSuggestions[0]);
+      } else {
+        setIsEditingLocation(false);
+        setShowSuggestions(false);
+        locationInputRef.current?.blur();
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setIsEditingLocation(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion) => {
+    const address = suggestion.display_name.split(',').slice(0, 3).join(', ') || suggestion.display_name;
+    setLocationAddress(address);
+    setSearchQuery(address);
+    setUserLocation({
+      lat: parseFloat(suggestion.lat),
+      lng: parseFloat(suggestion.lon)
+    });
+    setShowSuggestions(false);
+    setIsEditingLocation(false);
+  };
 
   const banners = [
     {
@@ -150,7 +304,7 @@ const Hero = () => {
       {/* Header */}
       <Header />
 
-      {/* Search Bar */}
+      {/* Location Bar */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-4 md:mb-6">
         <motion.div
           initial={{ y: 5 }}
@@ -159,46 +313,153 @@ const Hero = () => {
           className="relative"
         >
           <div 
-            className="flex items-center rounded-full px-4 py-3 md:py-4 border transition-all"
+            className={`flex items-center rounded-full px-4 py-3 md:py-4 border transition-all ${
+              isEditingLocation ? '' : 'cursor-pointer'
+            }`}
             style={{ 
               backgroundColor: '#ffffff',
-              borderColor: '#e5ddd4',
+              borderColor: isEditingLocation ? '#64946e' : '#e5ddd4',
             }}
+            onClick={!isEditingLocation ? handleLocationClick : undefined}
           >
             <svg
               width="20"
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              className="mr-3"
+              className="mr-3 flex-shrink-0"
               style={{ color: '#64946e' }}
             >
-              <circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" />
-              <path d="m21 21-4.35-4.35" stroke="currentColor" strokeWidth="2" />
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
             </svg>
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                className="flex-1 bg-transparent border-none outline-none text-sm md:text-base w-full"
-                style={{ color: '#2d3748' }}
-              />
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={currentPlaceholder}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
-                  className="absolute left-0 top-0 pointer-events-none text-sm md:text-base flex items-center h-full"
-                  style={{ 
-                    color: '#a0aec0'
-                  }}
-                >
-                  {placeholders[currentPlaceholder]}
-                </motion.span>
-              </AnimatePresence>
+            <div className="flex-1 relative min-w-0">
+              {isLoadingLocation ? (
+                <div className="flex items-center gap-2 text-sm md:text-base" style={{ color: '#a0aec0' }}>
+                  <span className="animate-pulse">Getting your location...</span>
+                </div>
+              ) : (
+                <>
+                  {isEditingLocation ? (
+                    <input
+                      ref={locationInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={handleLocationChange}
+                      onBlur={handleLocationBlur}
+                      onKeyDown={handleLocationKeyPress}
+                      className="flex-1 bg-transparent border-none outline-none text-sm md:text-base w-full"
+                      style={{ color: '#2d3748' }}
+                      placeholder="Type to search location..."
+                      autoComplete="off"
+                    />
+                  ) : (
+                    <div 
+                      className="text-sm md:text-base truncate"
+                      style={{ color: '#2d3748' }}
+                    >
+                      {locationAddress || 'Tap to set location'}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
+            {!isLoadingLocation && (
+              <>
+                {isEditingLocation ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      getLiveLocation();
+                    }}
+                    className="ml-2 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold flex items-center gap-1.5 transition-all flex-shrink-0"
+                    style={{ 
+                      backgroundColor: '#64946e',
+                      color: '#ffffff'
+                    }}
+                    title="Get current location"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
+                    </svg>
+                    <span className="hidden sm:inline">Live</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      getLiveLocation();
+                    }}
+                    className="ml-2 p-1.5 rounded-lg transition-all flex-shrink-0"
+                    style={{ 
+                      backgroundColor: 'transparent',
+                      color: '#64946e'
+                    }}
+                    title="Get current location"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
+                    </svg>
+                  </button>
+                )}
+              </>
+            )}
           </div>
+
+          {/* Location Suggestions Dropdown */}
+          {showSuggestions && locationSuggestions.length > 0 && (
+            <motion.div
+              ref={suggestionsRef}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border z-50 max-h-64 overflow-y-auto"
+              style={{ borderColor: '#e5ddd4' }}
+            >
+              {locationSuggestions.map((suggestion, index) => {
+                const address = suggestion.display_name.split(',').slice(0, 3).join(', ') || suggestion.display_name;
+                return (
+                  <motion.div
+                    key={suggestion.place_id || index}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => handleSelectSuggestion(suggestion)}
+                    className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors border-b last:border-b-0"
+                    style={{ borderColor: '#e5ddd4' }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="mt-0.5 flex-shrink-0"
+                        style={{ color: '#64946e' }}
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: '#2d3748' }}>
+                          {address}
+                        </p>
+                        {suggestion.address && (
+                          <p className="text-xs mt-0.5 truncate" style={{ color: '#718096' }}>
+                            {suggestion.address.city || suggestion.address.town || suggestion.address.village || ''}
+                            {suggestion.address.state ? `, ${suggestion.address.state}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
@@ -244,10 +505,12 @@ const Hero = () => {
               >
                 <button
                   onClick={() => navigate('/add-scrap/category')}
-                  className="text-white font-semibold py-2 px-6 md:py-4 md:px-8 lg:py-5 lg:px-12 xl:py-6 xl:px-16 rounded-full text-sm md:text-lg lg:text-xl xl:text-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                  style={{ backgroundColor: '#64946e' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
+                  className="relative inline-flex items-center justify-center text-white font-semibold py-2 px-6 md:py-4 md:px-8 lg:py-5 lg:px-12 xl:py-6 xl:px-16 rounded-full text-sm md:text-lg lg:text-xl xl:text-2xl border-2 transform hover:-translate-y-0.5 hover:scale-105 transition-all duration-300 focus:outline-none focus:ring-4"
+                  style={{
+                    backgroundColor: '#000000',
+                    borderColor: '#22c55e',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.6)',
+                  }}
                 >
                   Request Pickup Now
                 </button>
@@ -289,7 +552,7 @@ const Hero = () => {
           initial={{ y: 20 }}
           animate={{ y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="relative rounded-2xl md:rounded-3xl mb-8 md:mb-12 overflow-hidden"
+          className="relative rounded-2xl md:rounded-3xl mb-4 md:mb-6 overflow-hidden"
           style={{ backgroundColor: '#64946e', minHeight: '150px' }}
         >
           {/* Banner Slides */}
@@ -372,30 +635,15 @@ const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Live Price Ticker */}
-      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-        <PriceTicker />
-      </div>
-
-      {/* Micro Demo Animation */}
-      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-        <MicroDemo />
-      </div>
-
-      {/* Trust Signals */}
-      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-        <TrustSignals />
-      </div>
-
-      {/* Scrap Categories */}
+      {/* Scrap Categories - moved just below banner */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div
           initial={{ y: 10 }}
           animate={{ y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="mt-8 md:mt-12 mb-8"
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="mt-2 md:mt-4 mb-6 md:mb-8"
         >
-          <div className="flex justify-between items-center mb-4 md:mb-6">
+          <div className="flex justify-between items-center mb-3 md:mb-4">
             <h3 
               className="text-xl md:text-2xl font-bold"
               style={{ color: '#2d3748' }}
@@ -433,7 +681,7 @@ const Hero = () => {
                 key={index}
                 initial={{ x: -20 }}
                 animate={{ x: 0 }}
-                transition={{ duration: 0.5, delay: 0.9 + index * 0.1 }}
+                transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
                 className="flex-shrink-0 w-32 md:w-40 lg:w-48"
               >
                 <div 
@@ -462,6 +710,21 @@ const Hero = () => {
             ))}
           </div>
         </motion.div>
+      </div>
+
+      {/* Live Price Ticker */}
+      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
+        <PriceTicker />
+      </div>
+
+      {/* Micro Demo Animation */}
+      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
+        <MicroDemo />
+      </div>
+
+      {/* Trust Signals */}
+      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
+        <TrustSignals />
       </div>
 
       {/* Why Scrapto Section */}
@@ -581,14 +844,15 @@ const Hero = () => {
 
       {/* Bottom Navigation (Mobile Only - Fixed to Viewport) - Always visible */}
       <div 
-        className="fixed md:hidden bottom-0 left-0 right-0 w-full bg-green-700 shadow-2xl z-[9999]"
+        className="fixed md:hidden bottom-0 left-0 right-0 w-full shadow-2xl z-[9999]"
+        style={{ backgroundColor: '#000000' }}
       >
         <div className="flex justify-around items-center py-3 px-4">
           <div 
             className="flex flex-col items-center cursor-pointer active:opacity-70 transition-opacity"
             onClick={() => setShowProfile(false)}
           >
-            <div 
+              <div 
               className={`w-6 h-6 rounded-full mb-1 flex items-center justify-center ${!showProfile ? 'bg-green-600' : 'bg-transparent'}`}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-white">
