@@ -1,21 +1,37 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { validateReferralCode, createReferral, processSignupBonus } from '../../shared/utils/referralUtils';
 import leafImage from '../../../assets/leaf.jpg';
 import bgLeafImage from '../../../assets/earth-removebg-preview.png';
 
 const LoginSignup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralCodeError, setReferralCodeError] = useState('');
+  const [referrerName, setReferrerName] = useState('');
+  const [showReferralCode, setShowReferralCode] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const inputRefs = useRef([]);
   const { login, isAuthenticated } = useAuth();
+  
+  // Check for referral code in URL
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode.toUpperCase());
+      setShowReferralCode(true);
+      validateReferralCodeInput(refCode.toUpperCase());
+    }
+  }, [searchParams]);
 
   // Redirect after authentication state updates
   useEffect(() => {
@@ -54,12 +70,7 @@ const LoginSignup = () => {
       const updatedOtp = [...newOtp];
       if (updatedOtp.every((digit) => digit !== '')) {
         setTimeout(() => {
-          const userData = {
-            name: isLogin ? 'User Name' : name,
-            phone: phone,
-          };
-          login(userData);
-          setShouldRedirect(true);
+          handleRegistration(updatedOtp);
         }, 300);
       }
     }
@@ -71,16 +82,62 @@ const LoginSignup = () => {
     }
   };
 
+  // Validate referral code input
+  const validateReferralCodeInput = (code) => {
+    if (!code || code.trim() === '') {
+      setReferralCodeError('');
+      setReferrerName('');
+      return;
+    }
+    
+    const validation = validateReferralCode(code.toUpperCase());
+    if (!validation.valid) {
+      setReferralCodeError(validation.error);
+      setReferrerName('');
+    } else {
+      setReferralCodeError('');
+      // Get referrer name (mock for now, in real app would fetch from API)
+      setReferrerName('Friend'); // Placeholder
+    }
+  };
+
+  const handleReferralCodeChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    setReferralCode(value);
+    validateReferralCodeInput(value);
+  };
+
   const handleOtpSubmit = (e) => {
     e.preventDefault();
     if (otp.every((digit) => digit !== '')) {
-      const userData = {
-        name: isLogin ? 'User Name' : name,
-        phone: phone,
-      };
-      login(userData);
-      setShouldRedirect(true);
+      handleRegistration(otp);
     }
+  };
+
+  const handleRegistration = (otpArray) => {
+    const userData = {
+      name: isLogin ? 'User Name' : name,
+      phone: phone,
+      id: `user_${Date.now()}`,
+      walletBalance: 0
+    };
+    
+    login(userData);
+    
+    // Process referral if code is provided and valid
+    if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
+      try {
+        const referralResult = createReferral(referralCode, phone, 'user');
+        if (referralResult.success) {
+          // Process signup bonus
+          processSignupBonus(referralResult.referral.id);
+        }
+      } catch (error) {
+        console.error('Referral processing error:', error);
+      }
+    }
+    
+    setShouldRedirect(true);
   };
 
   return (
@@ -218,6 +275,82 @@ const LoginSignup = () => {
                     style={{ color: '#2d3748' }}
                   />
                 </div>
+              </motion.div>
+            )}
+
+            {/* Referral Code Input (Signup only) */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="relative"
+              >
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowReferralCode(!showReferralCode)}
+                    className="text-sm font-medium flex items-center gap-1"
+                    style={{ color: '#64946e' }}
+                  >
+                    {showReferralCode ? 'Hide' : 'Have a referral code?'}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points={showReferralCode ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+                    </svg>
+                  </button>
+                </div>
+                {showReferralCode && (
+                  <div 
+                    className={`flex items-center px-4 py-3 md:py-3.5 rounded-xl border transition-all ${
+                      referralCodeError ? 'border-red-400' : referrerName ? 'border-green-400' : ''
+                    }`}
+                    style={{ 
+                      backgroundColor: '#ffffff',
+                      borderColor: referralCodeError ? '#ef4444' : referrerName ? '#10b981' : '#e5ddd4',
+                    }}
+                    onFocus={(e) => {
+                      if (!referralCodeError && !referrerName) {
+                        e.currentTarget.style.borderColor = '#64946e';
+                        e.currentTarget.style.boxShadow = '0 0 0 2px rgba(100, 148, 110, 0.2)';
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (!referralCodeError && !referrerName) {
+                        e.currentTarget.style.borderColor = '#e5ddd4';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-3" style={{ color: referralCodeError ? '#ef4444' : referrerName ? '#10b981' : '#64946e' }}>
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <path d="M20 8v6M23 11h-6" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={referralCode}
+                      onChange={handleReferralCodeChange}
+                      placeholder="Enter referral code (e.g., USER-ABC123)"
+                      className="flex-1 bg-transparent border-none outline-none text-base md:text-lg uppercase"
+                      style={{ color: '#2d3748' }}
+                      maxLength={13}
+                    />
+                    {referrerName && (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" className="ml-2">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                )}
+                {referralCodeError && (
+                  <p className="text-xs mt-1 ml-1" style={{ color: '#ef4444' }}>
+                    {referralCodeError}
+                  </p>
+                )}
+                {referrerName && !referralCodeError && (
+                  <p className="text-xs mt-1 ml-1" style={{ color: '#10b981' }}>
+                    ✓ You were referred by {referrerName}
+                  </p>
+                )}
               </motion.div>
             )}
 

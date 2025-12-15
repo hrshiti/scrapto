@@ -243,7 +243,7 @@ const Hero = () => {
                 className="flex mb-4 md:mb-8 lg:mb-12 justify-start"
               >
                 <button
-                  onClick={() => setShowOTPModal(true)}
+                  onClick={() => navigate('/add-scrap/category')}
                   className="text-white font-semibold py-2 px-6 md:py-4 md:px-8 lg:py-5 lg:px-12 xl:py-6 xl:px-16 rounded-full text-sm md:text-lg lg:text-xl xl:text-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                   style={{ backgroundColor: '#64946e' }}
                   onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
@@ -403,6 +403,7 @@ const Hero = () => {
               Scrap Categories
             </h3>
             <button 
+              onClick={() => navigate('/categories')}
               className="text-sm md:text-base font-medium hover:opacity-80 transition-opacity"
               style={{ color: '#64946e' }}
             >
@@ -463,7 +464,7 @@ const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Why ScrapConnect Section */}
+      {/* Why Scrapto Section */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div
           initial={{ y: 20 }}
@@ -475,7 +476,7 @@ const Hero = () => {
             className="text-lg md:text-2xl font-bold mb-4 md:mb-8 text-center"
             style={{ color: '#2d3748' }}
           >
-            Why ScrapConnect?
+            Why Scrapto?
           </h3>
           <div className="flex flex-row md:flex-row gap-2 md:gap-6 overflow-x-auto pb-2 md:pb-4 scrollbar-hide">
             {[

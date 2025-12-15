@@ -7,6 +7,7 @@ import KYCStatusPage from './components/KYCStatusPage';
 import SubscriptionPlanPage from './components/SubscriptionPlanPage';
 import ActiveRequestsPage from './components/ActiveRequestsPage';
 import ActiveRequestDetailsPage from './components/ActiveRequestDetailsPage';
+import ReferAndEarn from './components/ReferAndEarn';
 
 // Helper function to check KYC status
 const getKYCStatus = () => {
@@ -86,6 +87,9 @@ const ScrapperModule = () => {
       
       {/* Active Request Details Route - after accepting a request */}
       <Route path="/active-request/:requestId" element={<ActiveRequestDetailsPage />} />
+      
+      {/* Refer & Earn Route */}
+      <Route path="/refer" element={<ReferAndEarn />} />
       
       {/* Redirect logic based on KYC and Subscription status */}
       <Route path="*" element={

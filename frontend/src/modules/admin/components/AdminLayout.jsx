@@ -1,0 +1,264 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { useAdminAuth } from '../../shared/context/AdminAuthContext';
+import {
+  FaHome,
+  FaUserShield,
+  FaUsers,
+  FaTruck,
+  FaRupeeSign,
+  FaFileInvoice,
+  FaCreditCard,
+  FaChartBar,
+  FaCog,
+  FaSignOutAlt,
+  FaBars,
+  FaTimes,
+  FaGift
+} from 'react-icons/fa';
+
+const AdminLayout = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { admin, logout } = useAdminAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on mobile when route changes
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/admin/login', { replace: true });
+  };
+
+  const menuItems = [
+    { icon: FaHome, label: 'Dashboard', path: '/admin', exact: true },
+    { icon: FaUserShield, label: 'KYC Queue', path: '/admin/kyc' },
+    { icon: FaUsers, label: 'Users', path: '/admin/users' },
+    { icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers' },
+    { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
+    { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
+    { icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions' },
+    { icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
+      { label: 'All Referrals', path: '/admin/referrals' },
+      { label: 'Settings', path: '/admin/referrals/settings' }
+    ]},
+    { icon: FaChartBar, label: 'Reports', path: '/admin/reports' },
+    { icon: FaCog, label: 'Settings', path: '/admin/settings' }
+  ];
+
+  const isActive = (item) => {
+    if (item.exact) {
+      return location.pathname === item.path;
+    }
+    return location.pathname.startsWith(item.path);
+  };
+
+  return (
+    <div className="h-screen w-full flex overflow-hidden" style={{ backgroundColor: '#f4ebe2' }}>
+      {/* Sidebar - Desktop */}
+      <motion.aside
+        initial={{ x: -300 }}
+        animate={{ x: 0 }}
+        className="hidden md:flex md:w-64 lg:w-72 flex-col bg-white shadow-lg h-screen fixed left-0 top-0 z-30"
+        style={{ backgroundColor: '#ffffff' }}
+      >
+        {/* Logo */}
+        <div className="p-6 border-b flex-shrink-0" style={{ borderColor: '#e2e8f0' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>Admin Panel</h1>
+              <p className="text-xs" style={{ color: '#718096' }}>Scrapto</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {menuItems.map((item, index) => {
+            const Icon = item.icon;
+            const active = isActive(item);
+            return (
+              <motion.button
+                key={item.path}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  active ? 'shadow-md' : ''
+                }`}
+                style={{
+                  backgroundColor: active ? '#64946e' : 'transparent',
+                  color: active ? '#ffffff' : '#2d3748'
+                }}
+              >
+                <Icon className="text-lg" />
+                <span className="font-medium">{item.label}</span>
+              </motion.button>
+            );
+          })}
+        </nav>
+
+        {/* Admin Info & Logout */}
+        <div className="p-4 border-t flex-shrink-0" style={{ borderColor: '#e2e8f0' }}>
+          <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
+            <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{admin?.name || 'Admin'}</p>
+            <p className="text-xs" style={{ color: '#718096' }}>{admin?.email || 'admin@scrapto.com'}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:shadow-md"
+            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+          >
+            <FaSignOutAlt />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="fixed left-0 top-0 bottom-0 w-64 z-50 flex flex-col bg-white shadow-2xl md:hidden"
+            >
+              {/* Mobile Header */}
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#e2e8f0' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>Admin Panel</h1>
+                    <p className="text-xs" style={{ color: '#718096' }}>Scrapto</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <FaTimes style={{ color: '#2d3748' }} />
+                </button>
+              </div>
+
+              {/* Mobile Navigation */}
+              <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item);
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => {
+                        navigate(item.path);
+                        setSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                        active ? 'shadow-md' : ''
+                      }`}
+                      style={{
+                        backgroundColor: active ? '#64946e' : 'transparent',
+                        color: active ? '#ffffff' : '#2d3748'
+                      }}
+                    >
+                      <Icon className="text-lg" />
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Mobile Footer */}
+              <div className="p-4 border-t" style={{ borderColor: '#e2e8f0' }}>
+                <div className="mb-3 p-3 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
+                  <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{admin?.name || 'Admin'}</p>
+                  <p className="text-xs" style={{ color: '#718096' }}>{admin?.email || 'admin@scrapto.com'}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:shadow-md"
+                  style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                >
+                  <FaSignOutAlt />
+                  <span className="font-medium">Logout</span>
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 md:ml-64 lg:ml-72">
+        {/* Top Header */}
+        <header className="bg-white shadow-sm p-4 flex items-center justify-between flex-shrink-0 fixed top-0 right-0 left-0 md:left-64 lg:left-72 z-20" style={{ borderBottom: '1px solid #e2e8f0' }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+          >
+            <FaBars style={{ color: '#2d3748', fontSize: '20px' }} />
+          </button>
+          <div className="flex-1 md:flex-none">
+            <h2 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
+              {menuItems.find(item => isActive(item))?.label || 'Dashboard'}
+            </h2>
+          </div>
+          <div className="hidden md:flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{admin?.name || 'Admin'}</p>
+              <p className="text-xs" style={{ color: '#718096' }}>{admin?.role || 'Administrator'}</p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/admin/profile')}
+              className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all hover:shadow-md"
+              style={{ backgroundColor: '#64946e' }}
+            >
+              <span className="text-white font-bold text-sm">
+                {admin?.name?.charAt(0)?.toUpperCase() || 'A'}
+              </span>
+            </motion.button>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6" style={{ marginTop: '64px', height: 'calc(100vh - 64px)' }}>
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminLayout;
+

@@ -2,7 +2,7 @@
 
 ## 1. Project Summary
 
-**Project Name (suggestion):** ScrapConnect
+**Project Name (suggestion):** Scrapto
 
 **Goal:** Build a mobile-first web app (progressive web app) using the MERN stack (MongoDB, Express.js, React, Node.js) that connects everyday users who want to sell scrap materials with registered scrappers (collectors). The platform orchestrates requests, real-time pricing, scheduling, KYC, subscription management, push/real-time notifications, and smooth animated UI using GSAP, Framer Motion and Lenis for scroll/transition smoothness.
 
@@ -228,7 +228,7 @@
 ---
 
 ## 13. AI Editor Prompt (Detailed) — Use this to instruct a UI/UX AI editor or designer tool
-> **Task:** Design a mobile-first PWA (React) mockup and high-fidelity prototype for *ScrapConnect*, a scrap pickup marketplace connecting users (who want to sell scrap) with registered scrappers. Produce screens, transitions, and an animation plan suitable for handoff to frontend engineers (React + Tailwind). Provide export-ready assets and a design system.
+> **Task:** Design a mobile-first PWA (React) mockup and high-fidelity prototype for *Scrapto*, a scrap pickup marketplace connecting users (who want to sell scrap) with registered scrappers. Produce screens, transitions, and an animation plan suitable for handoff to frontend engineers (React + Tailwind). Provide export-ready assets and a design system.
 >
 > **Deliverables:**
 > 1. High-fidelity screens for: Splash, OTP Auth, User Home, Create Pickup flow (3 steps), Request Pending, Request Matched (live map + ETA), Scrapper Home, Incoming Request modal, Chat, Profile/KYC, Admin Dashboard (compact).
@@ -334,7 +334,7 @@ Use a monorepo (pnpm/workspaces) so frontend, backend, and shared code (types, v
 
 ```
 
-/scrapconnect-monorepo
+/scrapto-monorepo
 ├─ apps/
 │  ├─ web/             # React Vite app (PWA)
 │  └─ admin/           # Admin web app (could share components with web)

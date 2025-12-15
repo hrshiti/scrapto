@@ -1,0 +1,382 @@
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../shared/context/AuthContext';
+import { 
+  getOrGenerateReferralCode, 
+  getUserReferralStats,
+  getReferralSettings 
+} from '../../shared/utils/referralUtils';
+import {
+  FaGift,
+  FaCopy,
+  FaShareAlt,
+  FaWhatsapp,
+  FaEnvelope,
+  FaQrcode,
+  FaUsers,
+  FaRupeeSign,
+  FaCheckCircle,
+  FaClock
+} from 'react-icons/fa';
+
+const ReferAndEarn = () => {
+  const { user } = useAuth();
+  const [referralCode, setReferralCode] = useState('');
+  const [stats, setStats] = useState({
+    totalReferrals: 0,
+    totalEarnings: 0,
+    referrals: []
+  });
+  const [copied, setCopied] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      const code = getOrGenerateReferralCode(user.phone || user.id, 'user');
+      setReferralCode(code);
+      setShareLink(`${window.location.origin}?ref=${code}`);
+      
+      const referralStats = getUserReferralStats(user.phone || user.id, 'user');
+      setStats(referralStats);
+    }
+  }, [user]);
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(referralCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = (method) => {
+    const message = `Join ScrapConnect and get ₹100 welcome bonus! Use my referral code: ${referralCode}\n${shareLink}`;
+    
+    switch (method) {
+      case 'whatsapp':
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+        break;
+      case 'sms':
+        window.open(`sms:?body=${encodeURIComponent(message)}`, '_blank');
+        break;
+      case 'email':
+        window.open(`mailto:?subject=Join ScrapConnect&body=${encodeURIComponent(message)}`, '_blank');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const settings = getReferralSettings();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+      >
+        <div className="flex items-center gap-4 mb-4">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+          >
+            <FaGift className="text-3xl" style={{ color: '#64946e' }} />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
+              Refer & Earn
+            </h1>
+            <p className="text-sm md:text-base" style={{ color: '#718096' }}>
+              Invite friends and earn rewards
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Referral Code Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+      >
+        <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+          Your Referral Code
+        </h2>
+        
+        {/* Code Display */}
+        <div className="mb-4">
+          <div
+            className="flex items-center justify-between p-4 rounded-xl border-2"
+            style={{
+              backgroundColor: 'rgba(100, 148, 110, 0.05)',
+              borderColor: '#64946e'
+            }}
+          >
+            <div className="flex-1">
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>Referral Code</p>
+              <p className="text-2xl md:text-3xl font-bold" style={{ color: '#64946e' }}>
+                {referralCode}
+              </p>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleCopyCode}
+              className="px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all"
+              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+            >
+              {copied ? (
+                <>
+                  <FaCheckCircle />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <FaCopy />
+                  Copy
+                </>
+              )}
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Share Link */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+            Share Link
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={shareLink}
+              readOnly
+              className="flex-1 px-4 py-2 rounded-xl border-2 text-sm"
+              style={{
+                borderColor: '#e2e8f0',
+                backgroundColor: '#f7fafc',
+                color: '#2d3748'
+              }}
+            />
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleCopyLink}
+              className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
+              style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
+            >
+              <FaCopy />
+            </motion.button>
+          </div>
+        </div>
+
+        {/* Share Buttons */}
+        <div className="grid grid-cols-3 gap-2">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleShare('whatsapp')}
+            className="p-3 rounded-xl font-semibold text-sm flex flex-col items-center gap-2 transition-all"
+            style={{ backgroundColor: '#25D366', color: '#ffffff' }}
+          >
+            <FaWhatsapp className="text-xl" />
+            <span className="text-xs">WhatsApp</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleShare('sms')}
+            className="p-3 rounded-xl font-semibold text-sm flex flex-col items-center gap-2 transition-all"
+            style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
+          >
+            <FaShareAlt className="text-xl" />
+            <span className="text-xs">SMS</span>
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleShare('email')}
+            className="p-3 rounded-xl font-semibold text-sm flex flex-col items-center gap-2 transition-all"
+            style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
+          >
+            <FaEnvelope className="text-xl" />
+            <span className="text-xs">Email</span>
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <FaUsers className="text-xl" style={{ color: '#64946e' }} />
+            </div>
+            <div>
+              <p className="text-sm" style={{ color: '#718096' }}>Total Referrals</p>
+              <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
+                {stats.totalReferrals}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <FaRupeeSign className="text-xl" style={{ color: '#64946e' }} />
+            </div>
+            <div>
+              <p className="text-sm" style={{ color: '#718096' }}>Total Earnings</p>
+              <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
+                ₹{stats.totalEarnings}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* How It Works */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+      >
+        <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+          How It Works
+        </h2>
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <span className="font-bold" style={{ color: '#64946e' }}>1</span>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
+                Share Your Code
+              </h3>
+              <p className="text-sm" style={{ color: '#718096' }}>
+                Share your referral code or link with friends
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <span className="font-bold" style={{ color: '#64946e' }}>2</span>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
+                They Sign Up
+              </h3>
+              <p className="text-sm" style={{ color: '#718096' }}>
+                Your friend signs up using your code
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <span className="font-bold" style={{ color: '#64946e' }}>3</span>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
+                You Both Earn
+              </h3>
+              <p className="text-sm" style={{ color: '#718096' }}>
+                You get ₹{settings.userRewards.signupBonus} and they get ₹{settings.userRewards.refereeWelcomeBonus} welcome bonus
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Referrals List */}
+      {stats.referrals.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
+        >
+          <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+            Your Referrals
+          </h2>
+          <div className="space-y-3">
+            {stats.referrals.map((referral, index) => (
+              <div
+                key={referral.id || index}
+                className="flex items-center justify-between p-3 rounded-xl"
+                style={{ backgroundColor: '#f7fafc' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+                  >
+                    <FaUsers style={{ color: '#64946e' }} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm" style={{ color: '#2d3748' }}>
+                      Referred User
+                    </p>
+                    <p className="text-xs" style={{ color: '#718096' }}>
+                      {new Date(referral.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold" style={{ color: '#64946e' }}>
+                    {referral.status === 'active' ? (
+                      <span className="flex items-center gap-1">
+                        <FaCheckCircle />
+                        Active
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <FaClock />
+                        Pending
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+export default ReferAndEarn;
+

@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import ReferAndEarn from './ReferAndEarn';
 import { 
   FaCheckCircle, 
   FaBox, 
@@ -15,7 +16,8 @@ import {
   FaTimes,
   FaUser,
   FaPhone,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaGift
 } from 'react-icons/fa';
 import { 
   HiTrendingUp,
@@ -404,11 +406,12 @@ const MyProfilePage = () => {
             { id: 'overview', label: 'Overview' },
             { id: 'activity', label: 'Activity' },
             { id: 'analysis', label: 'Analysis' },
+            { id: 'refer', label: 'Refer & Earn', icon: FaGift },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold text-sm md:text-base whitespace-nowrap transition-all ${
+              className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-2 ${
                 activeTab === tab.id ? 'text-white' : 'text-gray-600'
               }`}
               style={{
@@ -416,6 +419,7 @@ const MyProfilePage = () => {
                 border: activeTab === tab.id ? 'none' : '1px solid rgba(100, 148, 110, 0.15)',
               }}
             >
+              {tab.icon && <tab.icon />}
               {tab.label}
             </button>
           ))}
@@ -717,6 +721,18 @@ const MyProfilePage = () => {
                   ))}
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'refer' && (
+            <motion.div
+              key="refer"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ReferAndEarn />
             </motion.div>
           )}
         </AnimatePresence>

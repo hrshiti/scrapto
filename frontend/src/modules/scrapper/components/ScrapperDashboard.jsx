@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { FaGift } from 'react-icons/fa';
 
 const ScrapperDashboard = () => {
   const navigate = useNavigate();
@@ -334,6 +335,38 @@ const ScrapperDashboard = () => {
                 Active
               </p>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Refer & Earn Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="rounded-2xl p-4 md:p-6 shadow-lg cursor-pointer"
+          style={{ backgroundColor: '#ffffff' }}
+          onClick={() => navigate('/scrapper/refer')}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+              >
+                <FaGift className="text-2xl" style={{ color: '#64946e' }} />
+              </div>
+              <div>
+                <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
+                  Refer & Earn
+                </h3>
+                <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                  Invite scrappers and earn rewards
+                </p>
+              </div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64946e" strokeWidth="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </div>
         </motion.div>
 

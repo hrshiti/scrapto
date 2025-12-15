@@ -23,7 +23,7 @@ const Header = () => {
             className="text-sm md:text-base"
             style={{ color: '#718096' }}
           >
-            Welcome back to ScrapConnect
+            Welcome back to Scrapto
           </p>
         </div>
         <div className="relative">

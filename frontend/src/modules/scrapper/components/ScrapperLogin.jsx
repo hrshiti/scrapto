@@ -1,20 +1,36 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { validateReferralCode, createReferral, processSignupBonus } from '../../shared/utils/referralUtils';
 
 const ScrapperLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [vehicleInfo, setVehicleInfo] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralCodeError, setReferralCodeError] = useState('');
+  const [referrerName, setReferrerName] = useState('');
+  const [showReferralCode, setShowReferralCode] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const inputRefs = useRef([]);
   const { login, isAuthenticated } = useAuth();
+  
+  // Check for referral code in URL
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode.toUpperCase());
+      setShowReferralCode(true);
+      validateReferralCodeInput(refCode.toUpperCase());
+    }
+  }, [searchParams]);
 
   // Helper function to check KYC status
   const getKYCStatus = () => {
@@ -86,17 +102,7 @@ const ScrapperLogin = () => {
       const updatedOtp = [...newOtp];
       if (updatedOtp.every((digit) => digit !== '')) {
         setTimeout(() => {
-          const userData = {
-            name: isLogin ? 'Scrapper Name' : name,
-            phone: phone,
-            role: 'scrapper',
-            vehicleInfo: vehicleInfo || 'Not provided'
-          };
-          login(userData);
-          // Set scrapper-specific authentication
-          localStorage.setItem('scrapperAuthenticated', 'true');
-          localStorage.setItem('scrapperUser', JSON.stringify(userData));
-          setShouldRedirect(true);
+          handleRegistration(updatedOtp);
         }, 300);
       }
     }
@@ -112,6 +118,66 @@ const ScrapperLogin = () => {
     setOtp(['', '', '', '', '', '']);
     setOtpSent(false);
     // In real app, resend OTP API call here
+  };
+
+  // Validate referral code input
+  const validateReferralCodeInput = (code) => {
+    if (!code || code.trim() === '') {
+      setReferralCodeError('');
+      setReferrerName('');
+      return;
+    }
+    
+    const validation = validateReferralCode(code.toUpperCase());
+    if (!validation.valid) {
+      setReferralCodeError(validation.error);
+      setReferrerName('');
+    } else {
+      // Only accept scrapper codes for scrapper signup
+      if (validation.referrerType !== 'scrapper') {
+        setReferralCodeError('This code is for users only. Please use a scrapper referral code.');
+        setReferrerName('');
+      } else {
+        setReferralCodeError('');
+        setReferrerName('Friend'); // Placeholder
+      }
+    }
+  };
+
+  const handleReferralCodeChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    setReferralCode(value);
+    validateReferralCodeInput(value);
+  };
+
+  const handleRegistration = (otpArray) => {
+    const userData = {
+      name: isLogin ? 'Scrapper Name' : name,
+      phone: phone,
+      role: 'scrapper',
+      vehicleInfo: vehicleInfo || 'Not provided',
+      id: `scrapper_${Date.now()}`
+    };
+    
+    login(userData);
+    // Set scrapper-specific authentication
+    localStorage.setItem('scrapperAuthenticated', 'true');
+    localStorage.setItem('scrapperUser', JSON.stringify(userData));
+    
+    // Process referral if code is provided and valid
+    if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
+      try {
+        const referralResult = createReferral(referralCode, phone, 'scrapper');
+        if (referralResult.success) {
+          // Process signup bonus
+          processSignupBonus(referralResult.referral.id);
+        }
+      } catch (error) {
+        console.error('Referral processing error:', error);
+      }
+    }
+    
+    setShouldRedirect(true);
   };
 
   return (
@@ -258,6 +324,58 @@ const ScrapperLogin = () => {
                       }}
                       required={!isLogin}
                     />
+                  </motion.div>
+                )}
+
+                {/* Referral Code Input (Signup only) */}
+                {!isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3, delay: 0.15 }}
+                  >
+                    <div className="mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowReferralCode(!showReferralCode)}
+                        className="text-sm font-medium flex items-center gap-1"
+                        style={{ color: '#64946e' }}
+                      >
+                        {showReferralCode ? 'Hide' : 'Have a referral code?'}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points={showReferralCode ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+                        </svg>
+                      </button>
+                    </div>
+                    {showReferralCode && (
+                      <div>
+                        <input
+                          type="text"
+                          value={referralCode}
+                          onChange={handleReferralCodeChange}
+                          placeholder="Enter referral code (e.g., SCRAP-ABC123)"
+                          className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base uppercase ${
+                            referralCodeError ? 'border-red-400' : referrerName ? 'border-green-400' : ''
+                          }`}
+                          style={{
+                            borderColor: referralCodeError ? '#ef4444' : referrerName ? '#10b981' : 'rgba(100, 148, 110, 0.3)',
+                            color: '#2d3748',
+                            backgroundColor: '#f9f9f9'
+                          }}
+                          maxLength={13}
+                        />
+                        {referralCodeError && (
+                          <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                            {referralCodeError}
+                          </p>
+                        )}
+                        {referrerName && !referralCodeError && (
+                          <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+                            ✓ You were referred by {referrerName}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 )}
 

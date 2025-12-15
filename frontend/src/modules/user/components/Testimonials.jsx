@@ -1,10 +1,7 @@
 import { motion } from 'framer-motion';
 import { FaStar } from 'react-icons/fa';
-import { useEffect, useRef } from 'react';
 
 const Testimonials = () => {
-  const scrollRef = useRef(null);
-
   const testimonials = [
     {
       name: 'R.K.',
@@ -48,45 +45,6 @@ const Testimonials = () => {
     },
   ];
 
-  // Duplicate for seamless scroll
-  const duplicatedTestimonials = [...testimonials, ...testimonials];
-
-  useEffect(() => {
-    const scrollContainer = scrollRef.current;
-    if (!scrollContainer) return;
-
-    let animationId;
-    let scrollPosition = 0;
-    const scrollSpeed = 0.6;
-    let isPaused = false;
-
-    const animate = () => {
-      if (!isPaused) {
-        scrollPosition += scrollSpeed;
-        const cardWidth = scrollContainer.scrollWidth / 2;
-        if (scrollPosition >= cardWidth) {
-          scrollPosition = 0;
-        }
-        scrollContainer.scrollLeft = scrollPosition;
-      }
-      animationId = requestAnimationFrame(animate);
-    };
-
-    animationId = requestAnimationFrame(animate);
-
-    const handleMouseEnter = () => { isPaused = true; };
-    const handleMouseLeave = () => { isPaused = false; };
-    
-    scrollContainer.addEventListener('mouseenter', handleMouseEnter);
-    scrollContainer.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-      scrollContainer.removeEventListener('mouseenter', handleMouseEnter);
-      scrollContainer.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, []);
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -106,7 +64,6 @@ const Testimonials = () => {
       {/* Horizontal Scrolling Container */}
       <div className="relative overflow-hidden mb-8">
         <div 
-          ref={scrollRef}
           className="flex gap-4 md:gap-6 items-stretch px-4 overflow-x-auto scrollbar-hide"
           style={{
             scrollbarWidth: 'none',
@@ -114,14 +71,13 @@ const Testimonials = () => {
             WebkitOverflowScrolling: 'touch'
           }}
         >
-          {duplicatedTestimonials.map((testimonial, index) => {
-            const originalIndex = index % testimonials.length;
+          {testimonials.map((testimonial, index) => {
             return (
               <motion.div
-                key={`${originalIndex}-${index}`}
+                key={index}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 1.5 + (originalIndex * 0.1) }}
+                transition={{ duration: 0.4, delay: 1.5 + (index * 0.1) }}
                 whileHover={{ y: -5, scale: 1.05, transition: { duration: 0.2 } }}
                 className="flex-shrink-0 w-32 md:w-56"
               >
@@ -162,7 +118,7 @@ const Testimonials = () => {
                           key={i}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          transition={{ delay: 1.6 + (originalIndex * 0.1) + (i * 0.05), type: "spring" }}
+                          transition={{ delay: 1.6 + (index * 0.1) + (i * 0.05), type: "spring" }}
                         >
                           <svg 
                             width="10" 
@@ -182,7 +138,7 @@ const Testimonials = () => {
                     <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: 1.7 + (originalIndex * 0.1) }}
+                      transition={{ delay: 1.7 + (index * 0.1) }}
                       className="text-xs leading-tight relative z-10 line-clamp-2 md:line-clamp-3"
                       style={{ color: '#4a5568' }}
                     >
