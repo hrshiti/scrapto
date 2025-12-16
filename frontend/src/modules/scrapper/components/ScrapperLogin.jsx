@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { validateReferralCode, createReferral, processSignupBonus, getReferralSettings } from '../../shared/utils/referralUtils';
 import { linkLeadToScrapper } from '../../shared/utils/leadUtils';
+import { authAPI } from '../../shared/utils/api';
 
 const ScrapperLogin = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const ScrapperLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [vehicleInfo, setVehicleInfo] = useState('');
   const [heardFrom, setHeardFrom] = useState('');
   const [heardFromOther, setHeardFromOther] = useState('');
@@ -22,6 +24,8 @@ const ScrapperLogin = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRefs = useRef([]);
   const { login, isAuthenticated } = useAuth();
   
@@ -76,23 +80,69 @@ const ScrapperLogin = () => {
     }
   }, [isAuthenticated, shouldRedirect, navigate]);
 
-  const handlePhoneSubmit = (e) => {
+  const handlePhoneSubmit = async (e) => {
     e.preventDefault();
-    if (phone.length === 10) {
-      // Check if scrapper is blocked
-      const scrapperStatus = localStorage.getItem('scrapperStatus');
-      if (scrapperStatus === 'blocked') {
-        alert('Your scrapper account has been blocked by admin. Please contact support.');
-        return;
+    setError('');
+    
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    // Check if scrapper is blocked
+    const scrapperStatus = localStorage.getItem('scrapperStatus');
+    if (scrapperStatus === 'blocked') {
+      setError('Your scrapper account has been blocked by admin. Please contact support.');
+      return;
+    }
+
+    if (!isLogin && (!name.trim() || !email.trim() || !vehicleInfo.trim())) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    if (!isLogin && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        // Send login OTP
+        const response = await authAPI.sendLoginOTP(phone);
+        if (response.success) {
+          setOtpSent(true);
+          setTimeout(() => {
+            inputRefs.current[0]?.focus();
+          }, 100);
+        }
+      } else {
+        // Register scrapper and send OTP
+        const password = 'temp123'; // Temporary password (can be changed later)
+        
+        const response = await authAPI.register({
+          name,
+          email: email.trim(),
+          phone,
+          password,
+          role: 'scrapper'
+        });
+
+        if (response.success) {
+          // OTP is sent automatically on registration
+          setOtpSent(true);
+          setTimeout(() => {
+            inputRefs.current[0]?.focus();
+          }, 100);
+        }
       }
-      if (!isLogin && (!name.trim() || !vehicleInfo.trim())) {
-        return;
-      }
-      setOtpSent(true);
-      // Auto-focus first OTP input
-      setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 100);
+    } catch (err) {
+      setError(err.message || 'Failed to send OTP. Please try again.');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,10 +173,22 @@ const ScrapperLogin = () => {
     }
   };
 
-  const handleResendOtp = () => {
-    setOtp(['', '', '', '', '', '']);
-    setOtpSent(false);
-    // In real app, resend OTP API call here
+  const handleResendOtp = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const response = await authAPI.resendOTP(phone);
+      if (response.success) {
+        setOtp(['', '', '', '', '', '']);
+        setTimeout(() => {
+          inputRefs.current[0]?.focus();
+        }, 100);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to resend OTP. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Validate referral code input
@@ -164,50 +226,63 @@ const ScrapperLogin = () => {
     validateReferralCodeInput(value);
   };
 
-  const handleRegistration = (otpArray) => {
-    const computedHeardFrom =
-      heardFrom === 'other' && heardFromOther.trim()
-        ? `other:${heardFromOther.trim()}`
-        : heardFrom || null;
+  const handleRegistration = async (otpArray) => {
+    const otp = otpArray.join('');
+    setError('');
+    setLoading(true);
 
-    const userData = {
-      name: isLogin ? 'Scrapper Name' : name,
-      phone: phone,
-      role: 'scrapper',
-      vehicleInfo: vehicleInfo || 'Not provided',
-      id: `scrapper_${Date.now()}`,
-      heardFrom: computedHeardFrom
-    };
-    
-    login(userData);
-    // Set scrapper-specific authentication
-    localStorage.setItem('scrapperAuthenticated', 'true');
-    localStorage.setItem('scrapperUser', JSON.stringify(userData));
+    try {
+      // Verify OTP
+      const purpose = isLogin ? 'login' : 'verification';
+      const response = await authAPI.verifyOTP(phone, otp, purpose);
 
-    // If this is a new registration, try to link any existing lead by phone
-    if (!isLogin) {
-      try {
-        linkLeadToScrapper(phone, userData.id);
-      } catch (error) {
-        // Non-blocking
-        console.error('Error linking scrapper lead:', error);
-      }
-    }
-    
-    // Process referral if code is provided and valid
-    if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
-      try {
-        const referralResult = createReferral(referralCode, phone, 'scrapper');
-        if (referralResult.success) {
-          // Process signup bonus
-          processSignupBonus(referralResult.referral.id);
+      if (response.success) {
+        const userData = response.data.user;
+        const token = response.data.token;
+
+        // Login user with token
+        login(userData, token);
+        
+        // Set scrapper-specific authentication
+        localStorage.setItem('scrapperAuthenticated', 'true');
+        localStorage.setItem('scrapperUser', JSON.stringify(userData));
+
+        // If this is a new registration, try to link any existing lead by phone
+        if (!isLogin) {
+          try {
+            linkLeadToScrapper(phone, userData._id || userData.id);
+          } catch (error) {
+            // Non-blocking
+            console.error('Error linking scrapper lead:', error);
+          }
         }
-      } catch (error) {
-        console.error('Referral processing error:', error);
+        
+        // Process referral if code is provided and valid
+        if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
+          try {
+            const referralResult = createReferral(referralCode, phone, 'scrapper');
+            if (referralResult.success) {
+              // Process signup bonus
+              processSignupBonus(referralResult.referral.id);
+            }
+          } catch (error) {
+            console.error('Referral processing error:', error);
+          }
+        }
+
+        setShouldRedirect(true);
       }
+    } catch (err) {
+      setError(err.message || 'Invalid OTP. Please try again.');
+      console.error('OTP verification error:', err);
+      // Clear OTP on error
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    } finally {
+      setLoading(false);
     }
-    
-    setShouldRedirect(true);
   };
 
   return (
@@ -306,6 +381,9 @@ const ScrapperLogin = () => {
                 setIsLogin(true);
                 setOtpSent(false);
                 setOtp(['', '', '', '', '', '']);
+                setName('');
+                setEmail('');
+                setVehicleInfo('');
               }}
               className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
                 isLogin
@@ -320,6 +398,9 @@ const ScrapperLogin = () => {
                 setIsLogin(false);
                 setOtpSent(false);
                 setOtp(['', '', '', '', '', '']);
+                setName('');
+                setEmail('');
+                setVehicleInfo('');
               }}
               className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
                 !isLogin
@@ -366,6 +447,31 @@ const ScrapperLogin = () => {
                       className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                       style={{
                         borderColor: name ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                        color: '#2d3748',
+                        backgroundColor: '#f9f9f9'
+                      }}
+                      required={!isLogin}
+                    />
+                  </motion.div>
+                )}
+
+                {!isLogin && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3, delay: 0.05 }}
+                  >
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email address"
+                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                      style={{
+                        borderColor: email ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                         color: '#2d3748',
                         backgroundColor: '#f9f9f9'
                       }}
@@ -536,15 +642,26 @@ const ScrapperLogin = () => {
                   </div>
                 )}
 
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+                  >
+                    <p className="text-sm text-red-600">{error}</p>
+                  </motion.div>
+                )}
+
                 <motion.button
                   type="submit"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={phone.length !== 10 || (!isLogin && (!name.trim() || !vehicleInfo.trim()))}
+                  disabled={loading || phone.length !== 10 || (!isLogin && (!name.trim() || !vehicleInfo.trim()))}
                   className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                 >
-                  {isLogin ? 'Send OTP' : 'Register & Send OTP'}
+                  {loading ? 'Processing...' : (isLogin ? 'Send OTP' : 'Register & Send OTP')}
                 </motion.button>
               </motion.form>
             ) : (
@@ -589,13 +706,25 @@ const ScrapperLogin = () => {
                   ))}
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+                  >
+                    <p className="text-sm text-red-600">{error}</p>
+                  </motion.div>
+                )}
+
                 <div className="text-center">
                   <button
                     onClick={handleResendOtp}
-                    className="text-sm font-semibold transition-colors"
+                    disabled={loading}
+                    className="text-sm font-semibold transition-colors disabled:opacity-50"
                     style={{ color: '#64946e' }}
                   >
-                    Resend OTP
+                    {loading ? 'Sending...' : 'Resend OTP'}
                   </button>
                 </div>
 
@@ -604,24 +733,17 @@ const ScrapperLogin = () => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (otp.every((digit) => digit !== '')) {
-                      const userData = {
-                        name: isLogin ? 'Scrapper Name' : name,
-                        phone: phone,
-                        role: 'scrapper',
-                        vehicleInfo: vehicleInfo || 'Not provided'
-                      };
-                      login(userData);
-                      setShouldRedirect(true);
+                      handleRegistration(otp);
                     }
                   }}
                   type="button"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={!otp.every((digit) => digit !== '')}
+                  disabled={loading || !otp.every((digit) => digit !== '')}
                   className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                 >
-                  Verify & Continue
+                  {loading ? 'Verifying...' : 'Verify & Continue'}
                 </motion.button>
               </motion.div>
             )}

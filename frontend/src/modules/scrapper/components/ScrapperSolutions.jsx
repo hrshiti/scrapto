@@ -1,53 +1,46 @@
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { 
-  FaTruck, 
+  FaClipboardCheck, 
+  FaChartLine, 
   FaRupeeSign, 
-  FaMobileAlt, 
-  FaEye, 
-  FaWeight, 
-  FaBolt 
+  FaShieldAlt, 
+  FaUsers 
 } from 'react-icons/fa';
 
-const CustomerSolutions = () => {
+const ScrapperSolutions = () => {
   const containerRef = useRef(null);
   const isInView = useInView(containerRef, { once: true, margin: '-100px' });
 
   const solutions = [
     {
-      icon: FaTruck,
-      title: 'Free Pickup',
-      description: 'No charges for pickup service. We come to your doorstep at no extra cost.',
+      icon: FaClipboardCheck,
+      title: 'Guaranteed Daily Orders',
+      description: 'Get consistent daily pickup requests. No more waiting for orders, steady income guaranteed.',
+      color: '#64946e'
+    },
+    {
+      icon: FaChartLine,
+      title: 'Transparent Rates',
+      description: 'See real-time market rates before accepting orders. Know exactly what you\'ll earn upfront.',
       color: '#64946e'
     },
     {
       icon: FaRupeeSign,
-      title: 'Best Rates',
-      description: 'Get the highest market rates for your scrap. Real-time pricing ensures fair deals.',
+      title: 'Higher Income',
+      description: 'Earn more with competitive rates and bonus incentives. Maximize your daily earnings potential.',
       color: '#64946e'
     },
     {
-      icon: FaMobileAlt,
-      title: 'Instant UPI Payments',
-      description: 'Receive payment instantly via UPI. No cash handling, secure and quick transactions.',
+      icon: FaShieldAlt,
+      title: 'Safe Handling Supply',
+      description: 'Work with verified customers and safe pickup locations. Your safety is our priority.',
       color: '#64946e'
     },
     {
-      icon: FaEye,
-      title: 'Price Transparency',
-      description: 'See live market prices before booking. No hidden charges, complete transparency.',
-      color: '#64946e'
-    },
-    {
-      icon: FaWeight,
-      title: 'Proper Weight',
-      description: 'Accurate weight measurement with certified scales. Fair pricing based on actual weight.',
-      color: '#64946e'
-    },
-    {
-      icon: FaBolt,
-      title: 'Fast Service',
-      description: 'Quick pickup and processing. Same-day service available for urgent requests.',
+      icon: FaUsers,
+      title: 'Wider Customer Access',
+      description: 'Access to a large customer base across your area. More pickups, more opportunities to earn.',
       color: '#64946e'
     }
   ];
@@ -144,5 +137,5 @@ const CustomerSolutions = () => {
   );
 };
 
-export default CustomerSolutions;
+export default ScrapperSolutions;
 

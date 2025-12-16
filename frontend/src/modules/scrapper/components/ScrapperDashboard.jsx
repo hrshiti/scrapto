@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { FaGift, FaChartLine } from 'react-icons/fa';
 import PriceTicker from '../../user/components/PriceTicker';
+import ScrapperSolutions from './ScrapperSolutions';
 import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRequest } from '../../shared/utils/scrapperRequestUtils';
 
 const ScrapperDashboard = () => {
@@ -378,6 +379,11 @@ const ScrapperDashboard = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Scrapper Solutions Section */}
+        <div className="px-2">
+          <ScrapperSolutions />
+        </div>
 
         {/* Active Requests List */}
         {activeRequests.length > 0 && (

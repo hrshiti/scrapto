@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { validateReferralCode, createReferral, processSignupBonus, getReferralSettings } from '../../shared/utils/referralUtils';
+import { authAPI } from '../../shared/utils/api';
 import leafImage from '../../../assets/leaf.jpg';
 import bgLeafImage from '../../../assets/earth-removebg-preview.png';
 
@@ -12,6 +13,7 @@ const LoginSignup = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [heardFrom, setHeardFrom] = useState('');
   const [heardFromOther, setHeardFromOther] = useState('');
   const [referralCode, setReferralCode] = useState('');
@@ -22,6 +24,8 @@ const LoginSignup = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRefs = useRef([]);
   const { login, isAuthenticated } = useAuth();
   
@@ -43,17 +47,67 @@ const LoginSignup = () => {
     }
   }, [isAuthenticated, shouldRedirect, navigate]);
 
-  const handlePhoneSubmit = (e) => {
+  const handlePhoneSubmit = async (e) => {
     e.preventDefault();
-    if (phone.length === 10) {
-      if (!isLogin && !name.trim()) {
-        return;
+    setError('');
+    
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit phone number');
+      return;
+    }
+
+    if (!isLogin && !name.trim()) {
+      setError('Please enter your name');
+      return;
+    }
+
+    if (!isLogin && !email.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+
+    if (!isLogin && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        // Send login OTP
+        const response = await authAPI.sendLoginOTP(phone);
+        if (response.success) {
+          setOtpSent(true);
+          setTimeout(() => {
+            inputRefs.current[0]?.focus();
+          }, 100);
+        }
+      } else {
+        // Register user and send OTP
+        const password = 'temp123'; // Temporary password (can be changed later)
+        
+        const response = await authAPI.register({
+          name,
+          email: email.trim(),
+          phone,
+          password,
+          role: 'user'
+        });
+
+        if (response.success) {
+          // OTP is sent automatically on registration
+          setOtpSent(true);
+          setTimeout(() => {
+            inputRefs.current[0]?.focus();
+          }, 100);
+        }
       }
-      setOtpSent(true);
-      // Auto-focus first OTP input
-      setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 100);
+    } catch (err) {
+      setError(err.message || 'Failed to send OTP. Please try again.');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -126,36 +180,54 @@ const LoginSignup = () => {
     }
   };
 
-  const handleRegistration = (otpArray) => {
-    const computedHeardFrom =
-      heardFrom === 'other' && heardFromOther.trim()
-        ? `other:${heardFromOther.trim()}`
-        : heardFrom || null;
+  const handleRegistration = async (otpArray) => {
+    const otp = otpArray.join('');
+    setError('');
+    setLoading(true);
 
-    const userData = {
-      name: isLogin ? 'User Name' : name,
-      phone: phone,
-      id: `user_${Date.now()}`,
-      walletBalance: 0,
-      heardFrom: computedHeardFrom
-    };
-    
-    login(userData);
-    
-    // Process referral if code is provided and valid
-    if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
-      try {
-        const referralResult = createReferral(referralCode, phone, 'user');
-        if (referralResult.success) {
-          // Process signup bonus
-          processSignupBonus(referralResult.referral.id);
+    try {
+      // Verify OTP
+      const purpose = isLogin ? 'login' : 'verification';
+      const response = await authAPI.verifyOTP(phone, otp, purpose);
+
+      if (response.success) {
+        const userData = response.data.user;
+        const token = response.data.token;
+
+        // Login user with token
+        login(userData, token);
+
+        // Process referral if code is provided and valid (only for new registrations)
+        if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
+          try {
+            const computedHeardFrom =
+              heardFrom === 'other' && heardFromOther.trim()
+                ? `other:${heardFromOther.trim()}`
+                : heardFrom || null;
+
+            const referralResult = createReferral(referralCode, phone, 'user');
+            if (referralResult.success) {
+              // Process signup bonus
+              processSignupBonus(referralResult.referral.id);
+            }
+          } catch (error) {
+            console.error('Referral processing error:', error);
+          }
         }
-      } catch (error) {
-        console.error('Referral processing error:', error);
+
+        setShouldRedirect(true);
       }
+    } catch (err) {
+      setError(err.message || 'Invalid OTP. Please try again.');
+      console.error('OTP verification error:', err);
+      // Clear OTP on error
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    } finally {
+      setLoading(false);
     }
-    
-    setShouldRedirect(true);
   };
 
   return (
@@ -329,6 +401,44 @@ const LoginSignup = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Full Name"
+                    className="flex-1 bg-transparent border-none outline-none text-base md:text-lg"
+                    style={{ color: '#2d3748' }}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {/* Email Input (Signup only) */}
+            {!isLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="relative"
+              >
+                <div 
+                  className="flex items-center px-4 py-3 md:py-3.5 rounded-xl border transition-all"
+                  style={{ 
+                    backgroundColor: '#ffffff',
+                    borderColor: '#e5ddd4',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#64946e';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(100, 148, 110, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e5ddd4';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mr-3" style={{ color: '#64946e' }}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email Address"
                     className="flex-1 bg-transparent border-none outline-none text-base md:text-lg"
                     style={{ color: '#2d3748' }}
                   />
@@ -579,47 +689,75 @@ const LoginSignup = () => {
               {otpSent && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setOtpSent(true);
-                    setOtp(['', '', '', '', '', '']);
-                    setTimeout(() => {
-                      inputRefs.current[0]?.focus();
-                    }, 100);
+                  onClick={async () => {
+                    setError('');
+                    setLoading(true);
+                    try {
+                      const response = await authAPI.resendOTP(phone);
+                      if (response.success) {
+                        setOtp(['', '', '', '', '', '']);
+                        setTimeout(() => {
+                          inputRefs.current[0]?.focus();
+                        }, 100);
+                      }
+                    } catch (err) {
+                      setError(err.message || 'Failed to resend OTP. Please try again.');
+                    } finally {
+                      setLoading(false);
+                    }
                   }}
-                  className="text-sm font-medium hover:opacity-80 transition-opacity"
+                  disabled={loading}
+                  className="text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-50"
                   style={{ color: '#64946e' }}
                 >
-                  Resend OTP?
+                  {loading ? 'Sending...' : 'Resend OTP?'}
                 </button>
               )}
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+              >
+                <p className="text-sm text-red-600">{error}</p>
+              </motion.div>
+            )}
 
             {/* Login Button */}
             <button
               type="submit"
               disabled={
-                (!otpSent && (phone.length !== 10 || (!isLogin && !name.trim()))) ||
+                loading ||
+                (!otpSent && (phone.length !== 10 || (!isLogin && (!name.trim() || !email.trim())))) ||
                 (otpSent && otp.some(d => d === ''))
               }
               className="w-full text-white font-bold py-4 md:py-4.5 rounded-xl disabled:cursor-not-allowed disabled:opacity-50 transition-all text-base md:text-lg shadow-lg"
               style={{ 
                 backgroundColor: (
-                  (!otpSent && phone.length === 10 && (isLogin || name.trim())) ||
+                  (!otpSent && phone.length === 10 && (isLogin || (name.trim() && email.trim()))) ||
                   (otpSent && otp.every(d => d !== ''))
                 ) ? '#64946e' : '#cbd5e0',
               }}
               onMouseEnter={(e) => {
-                if ((!otpSent && phone.length === 10 && (isLogin || name.trim())) || (otpSent && otp.every(d => d !== ''))) {
+                if ((!otpSent && phone.length === 10 && (isLogin || (name.trim() && email.trim()))) || (otpSent && otp.every(d => d !== ''))) {
                   e.target.style.backgroundColor = '#5a8263';
                 }
               }}
               onMouseLeave={(e) => {
-                if ((!otpSent && phone.length === 10 && (isLogin || name.trim())) || (otpSent && otp.every(d => d !== ''))) {
+                if ((!otpSent && phone.length === 10 && (isLogin || (name.trim() && email.trim()))) || (otpSent && otp.every(d => d !== ''))) {
                   e.target.style.backgroundColor = '#64946e';
                 }
               }}
             >
-              {otpSent ? (otp.every(d => d !== '') ? 'Verify & Login' : 'Enter OTP') : (isLogin ? 'Login' : 'Sign Up')}
+              {loading 
+                ? 'Processing...' 
+                : otpSent 
+                  ? (otp.every(d => d !== '') ? 'Verify & Login' : 'Enter OTP') 
+                  : (isLogin ? 'Send OTP' : 'Register & Send OTP')
+              }
             </button>
           </motion.form>
 
@@ -628,13 +766,14 @@ const LoginSignup = () => {
             <p className="text-sm md:text-base" style={{ color: '#718096' }}>
               {isLogin ? "Don't have account? " : 'Already have an account? '}
               <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setPhone('');
-                  setName('');
-                  setOtp(['', '', '', '', '', '']);
-                  setOtpSent(false);
-                }}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setPhone('');
+                setName('');
+                setEmail('');
+                setOtp(['', '', '', '', '', '']);
+                setOtpSent(false);
+              }}
                 className="font-semibold hover:opacity-80 transition-opacity"
                 style={{ color: '#64946e' }}
               >
