@@ -159,7 +159,7 @@ const WeightInputPage = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-24 md:pb-6">
         {/* Image Preview */}
         {uploadedImages.length > 0 && (
           <motion.div
@@ -381,8 +381,14 @@ const WeightInputPage = () => {
         )}
       </div>
 
-      {/* Footer with Continue Button */}
-      <div className="p-3 md:p-6 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+      {/* Footer with Continue Button - Fixed on Mobile */}
+      <div 
+        className="fixed md:relative bottom-0 left-0 right-0 p-3 md:p-6 border-t z-50"
+        style={{ 
+          borderColor: 'rgba(100, 148, 110, 0.2)',
+          backgroundColor: '#f4ebe2'
+        }}
+      >
         {currentWeight > 0 ? (
           <motion.button
             initial={{ opacity: 0, y: 10 }}

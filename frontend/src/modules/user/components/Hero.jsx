@@ -8,7 +8,7 @@ import PriceTicker from './PriceTicker';
 import TrustSignals from './TrustSignals';
 import Testimonials from './Testimonials';
 import OTPModal from './OTPModal';
-import MicroDemo from './MicroDemo';
+import CustomerSolutions from './CustomerSolutions';
 import Profile from './Profile';
 import scrapImage from '../assets/scrap3-Photoroom.png';
 import scrapImage2 from '../assets/scrab.png';
@@ -163,47 +163,111 @@ const Hero = () => {
     
     setIsWebView(isWebViewDetected);
 
-    // Initialize Lenis for smooth scrolling
+    // Initialize Lenis for smooth scrolling with optimized settings
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smooth: true,
-      smoothTouch: true,
+      smoothTouch: false, // Disable smooth touch for better mobile performance
       touchMultiplier: 2,
-      wheelMultiplier: 1,
+      wheelMultiplier: 1.2,
       infinite: false,
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
     });
 
     lenisRef.current = lenis;
 
-    // Connect Lenis to window scroll
+    // Connect Lenis to window scroll with proper RAF loop
+    let rafId;
     function raf(time) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
     // Ensure smooth scrolling works properly
     const htmlElement = document.documentElement;
+    const bodyElement = document.body;
     
     if (htmlElement) {
       htmlElement.style.scrollBehavior = 'auto'; // Let Lenis handle it
+      htmlElement.style.overflowX = 'hidden';
+    }
+    if (bodyElement) {
+      bodyElement.style.overflowX = 'hidden';
     }
 
-    // Hero entrance animation
-    gsap.from(heroRef.current, {
-      y: 20,
-      duration: 0.8,
-      ease: 'power2.out',
+    // Handle resize events to recalculate scroll
+    const handleResize = () => {
+      if (lenisRef.current) {
+        lenisRef.current.resize();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    
+    // Handle content changes (for dynamic content)
+    const resizeObserver = new ResizeObserver(() => {
+      if (lenisRef.current) {
+        lenisRef.current.resize();
+      }
     });
+    if (heroRef.current) {
+      resizeObserver.observe(heroRef.current);
+    }
+
+    // Hero entrance animation (non-blocking)
+    if (heroRef.current) {
+      // Small delay to ensure Lenis is ready
+      setTimeout(() => {
+        gsap.from(heroRef.current, {
+          y: 20,
+          duration: 0.8,
+          ease: 'power2.out',
+          onComplete: () => {
+            // Ensure Lenis can scroll after animation
+            if (lenisRef.current) {
+              lenisRef.current.resize();
+            }
+          }
+        });
+      }, 100);
+    }
+
+    // Ensure Lenis recalculates after all content is loaded
+    const handleLoad = () => {
+      if (lenisRef.current) {
+        lenisRef.current.resize();
+      }
+    };
+    window.addEventListener('load', handleLoad);
+    
+    // Also recalculate after a short delay to catch any late-loading content
+    const initTimeout = setTimeout(() => {
+      if (lenisRef.current) {
+        lenisRef.current.resize();
+      }
+    }, 500);
 
     return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('load', handleLoad);
+      clearTimeout(initTimeout);
+      resizeObserver.disconnect();
       if (lenisRef.current) {
         lenisRef.current.destroy();
+        lenisRef.current = null;
       }
       if (htmlElement) {
         htmlElement.style.scrollBehavior = '';
+        htmlElement.style.overflowX = '';
+      }
+      if (bodyElement) {
+        bodyElement.style.overflowX = '';
       }
     };
   }, []);
@@ -546,14 +610,148 @@ const Hero = () => {
         </motion.div>
       </div>
 
+      {/* Scrap Categories */}
+      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
+        <motion.div
+          initial={{ y: 10 }}
+          animate={{ y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-2 md:mt-4 mb-6 md:mb-8"
+        >
+          <div className="flex justify-between items-center mb-3 md:mb-4">
+            <h3 
+              className="text-xl md:text-2xl font-bold"
+              style={{ color: '#2d3748' }}
+            >
+              Scrap Categories
+            </h3>
+            <button 
+              onClick={() => navigate('/categories')}
+              className="text-sm md:text-base font-medium hover:opacity-80 transition-opacity"
+              style={{ color: '#64946e' }}
+            >
+              See all
+            </button>
+          </div>
+          <div className="overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex flex-col gap-3 md:gap-4" style={{ width: 'max-content' }}>
+              {/* First Row */}
+              <div className="flex gap-3 md:gap-4">
+                {[
+                  { 
+                    name: 'Plastic', 
+                    image: plasticImage
+                  },
+                  { 
+                    name: 'Paper', 
+                    image: scrapImage2
+                  },
+                  { 
+                    name: 'Glass', 
+                    image: scrapImage3
+                  },
+                ].map((category, index) => (
+                  <motion.div
+                    key={category.name}
+                    initial={{ x: -20 }}
+                    animate={{ x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.7 + index * 0.1 }}
+                    className="flex-shrink-0 w-24 md:w-28 lg:w-32 cursor-pointer"
+                    onClick={() => navigate('/add-scrap/category', { 
+                      state: { preSelectedCategory: category.name } 
+                    })}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                  <div 
+                    className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+                    style={{ backgroundColor: '#ffffff' }}
+                  >
+                    <div className="aspect-square relative overflow-hidden bg-gray-100" style={{ width: '100%' }}>
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="w-full h-full object-cover"
+                        style={{ display: 'block' }}
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="p-2 md:p-2.5">
+                      <p 
+                        className="text-xs md:text-sm font-semibold text-center"
+                        style={{ color: '#2d3748' }}
+                      >
+                        {category.name}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+                ))}
+              </div>
+              {/* Second Row */}
+              <div className="flex gap-3 md:gap-4">
+                {[
+                  { 
+                    name: 'Metal', 
+                    image: metalImage
+                  },
+                  { 
+                    name: 'Electronics', 
+                    image: electronicImage
+                  },
+                  { 
+                    name: 'Textile', 
+                    image: scrapImage
+                  },
+                ].map((category, index) => (
+                  <motion.div
+                    key={category.name}
+                    initial={{ x: -20 }}
+                    animate={{ x: 0 }}
+                    transition={{ duration: 0.5, delay: 1.0 + index * 0.1 }}
+                    className="flex-shrink-0 w-24 md:w-28 lg:w-32 cursor-pointer"
+                    onClick={() => navigate('/add-scrap/category', { 
+                      state: { preSelectedCategory: category.name } 
+                    })}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <div 
+                      className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+                      style={{ backgroundColor: '#ffffff' }}
+                    >
+                      <div className="aspect-square relative overflow-hidden bg-gray-100" style={{ width: '100%' }}>
+                        <img
+                          src={category.image}
+                          alt={category.name}
+                          className="w-full h-full object-cover"
+                          style={{ display: 'block' }}
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="p-2 md:p-2.5">
+                        <p 
+                          className="text-xs md:text-sm font-semibold text-center"
+                          style={{ color: '#2d3748' }}
+                        >
+                          {category.name}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
       {/* Promotional Banner Carousel */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div
           initial={{ y: 20 }}
           animate={{ y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
           className="relative rounded-2xl md:rounded-3xl mb-4 md:mb-6 overflow-hidden"
-          style={{ backgroundColor: '#64946e', minHeight: '150px' }}
+          style={{ backgroundColor: '#000000', minHeight: '150px' }}
         >
           {/* Banner Slides */}
           <div className="relative h-full">
@@ -635,91 +833,14 @@ const Hero = () => {
         </motion.div>
       </div>
 
-      {/* Scrap Categories - moved just below banner */}
-      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-        <motion.div
-          initial={{ y: 10 }}
-          animate={{ y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-2 md:mt-4 mb-6 md:mb-8"
-        >
-          <div className="flex justify-between items-center mb-3 md:mb-4">
-            <h3 
-              className="text-xl md:text-2xl font-bold"
-              style={{ color: '#2d3748' }}
-            >
-              Scrap Categories
-            </h3>
-            <button 
-              onClick={() => navigate('/categories')}
-              className="text-sm md:text-base font-medium hover:opacity-80 transition-opacity"
-              style={{ color: '#64946e' }}
-            >
-              See all
-            </button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide pl-0">
-            {[
-              { 
-                name: 'Plastic', 
-                image: plasticImage
-              },
-              { 
-                name: 'Metal', 
-                image: metalImage
-              },
-              { 
-                name: 'Paper', 
-                image: scrapImage2
-              },
-              { 
-                name: 'Electronics', 
-                image: electronicImage
-              },
-            ].map((category, index) => (
-              <motion.div
-                key={index}
-                initial={{ x: -20 }}
-                animate={{ x: 0 }}
-                transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
-                className="flex-shrink-0 w-32 md:w-40 lg:w-48"
-              >
-                <div 
-                  className="rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
-                  style={{ backgroundColor: '#ffffff' }}
-                >
-                  <div className="aspect-square relative overflow-hidden bg-gray-100" style={{ width: '100%' }}>
-                    <img
-                      src={category.image}
-                      alt={category.name}
-                      className="w-full h-full object-cover"
-                      style={{ display: 'block' }}
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="p-3 md:p-4">
-                    <p 
-                      className="text-sm md:text-base font-semibold text-center"
-                      style={{ color: '#2d3748' }}
-                    >
-                      {category.name}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
       {/* Live Price Ticker */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         <PriceTicker />
       </div>
 
-      {/* Micro Demo Animation */}
+      {/* Customer Solutions */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-        <MicroDemo />
+        <CustomerSolutions />
       </div>
 
       {/* Trust Signals */}

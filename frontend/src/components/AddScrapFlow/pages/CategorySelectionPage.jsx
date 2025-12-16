@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import plasticImage from '../../../assets/plastic.jpg';
 import metalImage from '../../../assets/metal.jpg';
 import scrapImage2 from '../../../modules/user/assets/scrab.png';
@@ -8,6 +8,7 @@ import electronicImage from '../../../modules/user/assets/electronicbg.png';
 
 const CategorySelectionPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [marketPrices, setMarketPrices] = useState({});
   const [selectedCategories, setSelectedCategories] = useState([]);
 
@@ -63,6 +64,20 @@ const CategorySelectionPage = () => {
       price: marketPrices['Aluminium'] || 180
     },
   ];
+
+  // Auto-select category if coming from AllCategoriesPage
+  useEffect(() => {
+    const preSelectedCategoryName = location.state?.preSelectedCategory;
+    if (preSelectedCategoryName && Object.keys(marketPrices).length > 0) {
+      const categoryToSelect = categories.find(
+        cat => cat.name.toLowerCase() === preSelectedCategoryName.toLowerCase()
+      );
+      if (categoryToSelect && selectedCategories.length === 0) {
+        setSelectedCategories([categoryToSelect]);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, marketPrices]);
 
   const handleCategoryClick = (category) => {
     setSelectedCategories(prev => {

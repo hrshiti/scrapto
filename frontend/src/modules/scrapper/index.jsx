@@ -7,6 +7,7 @@ import KYCStatusPage from './components/KYCStatusPage';
 import SubscriptionPlanPage from './components/SubscriptionPlanPage';
 import ActiveRequestsPage from './components/ActiveRequestsPage';
 import ActiveRequestDetailsPage from './components/ActiveRequestDetailsPage';
+import MyActiveRequestsPage from './components/MyActiveRequestsPage';
 import ReferAndEarn from './components/ReferAndEarn';
 import ScrapperHelpSupport from './components/ScrapperHelpSupport';
 import ScrapperProfile from './components/ScrapperProfile';
@@ -87,6 +88,9 @@ const ScrapperModule = () => {
       
       {/* Active Requests Route - for when scrapper is online */}
       <Route path="/active-requests" element={<ActiveRequestsPage />} />
+      
+      {/* My Active Requests List Route - shows all active requests */}
+      <Route path="/my-active-requests" element={<MyActiveRequestsPage />} />
       
       {/* Active Request Details Route - after accepting a request */}
       <Route path="/active-request/:requestId" element={<ActiveRequestDetailsPage />} />

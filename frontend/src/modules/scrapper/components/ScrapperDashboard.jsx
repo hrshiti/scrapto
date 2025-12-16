@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { FaGift, FaChartLine } from 'react-icons/fa';
 import PriceTicker from '../../user/components/PriceTicker';
+import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRequest } from '../../shared/utils/scrapperRequestUtils';
 
 const ScrapperDashboard = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const ScrapperDashboard = () => {
   const [marketSubStatus, setMarketSubStatus] = useState('inactive'); // for real-time market price subscription
 
   const [completedOrders, setCompletedOrders] = useState([]);
+  const [activeRequests, setActiveRequests] = useState([]);
 
   // Function to load and update dashboard data
   const loadDashboardData = () => {
@@ -63,11 +65,13 @@ const ScrapperDashboard = () => {
       completedPickups: orders.length
     }));
     
-    // Check for active request
-    const activeRequest = localStorage.getItem('activeRequest');
+    // Check for active requests using new utility
+    const requests = getScrapperAssignedRequests();
+    const activeCount = requests.filter(req => req.status !== 'completed').length;
+    setActiveRequests(requests.filter(req => req.status !== 'completed'));
     setStats(prev => ({
       ...prev,
-      activeRequests: activeRequest ? 1 : 0
+      activeRequests: activeCount
     }));
 
     // Load separate market price subscription status (different from onboarding subscription)
@@ -145,6 +149,8 @@ const ScrapperDashboard = () => {
     }
     
     // If all checks pass (KYC verified + Subscription active), allow dashboard to render
+    // Migrate old activeRequest to new format (one-time)
+    migrateOldActiveRequest();
     // Load dashboard data when component mounts
     loadDashboardData();
   }, [navigate]);
@@ -372,6 +378,118 @@ const ScrapperDashboard = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Active Requests List */}
+        {activeRequests.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="rounded-2xl p-4 md:p-6 shadow-lg"
+            style={{ backgroundColor: '#ffffff' }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                Active Requests
+              </h2>
+              <button
+                onClick={() => navigate('/scrapper/my-active-requests')}
+                className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
+                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
+              >
+                View All
+              </button>
+            </div>
+            <div className="space-y-3">
+              {activeRequests.slice(0, 3).map((request, index) => {
+                const statusColors = {
+                  accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: 'Accepted' },
+                  picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: 'Picked Up' },
+                  payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'Payment Pending' }
+                };
+                const statusConfig = statusColors[request.status] || statusColors.accepted;
+                const pickupTime = request.pickupSlot
+                  ? `${request.pickupSlot.dayName}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
+                  : request.preferredTime || 'Time not specified';
+
+                return (
+                  <motion.div
+                    key={request.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 * index }}
+                    onClick={() => navigate(`/scrapper/active-request/${request.id}`, { state: { request }, replace: false })}
+                    className="p-3 md:p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md"
+                    style={{
+                      backgroundColor: 'rgba(100, 148, 110, 0.05)',
+                      borderColor: 'rgba(100, 148, 110, 0.2)'
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}>
+                            <span className="text-xs font-bold" style={{ color: '#64946e' }}>
+                              {request.userName?.[0]?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
+                              {request.userName || 'Unknown User'}
+                            </p>
+                            <p className="text-xs truncate" style={{ color: '#718096' }}>
+                              {request.scrapType || 'Scrap'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="ml-10 space-y-1">
+                          {request.location?.address && (
+                            <div className="flex items-center gap-1">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+                              </svg>
+                              <p className="text-xs truncate" style={{ color: '#718096' }}>
+                                {request.location.address}
+                              </p>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
+                              <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            <p className="text-xs truncate" style={{ color: '#718096' }}>
+                              {pickupTime}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold mb-1" style={{ color: '#64946e' }}>
+                          {request.estimatedEarnings || '₹0'}
+                        </p>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                          style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
+                        >
+                          {statusConfig.label}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+            {activeRequests.length > 3 && (
+              <button
+                onClick={() => navigate('/scrapper/my-active-requests')}
+                className="w-full mt-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
+              >
+                View {activeRequests.length - 3} more request{activeRequests.length - 3 > 1 ? 's' : ''}
+              </button>
+            )}
+          </motion.div>
+        )}
 
         {/* Subscription Status */}
         <motion.div

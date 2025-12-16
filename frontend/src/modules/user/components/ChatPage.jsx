@@ -10,8 +10,23 @@ const ChatPage = () => {
   const [scrapperInfo, setScrapperInfo] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   useEffect(() => {
+    // Prevent body scrolling when chat page is open
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalHeight = document.body.style.height;
+    
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.height = '100%';
+    document.body.style.width = '100%';
+    
+    // Prevent scrolling on html element too
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.height = '100%';
+    
     // Get scrapper info from location state or sessionStorage
     const storedRequest = sessionStorage.getItem('scrapRequest');
     if (storedRequest) {
@@ -36,11 +51,23 @@ const ChatPage = () => {
         timestamp: new Date(Date.now() - 60000 * 5) // 5 minutes ago
       }
     ]);
+    
+    // Cleanup: restore original styles when component unmounts
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.height = originalHeight;
+      document.body.style.width = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.height = '';
+    };
   }, [location]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSendMessage = () => {
@@ -107,14 +134,38 @@ const ChatPage = () => {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen w-full flex flex-col"
-      style={{ backgroundColor: '#f4ebe2' }}
+      className="fixed inset-0 w-full h-full flex flex-col"
+      style={{ 
+        backgroundColor: '#f4ebe2',
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        touchAction: 'none'
+      }}
+      onTouchMove={(e) => {
+        // Prevent page scroll on touch move outside messages area
+        if (e.target === e.currentTarget || !messagesContainerRef.current?.contains(e.target)) {
+          e.preventDefault();
+        }
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 md:p-6 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)', backgroundColor: '#ffffff' }}>
+      {/* Fixed Header */}
+      <div 
+        className="flex items-center justify-between px-4 py-3 border-b z-10 flex-shrink-0"
+        style={{ 
+          borderColor: 'rgba(100, 148, 110, 0.2)', 
+          backgroundColor: '#ffffff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+        }}
+      >
         <button
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:opacity-70"
           style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
@@ -124,23 +175,32 @@ const ChatPage = () => {
         
         {scrapperInfo && (
           <div className="flex items-center gap-3 flex-1 px-3">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center text-lg md:text-xl font-bold"
-              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold relative"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.15)', color: '#64946e' }}
             >
               {scrapperInfo.name.split(' ').map(n => n[0]).join('')}
+              {/* Online indicator */}
+              <div 
+                className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
+                style={{ 
+                  backgroundColor: '#10b981',
+                  borderColor: '#ffffff'
+                }}
+              />
             </div>
-            <div className="flex-1">
-              <h3 className="text-base md:text-lg font-semibold" style={{ color: '#2d3748' }}>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold truncate" style={{ color: '#2d3748' }}>
                 {scrapperInfo.name}
               </h3>
               <div className="flex items-center gap-1">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"/>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fbbf24"/>
                 </svg>
-                <span className="text-xs md:text-sm font-medium" style={{ color: '#718096' }}>
+                <span className="text-xs font-medium" style={{ color: '#718096' }}>
                   {scrapperInfo.rating}
                 </span>
-                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                <span className="text-xs" style={{ color: '#10b981' }}>
                   • Online
                 </span>
               </div>
@@ -154,7 +214,7 @@ const ChatPage = () => {
               window.location.href = `tel:${scrapperInfo.phone}`;
             }
           }}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors active:opacity-70"
           style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
@@ -163,77 +223,119 @@ const ChatPage = () => {
         </button>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-4">
-        {messages.map((message) => (
-          <motion.div
-            key={message.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className="flex items-end gap-2 max-w-[80%] md:max-w-[70%]">
-              {message.sender === 'scrapper' && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
-                >
-                  {scrapperInfo?.name?.split(' ').map(n => n[0]).join('') || 'S'}
-                </div>
-              )}
-              <div className="flex flex-col">
-                <div
-                  className={`rounded-2xl px-4 py-2 md:px-5 md:py-3 shadow-sm ${
-                    message.sender === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                  }`}
-                  style={{
-                    backgroundColor: message.sender === 'user' ? '#64946e' : '#ffffff',
-                    color: message.sender === 'user' ? '#ffffff' : '#2d3748'
+      {/* Scrollable Messages Area - Only this area scrolls */}
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-4"
+        style={{ 
+          backgroundColor: '#f4ebe2',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+          overscrollBehavior: 'contain',
+          overscrollBehaviorY: 'contain'
+        }}
+        onTouchStart={(e) => {
+          // Allow scrolling only in messages area
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          // Allow scrolling only in messages area
+          e.stopPropagation();
+        }}
+      >
+        <div className="space-y-3 pb-2">
+          {messages.map((message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.2 }}
+              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`flex items-end gap-2 max-w-[85%] ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                {/* Avatar */}
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ 
+                    backgroundColor: message.sender === 'user' 
+                      ? 'rgba(100, 148, 110, 0.2)' 
+                      : 'rgba(100, 148, 110, 0.15)', 
+                    color: '#64946e' 
                   }}
                 >
-                  <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap">
-                    {message.text}
-                  </p>
+                  {message.sender === 'user' 
+                    ? 'U' 
+                    : (scrapperInfo?.name?.split(' ').map(n => n[0]).join('') || 'S')}
                 </div>
-                <span className="text-xs mt-1 px-2" style={{ color: '#718096' }}>
-                  {formatTime(message.timestamp)}
-                </span>
+                
+                {/* Message Bubble */}
+                <div className="flex flex-col">
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 shadow-sm ${
+                      message.sender === 'user' 
+                        ? 'rounded-tr-md' 
+                        : 'rounded-tl-md'
+                    }`}
+                    style={{
+                      backgroundColor: message.sender === 'user' 
+                        ? '#64946e' 
+                        : '#ffffff',
+                      color: message.sender === 'user' 
+                        ? '#ffffff' 
+                        : '#2d3748',
+                      boxShadow: message.sender === 'user'
+                        ? '0 2px 8px rgba(100, 148, 110, 0.2)'
+                        : '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {message.text}
+                    </p>
+                  </div>
+                  <span 
+                    className={`text-[10px] mt-1 px-1 ${message.sender === 'user' ? 'text-right' : 'text-left'}`}
+                    style={{ color: '#9ca3af' }}
+                  >
+                    {formatTime(message.timestamp)}
+                  </span>
+                </div>
               </div>
-              {message.sender === 'user' && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
-                >
-                  U
-                </div>
-              )}
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 md:p-6 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)', backgroundColor: '#ffffff' }}>
+      {/* Fixed Input Area */}
+      <div 
+        className="px-4 py-3 border-t flex-shrink-0 z-10"
+        style={{ 
+          borderColor: 'rgba(100, 148, 110, 0.2)', 
+          backgroundColor: '#ffffff',
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.05)'
+        }}
+      >
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
               ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Type a message..."
               rows={1}
-              className="w-full py-3 px-4 pr-12 rounded-xl border-2 focus:outline-none focus:ring-2 resize-none text-sm md:text-base"
+              className="w-full py-2.5 px-4 rounded-2xl border-2 focus:outline-none resize-none text-sm"
               style={{
                 borderColor: inputMessage ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                 color: '#2d3748',
-                backgroundColor: '#f9f9f9',
-                minHeight: '48px',
-                maxHeight: '120px'
+                backgroundColor: '#f9fafb',
+                minHeight: '44px',
+                maxHeight: '100px',
+                transition: 'all 0.2s ease'
               }}
               onInput={(e) => {
                 e.target.style.height = 'auto';
-                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
               }}
             />
           </div>
@@ -242,16 +344,25 @@ const ChatPage = () => {
             whileTap={{ scale: 0.95 }}
             onClick={handleSendMessage}
             disabled={inputMessage.trim() === ''}
-            className="w-12 h-12 rounded-full flex items-center justify-center shadow-md transition-all duration-300 flex-shrink-0"
+            className="w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0 disabled:opacity-50"
             style={{
               backgroundColor: inputMessage.trim() ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-              color: '#ffffff'
+              color: '#ffffff',
+              boxShadow: inputMessage.trim() 
+                ? '0 4px 12px rgba(100, 148, 110, 0.3)' 
+                : 'none'
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
+            {inputMessage.trim() ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            )}
           </motion.button>
         </div>
       </div>
@@ -260,4 +371,3 @@ const ChatPage = () => {
 };
 
 export default ChatPage;
-

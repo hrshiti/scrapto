@@ -273,7 +273,7 @@ const ScrapperProfile = () => {
               {/* Requests & history */}
               <button
                 type="button"
-                onClick={() => navigate('/scrapper/active-requests')}
+                onClick={() => navigate('/scrapper/my-active-requests')}
                 className="w-full flex items-center justify-between px-3 md:px-4 py-3 md:py-3.5 text-left"
               >
                 <div>

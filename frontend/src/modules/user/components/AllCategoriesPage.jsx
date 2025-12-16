@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { FaArrowLeft } from 'react-icons/fa';
 import plasticImage from '../assets/plastic.jpg';
 import metalImage from '../assets/metal.jpg';
 import scrapImage2 from '../assets/scrab.png';
 import electronicImage from '../assets/electronicbg.png';
-import Header from './Header';
 
 const AllCategoriesPage = () => {
   const navigate = useNavigate();
@@ -73,8 +73,10 @@ const AllCategoriesPage = () => {
   ];
 
   const handleCategoryClick = (category) => {
-    // Navigate to category selection page with this category pre-selected
-    navigate('/add-scrap/category');
+    // Navigate to category selection page
+    navigate('/add-scrap/category', { 
+      state: { preSelectedCategory: category.name } 
+    });
   };
 
   return (
@@ -82,29 +84,32 @@ const AllCategoriesPage = () => {
       className="min-h-screen w-full relative z-0 pb-20 md:pb-0 overflow-x-hidden"
       style={{ backgroundColor: '#f4ebe2' }}
     >
-      {/* Header */}
-      <Header />
-
-      {/* Page Title */}
-      <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mt-6 md:mt-8 mb-6 md:mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 
-            className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2"
-            style={{ color: '#2d3748' }}
+      {/* Sticky Header with Back Button */}
+      <div className="sticky top-0 z-40 px-4 md:px-6 lg:px-8 py-4 md:py-6" style={{ backgroundColor: '#f4ebe2' }}>
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          <button
+            onClick={() => navigate('/')}
+            className="p-2 rounded-full hover:opacity-70 transition-opacity flex-shrink-0"
+            style={{ color: '#64946e', backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            aria-label="Go back"
           >
-            All Categories
-          </h1>
-          <p 
-            className="text-base md:text-lg"
-            style={{ color: '#718096' }}
-          >
-            Browse all available scrap categories
-          </p>
-        </motion.div>
+            <FaArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 
+              className="text-xl md:text-2xl font-bold"
+              style={{ color: '#2d3748' }}
+            >
+              All Categories
+            </h1>
+            <p 
+              className="text-sm md:text-base mt-0.5"
+              style={{ color: '#718096' }}
+            >
+              Browse all available scrap categories
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Categories Grid */}

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../../modules/shared/utils/referralUtils';
@@ -71,7 +71,7 @@ const PriceConfirmationPage = () => {
     return days;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -181,7 +181,7 @@ const PriceConfirmationPage = () => {
       console.error('Error stack:', error.stack);
       setIsSubmitting(false);
     }
-  };
+  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, estimatedPayout, notes, preferredTime, user, navigate]);
 
   const timeSlots = [
     '9:00 AM - 11:00 AM',
@@ -239,7 +239,7 @@ const PriceConfirmationPage = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6">
+      <div className="flex-1 overflow-y-auto p-3 md:p-6 pb-24 md:pb-6">
         {/* Summary Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -391,7 +391,9 @@ const PriceConfirmationPage = () => {
                   <button
                     key={day.iso}
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setSelectedDate(day.iso);
                       // Keep preferredTime string in sync for older consumers
                       if (selectedSlot) {
@@ -457,7 +459,9 @@ const PriceConfirmationPage = () => {
                   <button
                     key={slot}
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       const newSlot = slot === selectedSlot ? '' : slot;
                       setSelectedSlot(newSlot);
                       if (selectedDate && newSlot) {
@@ -538,8 +542,17 @@ const PriceConfirmationPage = () => {
         </div>
       </div>
 
-      {/* Footer with Apply Button */}
-      <div className="p-3 md:p-6 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+      {/* Footer with Apply Button - Fixed on Mobile */}
+      <div 
+        className="fixed md:relative bottom-0 left-0 right-0 p-3 md:p-6 border-t"
+        style={{ 
+          borderColor: 'rgba(100, 148, 110, 0.2)',
+          backgroundColor: '#f4ebe2',
+          pointerEvents: 'auto',
+          WebkitTapHighlightColor: 'transparent',
+          zIndex: 9999
+        }}
+      >
         {isSubmitting ? (
           <div className="w-full py-3 md:py-4 rounded-full flex items-center justify-center">
             <motion.div
@@ -557,11 +570,32 @@ const PriceConfirmationPage = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            onClick={handleSubmit}
+            onClick={(e) => {
+              console.log('Button clicked, isSubmitting:', isSubmitting, 'selectedDate:', selectedDate, 'selectedSlot:', selectedSlot);
+              e.preventDefault();
+              e.stopPropagation();
+              if (!isSubmitting) {
+                console.log('Calling handleSubmit');
+                handleSubmit(e);
+              } else {
+                console.log('Already submitting, ignoring click');
+              }
+            }}
             type="button"
             disabled={isSubmitting}
             className="w-full py-4 md:py-5 rounded-full text-white font-bold text-base md:text-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: '#64946e', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+            style={{ 
+              backgroundColor: '#64946e', 
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              pointerEvents: 'auto',
+              zIndex: 50,
+              position: 'relative'
+            }}
+            whileTap={{ scale: 0.98 }}
             onMouseEnter={(e) => {
               if (!isSubmitting) {
                 e.currentTarget.style.backgroundColor = '#5a8263';

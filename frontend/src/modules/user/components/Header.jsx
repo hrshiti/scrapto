@@ -9,7 +9,7 @@ const Header = () => {
       initial={{ y: -10 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      className="px-4 md:px-6 lg:px-8 py-4 md:py-6"
+      className="px-4 md:px-6 lg:px-8 py-2 md:py-3"
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div>

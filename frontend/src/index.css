@@ -10,9 +10,9 @@
   display: none;
 }
 
-/* Smooth scrolling */
+/* Smooth scrolling - handled by Lenis */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* Let Lenis handle smooth scrolling */
 }
 
 /* Global styles - prevent blur and color override */

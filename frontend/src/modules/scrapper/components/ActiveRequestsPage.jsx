@@ -4,6 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import {
+  addScrapperRequest,
+  checkTimeConflict,
+  getScrapperAssignedRequests,
+  migrateOldActiveRequest
+} from '../../shared/utils/scrapperRequestUtils';
 
 // Fix for default marker icons in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -32,8 +38,11 @@ const ActiveRequestsPage = () => {
   const [incomingRequest, setIncomingRequest] = useState(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [timeConflict, setTimeConflict] = useState(false);
+  const [existingRequests, setExistingRequests] = useState([]);
+  const [showActiveRequestsPanel, setShowActiveRequestsPanel] = useState(false);
 
-  // Check authentication first
+  // Check authentication first and migrate old data
   useEffect(() => {
     const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
     const scrapperUser = localStorage.getItem('scrapperUser');
@@ -41,6 +50,13 @@ const ActiveRequestsPage = () => {
       navigate('/scrapper/login', { replace: true });
       return;
     }
+    
+    // Migrate old activeRequest to new format (one-time)
+    migrateOldActiveRequest();
+    
+    // Load existing requests
+    const requests = getScrapperAssignedRequests();
+    setExistingRequests(requests);
   }, [navigate]);
 
   // Get current location
@@ -153,6 +169,13 @@ const ActiveRequestsPage = () => {
       
       setIncomingRequest(mockRequest);
       setIsSlideOpen(true);
+      
+      // Check for time conflicts
+      const requests = getScrapperAssignedRequests();
+      const hasConflict = checkTimeConflict(mockRequest, requests);
+      setTimeConflict(hasConflict);
+      setExistingRequests(requests);
+      
       // Start playing sound
       setAudioPlaying(true);
     }, 3000);
@@ -248,21 +271,42 @@ const ActiveRequestsPage = () => {
 
   // Handle request accept
   const handleAcceptRequest = () => {
+    if (!incomingRequest) return;
+    
+    // Check for time conflict one more time before accepting
+    const requests = getScrapperAssignedRequests();
+    const hasConflict = checkTimeConflict(incomingRequest, requests);
+    
+    if (hasConflict) {
+      // Show warning but allow user to proceed if they want
+      const proceed = window.confirm(
+        '⚠️ Time Conflict Detected!\n\n' +
+        'This request overlaps with one of your existing requests.\n\n' +
+        'Do you still want to accept this request?'
+      );
+      
+      if (!proceed) {
+        return; // User cancelled
+      }
+    }
+    
     console.log('✅ Request accepted!', incomingRequest);
     
     // Stop sound & vibration immediately
     setAudioPlaying(false);
     
-    // Store request in localStorage
-    if (incomingRequest) {
-      localStorage.setItem('activeRequest', JSON.stringify(incomingRequest));
+    try {
+      // Add request using new utility function
+      const addedRequest = addScrapperRequest(incomingRequest);
+      
+      // Navigate to my active requests list page
+      navigate('/scrapper/my-active-requests', {
+        replace: false
+      });
+    } catch (error) {
+      console.error('Failed to accept request:', error);
+      alert('Failed to accept request. Please try again.');
     }
-    
-    // Navigate to request details page
-    navigate(`/scrapper/active-request/${incomingRequest?.id}`, {
-      state: { request: incomingRequest },
-      replace: true
-    });
   };
 
   // Handle request reject
@@ -308,9 +352,24 @@ const ActiveRequestsPage = () => {
           </svg>
         </button>
         
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: '#10b981' }} />
-          <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>Online</span>
+        <div className="flex items-center gap-3">
+          {/* Active Requests Button */}
+          {existingRequests.length > 0 && (
+            <button
+              onClick={() => setShowActiveRequestsPanel(!showActiveRequestsPanel)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold shadow-md flex items-center gap-1.5"
+              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              {existingRequests.length} Active
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: '#10b981' }} />
+            <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>Online</span>
+          </div>
         </div>
       </div>
 
@@ -347,6 +406,24 @@ const ActiveRequestsPage = () => {
                 </Popup>
               </Marker>
             )}
+            {/* Show markers for existing active requests */}
+            {existingRequests.map((req) => (
+              <Marker key={req.id} position={[req.location.lat, req.location.lng]}>
+                <Popup>
+                  <div>
+                    <p className="font-semibold">{req.userName}</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{req.scrapType}</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{req.location.address}</p>
+                    <button
+                      onClick={() => navigate(`/scrapper/active-request/${req.id}`, { state: { request: req } })}
+                      className="mt-2 px-2 py-1 text-xs rounded bg-green-500 text-white"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
           </MapContainer>
         ) : (
           <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#e2e8f0' }}>
@@ -438,6 +515,30 @@ const ActiveRequestsPage = () => {
                   </div>
                 </div>
               )}
+
+              {/* Time Conflict Warning */}
+              {timeConflict && (
+                <div className="mt-2 p-2 rounded-lg flex items-start gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }}>
+                    <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold" style={{ color: '#fca5a5' }}>Time Conflict</p>
+                    <p className="text-[11px] mt-0.5" style={{ color: '#fecaca' }}>
+                      This request overlaps with an existing pickup. You can still accept it.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Active Requests Count */}
+              {existingRequests.length > 0 && (
+                <div className="mt-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                  <p className="text-xs" style={{ color: '#6ee7b7' }}>
+                    You have {existingRequests.length} active request{existingRequests.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
             </div>
 
           </div>
@@ -462,6 +563,101 @@ const ActiveRequestsPage = () => {
               </svg>
               Accept Order
             </motion.button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Active Requests Panel - Floating */}
+      {existingRequests.length > 0 && (
+        <motion.div
+          initial={{ x: showActiveRequestsPanel ? 0 : '100%' }}
+          animate={{ x: showActiveRequestsPanel ? 0 : '100%' }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="absolute top-20 right-4 z-30 w-80 max-w-[calc(100%-2rem)] rounded-2xl shadow-2xl"
+          style={{ backgroundColor: '#ffffff', maxHeight: 'calc(100vh - 6rem)' }}
+        >
+          <div className="p-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold" style={{ color: '#2d3748' }}>
+                Active Requests ({existingRequests.length})
+              </h3>
+              <button
+                onClick={() => setShowActiveRequestsPanel(false)}
+                className="w-6 h-6 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444' }}>
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 10rem)' }}>
+            {existingRequests.map((request) => {
+              const statusColors = {
+                accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: 'Accepted' },
+                picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: 'Picked Up' },
+                payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'Payment Pending' }
+              };
+              const statusConfig = statusColors[request.status] || statusColors.accepted;
+              const pickupTime = request.pickupSlot
+                ? `${request.pickupSlot.dayName}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
+                : request.preferredTime || 'Time not specified';
+
+              return (
+                <motion.div
+                  key={request.id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowActiveRequestsPanel(false);
+                    navigate(`/scrapper/active-request/${request.id}`, { state: { request } });
+                  }}
+                  className="p-3 mb-2 rounded-xl border cursor-pointer transition-all"
+                  style={{
+                    backgroundColor: 'rgba(100, 148, 110, 0.05)',
+                    borderColor: 'rgba(100, 148, 110, 0.2)'
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}>
+                        <span className="text-xs font-bold" style={{ color: '#64946e' }}>
+                          {request.userName?.[0]?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
+                          {request.userName || 'Unknown User'}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: '#718096' }}>
+                          {request.scrapType || 'Scrap'}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                      style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
+                    >
+                      {statusConfig.label}
+                    </span>
+                  </div>
+                  <div className="ml-10 space-y-1">
+                    <p className="text-xs font-bold" style={{ color: '#64946e' }}>
+                      {request.estimatedEarnings || '₹0'}
+                    </p>
+                    {request.location?.address && (
+                      <p className="text-xs truncate" style={{ color: '#718096' }}>
+                        📍 {request.location.address}
+                      </p>
+                    )}
+                    <p className="text-xs truncate" style={{ color: '#718096' }}>
+                      🕐 {pickupTime}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}

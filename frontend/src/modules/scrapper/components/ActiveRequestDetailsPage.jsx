@@ -1,8 +1,14 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
+import {
+  getScrapperRequestById,
+  updateScrapperRequest,
+  removeScrapperRequest,
+  getScrapperAssignedRequests
+} from '../../shared/utils/scrapperRequestUtils';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -38,6 +44,7 @@ function MapBounds({ scrapperLocation, userLocation }) {
 const ActiveRequestDetailsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { requestId } = useParams();
   const { user } = useAuth();
   const [requestData, setRequestData] = useState(null);
   const [scrapperLocation, setScrapperLocation] = useState(null);
@@ -50,6 +57,8 @@ const ActiveRequestDetailsPage = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'pickup', 'payment', 'complete'
   const [confirmMessage, setConfirmMessage] = useState('');
+  const [allActiveRequests, setAllActiveRequests] = useState([]);
+  const [currentRequestIndex, setCurrentRequestIndex] = useState(-1);
 
   // Check authentication first
   useEffect(() => {
@@ -61,9 +70,30 @@ const ActiveRequestDetailsPage = () => {
     }
   }, [navigate]);
 
-  // Get request data from navigation state or localStorage
+  // Get request data from navigation state, URL params, or array
   useEffect(() => {
-    const request = location.state?.request || JSON.parse(localStorage.getItem('activeRequest') || 'null');
+    let request = null;
+    
+    // First try navigation state
+    if (location.state?.request) {
+      request = location.state.request;
+    }
+    // Then try to get from array using requestId from URL
+    else if (requestId) {
+      request = getScrapperRequestById(requestId);
+    }
+    // Fallback to old localStorage format (for migration)
+    else {
+      const oldRequest = localStorage.getItem('activeRequest');
+      if (oldRequest) {
+        try {
+          request = JSON.parse(oldRequest);
+        } catch (e) {
+          console.error('Failed to parse old activeRequest', e);
+        }
+      }
+    }
+    
     if (request) {
       setRequestData(request);
       // Set user's pickup location as live location
@@ -73,18 +103,69 @@ const ActiveRequestDetailsPage = () => {
       });
       
       // Check if already picked up
-      if (request.status === 'picked_up') {
+      if (request.status === 'picked_up' || request.status === 'payment_pending') {
         setIsPickedUp(true);
         setPaymentStatus(request.paymentStatus || 'pending');
         setFinalAmount(request.finalAmount || request.estimatedEarnings);
         setPaidAmount(request.paidAmount || '');
         setShowPaymentInput(request.paymentStatus === 'pending');
       }
+      
+      // Load all active requests for navigation
+      const allRequests = getScrapperAssignedRequests().filter(req => req.status !== 'completed');
+      setAllActiveRequests(allRequests);
+      const index = allRequests.findIndex(req => req.id === request.id);
+      setCurrentRequestIndex(index);
     } else {
       // If no request data, redirect back to active requests or dashboard
       navigate('/scrapper/active-requests', { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, requestId]);
+
+  // Refresh request data from array periodically (in case updated elsewhere)
+  useEffect(() => {
+    if (!requestData?.id) return;
+    
+    const refreshRequest = () => {
+      const updatedRequest = getScrapperRequestById(requestData.id);
+      if (updatedRequest) {
+        setRequestData(updatedRequest);
+        // Update state based on new request status
+        if (updatedRequest.status === 'picked_up' || updatedRequest.status === 'payment_pending') {
+          setIsPickedUp(true);
+          setPaymentStatus(updatedRequest.paymentStatus || 'pending');
+          setFinalAmount(updatedRequest.finalAmount || updatedRequest.estimatedEarnings);
+          setPaidAmount(updatedRequest.paidAmount || '');
+          setShowPaymentInput(updatedRequest.paymentStatus === 'pending');
+        }
+        
+        // Refresh active requests list
+        const allRequests = getScrapperAssignedRequests().filter(req => req.status !== 'completed');
+        setAllActiveRequests(allRequests);
+        const index = allRequests.findIndex(req => req.id === requestData.id);
+        setCurrentRequestIndex(index);
+      }
+    };
+    
+    // Refresh on focus/visibility
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshRequest();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', refreshRequest);
+    
+    // Also refresh every 5 seconds
+    const interval = setInterval(refreshRequest, 5000);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', refreshRequest);
+      clearInterval(interval);
+    };
+  }, [requestData?.id]);
 
   // Get scrapper's current location
   useEffect(() => {
@@ -198,42 +279,29 @@ const ActiveRequestDetailsPage = () => {
       setFinalAmount(amount);
       setPaymentStatus('pending');
       
-      // Update request status in localStorage
-      const updatedRequest = {
-        ...requestData,
+      // Update request status using utility function
+      const updatedRequest = updateScrapperRequest(requestData.id, {
         status: 'picked_up',
         pickedUpAt: new Date().toISOString(),
         paymentStatus: 'pending',
         finalAmount: amount
-      };
-      localStorage.setItem('activeRequest', JSON.stringify(updatedRequest));
+      });
       setRequestData(updatedRequest);
       setShowPaymentInput(true);
     } else if (confirmAction === 'payment') {
       setPaymentStatus('paid');
       setShowPaymentInput(false);
       
-      // Update request in localStorage
-      const updatedRequest = {
-        ...requestData,
+      // Update request using utility function
+      const updatedRequest = updateScrapperRequest(requestData.id, {
         paymentStatus: 'paid',
         paidAmount: paidAmount,
-        paymentMadeAt: new Date().toISOString()
-      };
-      localStorage.setItem('activeRequest', JSON.stringify(updatedRequest));
+        paymentMadeAt: new Date().toISOString(),
+        status: 'payment_pending' // Update status to payment_pending
+      });
       setRequestData(updatedRequest);
     } else if (confirmAction === 'complete') {
       setPaymentStatus('completed');
-      
-      // Update request in localStorage
-      const updatedRequest = {
-        ...requestData,
-        status: 'completed',
-        paymentStatus: 'completed',
-        completedAt: new Date().toISOString()
-      };
-      localStorage.setItem('activeRequest', JSON.stringify(updatedRequest));
-      setRequestData(updatedRequest);
       
       // Save completed order to scrapper's orders history
       const completedOrder = {
@@ -323,12 +391,21 @@ const ActiveRequestDetailsPage = () => {
         }
       }
       
-      // Clear active request
-      localStorage.removeItem('activeRequest');
+      // Remove request from array using utility function
+      removeScrapperRequest(requestData.id);
+      
+      // Check if there are other active requests
+      const remainingRequests = getScrapperAssignedRequests().filter(req => req.status !== 'completed');
       
       // Redirect after delay
       setTimeout(() => {
-        navigate('/scrapper', { replace: true });
+        if (remainingRequests.length > 0) {
+          // Navigate to my active requests list page
+          navigate('/scrapper/my-active-requests', { replace: true });
+        } else {
+          // No more active requests, go to dashboard
+          navigate('/scrapper', { replace: true });
+        }
       }, 1500);
     }
     
@@ -420,18 +497,69 @@ const ActiveRequestDetailsPage = () => {
       className="min-h-screen w-full relative flex flex-col"
       style={{ backgroundColor: '#f4ebe2' }}
     >
-      {/* Header with Back Button */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center gap-4" style={{ backgroundColor: 'rgba(244, 235, 226, 0.95)' }}>
+      {/* Header with Back Button and Navigation */}
+      <div className="absolute top-0 left-0 right-0 z-20 p-4 flex items-center justify-between" style={{ backgroundColor: 'rgba(244, 235, 226, 0.95)' }}>
+        <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/scrapper/active-requests')}
+          onClick={() => navigate('/scrapper/my-active-requests')}
           className="w-10 h-10 rounded-full flex items-center justify-center shadow-md"
           style={{ backgroundColor: '#ffffff' }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
-            <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-bold" style={{ color: '#2d3748' }}>Active Request</h1>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
+              <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div>
+            <h1 className="text-xl font-bold" style={{ color: '#2d3748' }}>Active Request</h1>
+            {allActiveRequests.length > 1 && (
+              <p className="text-xs" style={{ color: '#718096' }}>
+                {currentRequestIndex + 1} of {allActiveRequests.length}
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {/* Navigation between requests */}
+        {allActiveRequests.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (currentRequestIndex > 0) {
+                  const prevRequest = allActiveRequests[currentRequestIndex - 1];
+                  navigate(`/scrapper/active-request/${prevRequest.id}`, {
+                    state: { request: prevRequest },
+                    replace: true
+                  });
+                }
+              }}
+              disabled={currentRequestIndex <= 0}
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-opacity disabled:opacity-30"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
+                <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                if (currentRequestIndex < allActiveRequests.length - 1) {
+                  const nextRequest = allActiveRequests[currentRequestIndex + 1];
+                  navigate(`/scrapper/active-request/${nextRequest.id}`, {
+                    state: { request: nextRequest },
+                    replace: true
+                  });
+                }
+              }}
+              disabled={currentRequestIndex >= allActiveRequests.length - 1}
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md transition-opacity disabled:opacity-30"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#2d3748' }}>
+                <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Map Container - Full Screen */}
