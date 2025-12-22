@@ -93,7 +93,7 @@ const Profile = ({ onClose }) => {
       title: 'Chat',
       desc: 'Messages with scrappers',
       action: () => {
-        navigate('/chat');
+        navigate('/chats');
         if (onClose) onClose();
       },
     },

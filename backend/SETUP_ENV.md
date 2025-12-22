@@ -16,7 +16,7 @@ If you're getting the error: `secretOrPrivateKey must have a value`, you need to
 ```env
 # Server Configuration
 NODE_ENV=development
-PORT=5000
+PORT=7000
 FRONTEND_URL=http://localhost:5173
 
 # Database Configuration

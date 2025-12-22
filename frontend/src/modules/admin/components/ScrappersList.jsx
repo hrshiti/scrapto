@@ -5,100 +5,65 @@ import {
   FaTruck, FaSearch, FaUserCheck, FaUserTimes, FaEye, FaPhone, 
   FaIdCard, FaStar, FaRupeeSign, FaCheckCircle, FaClock, FaTimesCircle
 } from 'react-icons/fa';
+import { adminAPI } from '../../shared/utils/api';
 
 const ScrappersList = () => {
   const navigate = useNavigate();
   const [scrappers, setScrappers] = useState([]);
   const [filter, setFilter] = useState('all'); // all, verified, pending, rejected, blocked
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadScrappersData();
-  }, []);
+  }, [filter]);
 
-  const loadScrappersData = () => {
-    // Aggregate scrapper data from localStorage
-    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
-    const scrapperUser = localStorage.getItem('scrapperUser');
-    const kycStatus = localStorage.getItem('scrapperKYCStatus');
-    const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-    const scrapperStatus = localStorage.getItem('scrapperStatus') || 'active'; // active | blocked
-    const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-
-    const scrapperList = [];
-
-    // If there's a scrapper, add it
-    if (scrapperAuth === 'true' && scrapperUser) {
-      const user = JSON.parse(scrapperUser);
-      const earnings = JSON.parse(localStorage.getItem('scrapperEarnings') || '{"total": 0}');
-      scrapperList.push({
-        id: 'scrapper_001',
-        name: user.name || 'Scrapper',
-        phone: user.phone || 'N/A',
-        kycStatus: kycStatus || 'not_submitted',
-        status: scrapperStatus,
-        subscriptionStatus: subscriptionStatus || 'not_subscribed',
-        rating: 4.8,
-        totalPickups: completedOrders.length,
-        totalEarnings: earnings.total || 0,
-        vehicleInfo: user.vehicleInfo || 'Not provided',
-        joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      });
-    }
-
-    // Add mock data
-    const mockScrappers = [
-      {
-        id: 'scrapper_002',
-        name: 'Rajesh Kumar',
-        phone: '+91 98765 43210',
-        kycStatus: 'verified',
-        subscriptionStatus: 'active',
-        rating: 4.9,
-        totalPickups: 45,
-        totalEarnings: 125000,
-        vehicleInfo: 'Truck - MH-01-AB-1234',
-        joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'scrapper_003',
-        name: 'Amit Sharma',
-        phone: '+91 98765 43211',
-        kycStatus: 'pending',
-        subscriptionStatus: 'not_subscribed',
-        rating: 0,
-        totalPickups: 0,
-        totalEarnings: 0,
-        vehicleInfo: 'Auto Rickshaw - DL-01-CD-5678',
-        joinedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'scrapper_004',
-        name: 'Priya Patel',
-        phone: '+91 98765 43212',
-        kycStatus: 'verified',
-        subscriptionStatus: 'active',
-        rating: 4.7,
-        totalPickups: 32,
-        totalEarnings: 89000,
-        vehicleInfo: 'Van - GJ-01-EF-9012',
-        joinedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'scrapper_005',
-        name: 'Suresh Reddy',
-        phone: '+91 98765 43213',
-        kycStatus: 'rejected',
-        subscriptionStatus: 'not_subscribed',
-        rating: 0,
-        totalPickups: 0,
-        totalEarnings: 0,
-        vehicleInfo: 'Truck - KA-01-GH-3456',
-        joinedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+  const loadScrappersData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Build query params
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all' && ['pending', 'verified', 'rejected'].includes(filter)) {
+        queryParams.append('status', filter);
       }
-    ];
+      queryParams.append('page', '1');
+      queryParams.append('limit', '100');
 
-    setScrappers([...scrapperList, ...mockScrappers]);
+      const response = await adminAPI.getScrappersWithKyc(queryParams.toString());
+      
+      if (response.success && response.data?.scrappers) {
+        // Transform backend data to frontend format
+        const transformedScrappers = response.data.scrappers.map((scrapper) => ({
+          id: scrapper._id || scrapper.id,
+          name: scrapper.name || 'N/A',
+          phone: scrapper.phone || 'N/A',
+          kycStatus: scrapper.kyc?.status || 'not_submitted',
+          status: scrapper.status || 'active',
+          subscriptionStatus: scrapper.subscription?.status || 'expired',
+          rating: scrapper.rating || 0,
+          totalPickups: scrapper.totalPickups || 0,
+          totalEarnings: scrapper.earnings?.total || 0,
+          vehicleInfo: scrapper.vehicleInfo ? 
+            `${scrapper.vehicleInfo.type || ''} - ${scrapper.vehicleInfo.number || ''}` : 
+            'Not provided',
+          joinedAt: scrapper.createdAt || new Date().toISOString(),
+          kycData: scrapper.kyc || null,
+          subscriptionData: scrapper.subscription || null
+        }));
+        setScrappers(transformedScrappers);
+      } else {
+        setError('Failed to load scrappers');
+        setScrappers([]);
+      }
+    } catch (err) {
+      console.error('Error loading scrappers:', err);
+      setError(err.message || 'Failed to load scrappers');
+      setScrappers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredScrappers = scrappers.filter(scrapper => {
@@ -248,7 +213,45 @@ const ScrappersList = () => {
         </div>
       </motion.div>
 
+      {/* Loading / Error State */}
+      {loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+            Loading scrappers...
+          </p>
+        </motion.div>
+      )}
+
+      {error && !loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <FaTimesCircle className="mx-auto mb-4 text-4xl" style={{ color: '#ef4444' }} />
+          <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
+            Error loading scrappers
+          </h3>
+          <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
+            {error}
+          </p>
+          <button
+            onClick={loadScrappersData}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: '#64946e' }}
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* Scrappers List */}
+      {!loading && !error && (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -340,34 +343,35 @@ const ScrappersList = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => {
+                      onClick={async () => {
                         const nextStatus = scrapper.status === 'blocked' ? 'active' : 'blocked';
                         if (
                           window.confirm(
                             `Are you sure you want to ${scrapper.status === 'blocked' ? 'unblock' : 'block'} this scrapper?`
                           )
                         ) {
-                          // Persist status for primary scrapper stored in localStorage
-                          const stored = localStorage.getItem('scrapperUser');
-                          if (stored) {
-                            const parsed = JSON.parse(stored);
-                            // add status field to scrapperUser so future login checks can read it if needed
-                            parsed.status = nextStatus;
-                            localStorage.setItem('scrapperUser', JSON.stringify(parsed));
+                          try {
+                            const response = await adminAPI.updateScrapperStatus(scrapper.id, nextStatus);
+                            if (response.success) {
+                              // Update local state list
+                              setScrappers((prev) =>
+                                prev.map((s) =>
+                                  s.id === scrapper.id
+                                    ? {
+                                        ...s,
+                                        status: nextStatus
+                                      }
+                                    : s
+                                )
+                              );
+                              alert(`Scrapper ${nextStatus === 'blocked' ? 'blocked' : 'unblocked'} successfully!`);
+                            } else {
+                              throw new Error(response.message || 'Failed to update scrapper status');
+                            }
+                          } catch (error) {
+                            console.error('Error updating scrapper status:', error);
+                            alert(error.message || 'Failed to update scrapper status. Please try again.');
                           }
-                          localStorage.setItem('scrapperStatus', nextStatus);
-
-                          // Update local state list
-                          setScrappers((prev) =>
-                            prev.map((s) =>
-                              s.id === scrapper.id
-                                ? {
-                                    ...s,
-                                    status: nextStatus
-                                  }
-                                : s
-                            )
-                          );
                         }
                       }}
                       className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
@@ -392,6 +396,7 @@ const ScrappersList = () => {
           )}
         </AnimatePresence>
       </motion.div>
+      )}
     </div>
   );
 };

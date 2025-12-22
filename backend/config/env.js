@@ -17,13 +17,12 @@ const requiredEnvVars = [
  * Optional but recommended environment variables
  */
 const recommendedEnvVars = [
-  'REDIS_HOST',
-  'REDIS_PORT',
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
   'RAZORPAY_KEY_ID',
   'RAZORPAY_KEY_SECRET',
+  'RAZORPAY_WEBHOOK_SECRET',
   'FRONTEND_URL'
 ];
 

@@ -13,6 +13,7 @@ import PriceFeedEditor from './components/PriceFeedEditor';
 import ActiveRequests from './components/ActiveRequests';
 import CompletedOrders from './components/CompletedOrders';
 import SubscriptionsList from './components/SubscriptionsList';
+import SubscriptionPlanManagement from './components/SubscriptionPlanManagement';
 import Reports from './components/Reports';
 import AdminProfile from './components/AdminProfile';
 import ReferralsList from './components/ReferralsList';
@@ -76,6 +77,7 @@ const AdminModuleRoutes = () => {
         <Route path="orders" element={<CompletedOrders />} />
         {/* Subscription Management */}
         <Route path="subscriptions" element={<SubscriptionsList />} />
+        <Route path="subscriptions/plans" element={<SubscriptionPlanManagement />} />
         {/* Referral Management */}
         <Route path="referrals" element={<ReferralsList />} />
         <Route path="referrals/settings" element={<ReferralSettings />} />

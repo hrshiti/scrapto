@@ -12,7 +12,10 @@ import HelpSupport from './components/HelpSupport';
 import PriceConfirmationPage from '../../components/AddScrapFlow/pages/PriceConfirmationPage';
 import RequestStatusPage from '../../components/AddScrapFlow/pages/RequestStatusPage';
 import ChatPage from './components/ChatPage';
+import ChatListPage from './components/ChatListPage';
 import AllCategoriesPage from './components/AllCategoriesPage';
+import ReviewOrderPage from './components/ReviewOrderPage';
+import ReviewListPage from './components/ReviewListPage';
 
 const UserModule = () => {
   const { isAuthenticated } = useAuth();
@@ -30,10 +33,14 @@ const UserModule = () => {
       <Route path="/add-scrap/weight" element={<WeightInputPage />} />
       <Route path="/add-scrap/confirm" element={<PriceConfirmationPage />} />
       <Route path="/request-status" element={<RequestStatusPage />} />
+      <Route path="/chats" element={<ChatListPage />} />
+      <Route path="/chat/:chatId" element={<ChatPage />} />
       <Route path="/chat" element={<ChatPage />} />
       <Route path="/my-profile" element={<MyProfilePage />} />
       <Route path="/saved-addresses" element={<SavedAddressesPage />} />
       <Route path="/my-requests" element={<MyRequestsPage />} />
+      <Route path="/review-order/:orderId" element={<ReviewOrderPage />} />
+      <Route path="/my-reviews" element={<ReviewListPage />} />
       <Route path="/help" element={<HelpSupport />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

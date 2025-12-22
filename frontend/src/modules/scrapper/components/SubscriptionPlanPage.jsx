@@ -3,12 +3,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
+import { subscriptionAPI } from '../../shared/utils/api';
 
 const SubscriptionPlanPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentSubscription, setCurrentSubscription] = useState(null);
   
   // Check if user is authenticated as scrapper
   useEffect(() => {
@@ -19,39 +24,87 @@ const SubscriptionPlanPage = () => {
     }
   }, [navigate]);
 
-  const plans = [
-    {
-      id: 'basic',
-      name: 'Basic Plan',
-      price: 99,
-      duration: 'month',
-      features: [
-        'Receive pickup requests',
-        'Basic support',
-        'Standard priority',
-        'Up to 50 pickups/month'
-      ],
-      popular: false
-    },
-    {
-      id: 'pro',
-      name: 'Pro Plan',
-      price: 199,
-      duration: 'month',
-      features: [
-        'Priority pickup requests',
-        '24/7 Premium support',
-        'Higher priority in queue',
-        'Unlimited pickups',
-        'Advanced analytics',
-        'Early access to features'
-      ],
-      popular: true
-    }
-  ];
+  // Fetch plans and current subscription
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch plans
+        const plansRes = await subscriptionAPI.getPlans();
+        if (plansRes.success) {
+          // Transform plans for display
+          const transformedPlans = plansRes.data.plans.map(plan => ({
+            id: plan._id,
+            name: plan.name,
+            description: plan.description,
+            price: plan.price,
+            currency: plan.currency || 'INR',
+            duration: plan.duration,
+            durationType: plan.durationType,
+            features: plan.features || [],
+            maxPickups: plan.maxPickups,
+            isPopular: plan.isPopular || false
+          }));
+          setPlans(transformedPlans);
+        }
+
+        // Fetch current subscription
+        try {
+          const subRes = await subscriptionAPI.getMySubscription();
+          if (subRes.success && subRes.data.subscription) {
+            const sub = subRes.data.subscription;
+            // Check if subscription is active and not expired
+            const expiryDate = sub.expiryDate ? new Date(sub.expiryDate) : null;
+            const now = new Date();
+            if (sub.status === 'active' && expiryDate && expiryDate > now) {
+              setCurrentSubscription(sub);
+              // Update localStorage
+              localStorage.setItem('scrapperSubscriptionStatus', 'active');
+              localStorage.setItem('scrapperSubscription', JSON.stringify({
+                status: sub.status,
+                planId: sub.planId?._id || sub.planId,
+                planName: sub.planId?.name || 'Unknown Plan',
+                startDate: sub.startDate,
+                expiryDate: sub.expiryDate,
+                autoRenew: sub.autoRenew
+              }));
+            } else {
+              localStorage.setItem('scrapperSubscriptionStatus', 'expired');
+            }
+          }
+        } catch (subError) {
+          // Subscription not found or error - that's okay
+          console.log('No active subscription found');
+        }
+      } catch (err) {
+        console.error('Error fetching subscription data:', err);
+        setError(err.message || 'Failed to load subscription plans');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handlePlanSelect = (planId) => {
     setSelectedPlan(planId);
+  };
+
+  const loadRazorpay = () => {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+      document.body.appendChild(script);
+    });
   };
 
   const handleSubscribe = async (e) => {
@@ -69,42 +122,140 @@ const SubscriptionPlanPage = () => {
 
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
-      const selectedPlanData = plans.find(p => p.id === selectedPlan);
-      const subscriptionData = {
-        planId: selectedPlan,
-        planName: selectedPlanData.name,
-        price: selectedPlanData.price,
-        status: 'active',
-        subscribedAt: new Date().toISOString(),
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-      };
+    const selectedPlanData = plans.find(p => p.id === selectedPlan);
+    const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
 
-      // Store subscription in localStorage (frontend only)
-      localStorage.setItem('scrapperSubscription', JSON.stringify(subscriptionData));
-      localStorage.setItem('scrapperSubscriptionStatus', 'active');
+    try {
+      await loadRazorpay();
 
-      // Process subscription milestone
-      const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
-      if (scrapperUser.phone || scrapperUser.id) {
-        try {
-          checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'subscription');
-        } catch (error) {
-          console.error('Error processing milestone:', error);
-        }
+      // Use new subscription API
+      const createRes = await subscriptionAPI.subscribe(selectedPlan);
+
+      if (!createRes.success) {
+        throw new Error(createRes.error || 'Failed to create subscription order');
       }
 
+      const { razorpayOrderId, amount, currency, keyId, paymentId, plan } = createRes.data;
+
+      const options = {
+        key: keyId,
+        amount,
+        currency: currency || 'INR',
+        name: 'Scrapto',
+        description: `${selectedPlanData.name} - ${selectedPlanData.durationType || 'monthly'} subscription`,
+        order_id: razorpayOrderId,
+        prefill: {
+          name: scrapperUser.name || 'Scrapper',
+          email: scrapperUser.email || 'scrapper@example.com',
+          contact: scrapperUser.phone || ''
+        },
+        handler: async (response) => {
+          try {
+            // Use new subscription API for verification
+            const verifyRes = await subscriptionAPI.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+
+            if (!verifyRes.success) {
+              throw new Error(verifyRes.error || 'Payment verification failed');
+            }
+
+            // Update localStorage with subscription data
+            const subscription = verifyRes.data.subscription;
+            localStorage.setItem('scrapperSubscriptionStatus', 'active');
+            localStorage.setItem('scrapperSubscription', JSON.stringify({
+              status: subscription.status,
+              planId: subscription.planId?._id || subscription.planId,
+              planName: verifyRes.data.plan?.name || selectedPlanData.name,
+              startDate: subscription.startDate,
+              expiryDate: subscription.expiryDate,
+              autoRenew: subscription.autoRenew
+            }));
+
+            try {
+              checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'subscription');
+            } catch (err) {
+              console.error('Error processing milestone:', err);
+            }
+
+            alert('Subscription activated successfully!');
+            navigate('/scrapper', { replace: true });
+          } catch (err) {
+            console.error('Verification failed', err);
+            alert(err.message || 'Payment verification failed. Please contact support.');
+            setIsProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          }
+        },
+        notes: {
+          plan: selectedPlanData.name,
+          entityType: 'subscription'
+        },
+        theme: {
+          color: '#64946e'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Subscription payment error:', error);
+      alert(error.message || 'Failed to initiate payment. Please try again.');
       setIsProcessing(false);
-      
-      // Redirect to dashboard (homepage) after subscription
-      // Use window.location to force a full page reload and routing re-evaluation
-      console.log('Subscription saved, redirecting to dashboard...');
-      setTimeout(() => {
-        window.location.href = '/scrapper';
-      }, 100);
-    }, 2000);
+    }
   };
+
+  // Format duration display
+  const formatDuration = (duration, durationType) => {
+    if (durationType === 'monthly') {
+      return duration === 1 ? 'month' : `${duration} months`;
+    } else if (durationType === 'quarterly') {
+      return `${duration} months`;
+    } else if (durationType === 'yearly') {
+      return duration === 12 ? 'year' : `${duration / 12} years`;
+    }
+    return `${duration} days`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="w-12 h-12 rounded-full border-4 border-gray-300 border-t-green-600 mx-auto mb-4"
+          />
+          <p style={{ color: '#718096' }}>Loading subscription plans...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen w-full p-4 md:p-6" style={{ backgroundColor: '#f4ebe2' }}>
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+            <p className="text-red-600 mb-2">Error loading subscription plans</p>
+            <p className="text-sm text-red-500">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -123,12 +274,38 @@ const SubscriptionPlanPage = () => {
           className="text-center mb-8"
         >
           <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
-            Choose Your Plan
+            {currentSubscription ? 'Manage Your Subscription' : 'Choose Your Plan'}
           </h1>
           <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-            Select a subscription plan to start receiving pickup requests
+            {currentSubscription 
+              ? 'Your subscription is active. You can renew or change your plan below.'
+              : 'Select a subscription plan to start receiving pickup requests'}
           </p>
         </motion.div>
+
+        {/* Current Subscription Info */}
+        {currentSubscription && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl p-6 shadow-lg"
+            style={{ backgroundColor: '#ffffff', border: '2px solid #64946e' }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
+                  Current Subscription: {currentSubscription.planId?.name || 'Active Plan'}
+                </h3>
+                <p className="text-sm" style={{ color: '#718096' }}>
+                  Expires: {currentSubscription.expiryDate ? new Date(currentSubscription.expiryDate).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+              <div className="px-4 py-2 rounded-lg font-semibold" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}>
+                Active
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Plans Grid */}
         <div className="grid md:grid-cols-2 gap-4 md:gap-6 mb-6">
@@ -165,7 +342,7 @@ const SubscriptionPlanPage = () => {
                     ₹{plan.price}
                   </span>
                   <span className="text-sm md:text-base" style={{ color: '#718096' }}>
-                    /{plan.duration}
+                    /{formatDuration(plan.duration, plan.durationType)}
                   </span>
                 </div>
               </div>
@@ -229,7 +406,7 @@ const SubscriptionPlanPage = () => {
                 <span>Processing...</span>
               </div>
             ) : (
-              `Subscribe - ₹${selectedPlan ? plans.find(p => p.id === selectedPlan).price : '0'}/month`
+              `Subscribe - ₹${selectedPlan ? plans.find(p => p.id === selectedPlan).price : '0'}/${selectedPlan ? formatDuration(plans.find(p => p.id === selectedPlan).duration, plans.find(p => p.id === selectedPlan).durationType) : 'month'}`
             )}
           </motion.button>
         </motion.div>

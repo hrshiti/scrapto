@@ -1,24 +1,33 @@
 import { motion } from 'framer-motion';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { uploadAPI } from '../../../modules/shared/utils/api';
+import { useAuth } from '../../../modules/shared/context/AuthContext';
 
 const ImageUploadPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const fileInputRef = useRef(null);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
 
-  // Load selected categories from sessionStorage
+  // Guard: require auth and selected categories
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth/login', { replace: true });
+      return;
+    }
+
     const stored = sessionStorage.getItem('selectedCategories');
     if (stored) {
       setSelectedCategories(JSON.parse(stored));
     } else {
       // If no categories selected, redirect back
-      navigate('/add-scrap/category');
+      navigate('/add-scrap/category', { replace: true });
     }
-  }, [navigate]);
+  }, [isAuthenticated, navigate]);
 
   const handleFileSelect = (files) => {
     const imageFiles = Array.from(files).filter(file => 
@@ -67,16 +76,35 @@ const ImageUploadPage = () => {
     setUploadedImages(prev => prev.filter(img => img.id !== imageId));
   };
 
-  const handleContinue = () => {
-    if (uploadedImages.length > 0) {
-      // Store images data for next step
-      const imagesData = uploadedImages.map(img => ({
-        id: img.id,
-        preview: img.preview,
-        name: img.name
+  const handleContinue = async () => {
+    if (uploadedImages.length === 0 || isUploading) return;
+    setIsUploading(true);
+
+    try {
+      const files = uploadedImages.map((img) => img.file).filter(Boolean);
+      const res = await uploadAPI.uploadOrderImages(files);
+      const uploaded = res.data?.files || [];
+
+      const imagesData = uploaded.map((file, idx) => ({
+        id: uploadedImages[idx]?.id || file.publicId || file.url,
+        preview: uploadedImages[idx]?.preview || file.url,
+        name: uploadedImages[idx]?.name || file.publicId || 'image',
+        url: file.url,
+        publicId: file.publicId
       }));
+
       sessionStorage.setItem('uploadedImages', JSON.stringify(imagesData));
       navigate('/add-scrap/weight');
+    } catch (error) {
+      console.error('Upload failed:', error);
+      if (error.status === 401) {
+        alert('Please login again to upload images.');
+        navigate('/auth/login', { replace: true });
+      } else {
+        alert(error.message || 'Failed to upload images. Please try again.');
+      }
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -298,12 +326,13 @@ const ImageUploadPage = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             onClick={handleContinue}
-            className="w-full py-3 md:py-4 rounded-full text-white font-semibold text-sm md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            disabled={isUploading}
+            className="w-full py-3 md:py-4 rounded-full text-white font-semibold text-sm md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-60"
             style={{ backgroundColor: '#64946e' }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
+            onMouseEnter={(e) => { if (!isUploading) e.target.style.backgroundColor = '#5a8263'; }}
+            onMouseLeave={(e) => { if (!isUploading) e.target.style.backgroundColor = '#64946e'; }}
           >
-            Continue with {uploadedImages.length} {uploadedImages.length === 1 ? 'Image' : 'Images'}
+            {isUploading ? 'Uploading...' : `Continue with ${uploadedImages.length} ${uploadedImages.length === 1 ? 'Image' : 'Images'}`}
           </motion.button>
         ) : (
           <p 

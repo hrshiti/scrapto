@@ -44,7 +44,10 @@ const AdminLayout = () => {
     ]},
     { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
     { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
-    { icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions' },
+    { icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions', submenu: [
+      { label: 'All Subscriptions', path: '/admin/subscriptions' },
+      { label: 'Manage Plans', path: '/admin/subscriptions/plans' }
+    ]},
     { icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
       { label: 'All Referrals', path: '/admin/referrals' },
       { label: 'Settings', path: '/admin/referrals/settings' },

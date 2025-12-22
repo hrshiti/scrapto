@@ -5,121 +5,90 @@ import {
   FaFileInvoice, FaSearch, FaClock, FaCheckCircle, FaTimesCircle, 
   FaMapMarkerAlt, FaUser, FaTruck, FaEye, FaBan 
 } from 'react-icons/fa';
+import { adminOrdersAPI } from '../../shared/utils/api';
 
 const ActiveRequests = () => {
   const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, pending, accepted, in_progress
+  const [filter, setFilter] = useState('all'); // all, pending, accepted, in_progress, completed
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadRequests();
   }, []);
 
-  const loadRequests = () => {
-    const list = [];
+  const mapOrderToRequest = (order) => {
+    if (!order) return null;
 
-    // 1) Load real user requests created from frontend flow
-    const storedUserRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
-    storedUserRequests.forEach((req) => {
-      list.push({
-        id: req.id,
-        requestId: req.id,
-        userId: req.userId,
-        userName: req.userName || 'User',
-        userPhone: req.userPhone || (req.userId ? `+91 ${req.userId}` : ''),
-        categories: (req.categories || []).map((c) => (typeof c === 'string' ? c : c.name)),
-        weight: req.weight,
-        estimatedPrice: req.estimatedPayout,
-        status: req.status || 'pending',
-        location: req.location || { address: req.address || 'N/A' },
-        images: req.images || [],
-        createdAt: req.createdAt || req.timestamp,
-        assignmentStatus: req.assignmentStatus || 'unassigned',
-        assignedScrapperId: req.assignedScrapperId || null,
-        assignedScrapperName: req.assignedScrapperName || null
-      });
-    });
+    const categories = Array.isArray(order.scrapItems)
+      ? order.scrapItems.map((item) => item.category).filter(Boolean)
+      : [];
 
-    // 2) Load any single activeRequest (legacy demo data)
-    const activeRequest = localStorage.getItem('activeRequest');
-    if (activeRequest) {
-      const request = JSON.parse(activeRequest);
-      list.push({
-        id: request.id || 'req_001',
-        requestId: request.requestId || 'REQ-2024-001',
-        userId: request.userId || 'user_001',
-        userName: request.userName || 'User',
-        userPhone: request.userPhone || '+91 98765 43210',
-        categories: request.categories || ['Metal', 'Plastic'],
-        weight: request.weight || 25.5,
-        estimatedPrice: request.estimatedPrice || 1250,
-        status: request.status || 'accepted',
-        location: request.location || { lat: 19.0760, lng: 72.8777, address: '123, MG Road, Mumbai' },
-        images: request.images || [],
-        createdAt: request.createdAt || new Date().toISOString(),
-        acceptedAt: request.acceptedAt,
-        scrapperId: request.scrapperId,
-        scrapperName: request.scrapperName,
-        assignmentStatus: request.assignmentStatus || (request.scrapperId ? 'admin_assigned' : 'unassigned'),
-        assignedScrapperId: request.scrapperId || null,
-        assignedScrapperName: request.scrapperName || null
-      });
+    const addressParts = [
+      order.pickupAddress?.street,
+      order.pickupAddress?.city,
+      order.pickupAddress?.state,
+      order.pickupAddress?.pincode
+    ].filter(Boolean);
+
+    const address = addressParts.join(', ');
+
+    // Map backend order status to UI status keys used in filters/badges
+    let uiStatus = 'pending';
+    if (order.status === 'COMPLETED') {
+      uiStatus = 'completed';
+    } else if (order.status === 'IN_PROGRESS') {
+      uiStatus = 'in_progress';
+    } else if (order.assignmentStatus === 'accepted' || order.scrapper) {
+      uiStatus = 'accepted';
     }
 
-    // 3) Add mock data (for demo)
-    const mockRequests = [
-      {
-        id: 'req_002',
-        requestId: 'REQ-2024-002',
-        userId: 'user_002',
-        userName: 'Rahul Sharma',
-        userPhone: '+91 98765 43210',
-        categories: ['Electronics'],
-        weight: 8.2,
-        estimatedPrice: 680,
-        status: 'pending',
-        location: { lat: 19.0760, lng: 72.8777, address: '456 Business Park, Gurgaon' },
-        images: [],
-        createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'req_003',
-        requestId: 'REQ-2024-003',
-        userId: 'user_003',
-        userName: 'Priya Patel',
-        userPhone: '+91 98765 43211',
-        categories: ['Paper'],
-        weight: 15.0,
-        estimatedPrice: 180,
-        status: 'accepted',
-        location: { lat: 19.0760, lng: 72.8777, address: '789 Residential Area, Delhi' },
-        images: [],
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        acceptedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        scrapperId: 'scrapper_002',
-        scrapperName: 'Rajesh Kumar'
-      },
-      {
-        id: 'req_004',
-        requestId: 'REQ-2024-004',
-        userId: 'user_004',
-        userName: 'Amit Kumar',
-        userPhone: '+91 98765 43212',
-        categories: ['Metal', 'Plastic'],
-        weight: 30.5,
-        estimatedPrice: 1500,
-        status: 'in_progress',
-        location: { lat: 19.0760, lng: 72.8777, address: '321 Industrial Area, Mumbai' },
-        images: [],
-        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        acceptedAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-        scrapperId: 'scrapper_003',
-        scrapperName: 'Amit Sharma'
-      }
-    ];
+    const estimatedPrice =
+      typeof order.totalAmount === 'number'
+        ? order.totalAmount
+        : Number(order.totalAmount) || 0;
 
-    setRequests([...list, ...mockRequests]);
+    return {
+      id: order._id,
+      requestId: order._id,
+      userId: order.user?._id || order.user,
+      userName: order.user?.name || 'User',
+      userPhone: order.user?.phone || '',
+      categories,
+      weight: order.totalWeight,
+      estimatedPrice,
+      status: uiStatus,
+      location: {
+        address: address || 'Address not available',
+        lat: order.pickupAddress?.coordinates?.lat || 19.076,
+        lng: order.pickupAddress?.coordinates?.lng || 72.8777
+      },
+      images: (order.images || []).map((img) => img.url || img.preview || img),
+      createdAt: order.createdAt,
+      assignmentStatus: order.assignmentStatus || 'unassigned',
+      assignedScrapperId: order.scrapper?._id || order.scrapper || null,
+      assignedScrapperName: order.scrapper?.name || null
+    };
+  };
+
+  const loadRequests = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // Load orders from admin orders API
+      const response = await adminOrdersAPI.getAll();
+      const rawOrders = response?.data?.orders || response?.orders || response || [];
+
+      const mapped = (rawOrders || []).map(mapOrderToRequest).filter(Boolean);
+      setRequests(mapped);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to load admin active requests:', err);
+      setError(err?.message || 'Failed to load requests');
+      setLoading(false);
+    }
   };
 
   const filteredRequests = requests.filter(request => {
@@ -141,48 +110,28 @@ const ActiveRequests = () => {
     }
   };
 
-  const handleAssignRequest = (request) => {
-    const scrapperName = window.prompt('Assign to scrapper (enter name):');
-    if (!scrapperName) return;
+  const handleAssignRequest = async (request) => {
+    const scrapperId = window.prompt('Assign to scrapper (enter scrapper ID):');
+    if (!scrapperId) return;
 
-    // Update in userRequests storage
-    const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
-    const index = userRequests.findIndex((r) => r.id === request.id);
-    if (index !== -1) {
-      const scrapperId = `scrapper_manual_${scrapperName.replace(/\s+/g, '_').toLowerCase()}`;
-      const historyEntry = {
-        scrapperId,
-        scrapperName,
-        assignedBy: 'admin',
-        assignedAt: new Date().toISOString(),
-        status: 'admin_assigned'
-      };
-
-      const existing = userRequests[index];
-      const history = Array.isArray(existing.assignmentHistory)
-        ? existing.assignmentHistory
-        : [];
-
-      userRequests[index] = {
-        ...existing,
-        assignedScrapperId: scrapperId,
-        assignedScrapperName: scrapperName,
-        assignmentStatus: 'admin_assigned',
-        assignmentHistory: [...history, historyEntry]
-      };
-
-      localStorage.setItem('userRequests', JSON.stringify(userRequests));
+    try {
+      await adminOrdersAPI.assign(request.id, scrapperId);
+      await loadRequests();
+    } catch (err) {
+      console.error('Failed to assign order:', err);
+      alert(err?.message || 'Failed to assign order');
     }
-
-    loadRequests();
   };
 
-  const handleCancelRequest = (requestId) => {
-    if (window.confirm('Are you sure you want to cancel this request?')) {
-      setRequests(prev => prev.filter(req => req.id !== requestId));
-      if (requestId === 'req_001') {
-        localStorage.removeItem('activeRequest');
-      }
+  const handleCancelRequest = async (requestId) => {
+    if (!window.confirm('Are you sure you want to cancel this request?')) return;
+
+    try {
+      await adminOrdersAPI.cancel(requestId, 'Cancelled by admin');
+      await loadRequests();
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      alert(err?.message || 'Failed to cancel order');
     }
   };
 
@@ -246,6 +195,16 @@ const ActiveRequests = () => {
             </div>
           </div>
         </div>
+        {error && (
+          <p className="mt-2 text-xs md:text-sm" style={{ color: '#dc2626' }}>
+            {error}
+          </p>
+        )}
+        {loading && !error && (
+          <p className="mt-2 text-xs md:text-sm" style={{ color: '#718096' }}>
+            Loading requests from server...
+          </p>
+        )}
       </motion.div>
 
       {/* Filters and Search */}

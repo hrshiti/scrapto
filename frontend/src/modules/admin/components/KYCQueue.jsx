@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { FaUserShield, FaCheckCircle, FaTimesCircle, FaEye, FaClock, FaFilter } from 'react-icons/fa';
 import KYCDetailModal from './KYCDetailModal';
+import { adminAPI } from '../../shared/utils/api';
 
 const KYCQueue = () => {
   const [kycList, setKycList] = useState([]);
@@ -9,99 +10,69 @@ const KYCQueue = () => {
   const [selectedKYC, setSelectedKYC] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadKYCData();
-  }, []);
+  }, [filter]);
 
-  const loadKYCData = () => {
-    // Aggregate KYC data from localStorage
-    // In real app, this would come from API
-    const kycStatus = localStorage.getItem('scrapperKYCStatus');
-    const kycData = localStorage.getItem('scrapperKYC');
-    const scrapperUser = localStorage.getItem('scrapperUser');
-
-    const kycItems = [];
-
-    // If there's a KYC submission, add it
-    if (kycData && scrapperUser) {
-      const kyc = JSON.parse(kycData);
-      const user = JSON.parse(scrapperUser);
-      kycItems.push({
-        id: 'kyc_001',
-        scrapperId: 'scrapper_001',
-        scrapperName: user.name || 'Scrapper',
-        scrapperPhone: user.phone || 'N/A',
-        aadhaarNumber: kyc.aadhaarNumber || 'N/A',
-        aadhaarPhotoUrl: kyc.aadhaarPhotoUrl,
-        selfieUrl: kyc.selfieUrl,
-        status: kycStatus || 'pending',
-        submittedAt: kyc.submittedAt || new Date().toISOString(),
-        vehicleInfo: user.vehicleInfo || 'Not provided'
-      });
-    }
-
-    // Add mock data for demonstration
-    const mockKYCs = [
-      {
-        id: 'kyc_002',
-        scrapperId: 'scrapper_002',
-        scrapperName: 'Rajesh Kumar',
-        scrapperPhone: '+91 98765 43210',
-        aadhaarNumber: '1234-****-5678',
-        aadhaarPhotoUrl: 'https://via.placeholder.com/400x300?text=Aadhaar+Card',
-        selfieUrl: 'https://via.placeholder.com/400x400?text=Selfie',
-        status: 'pending',
-        submittedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        vehicleInfo: 'Truck - MH-01-AB-1234'
-      },
-      {
-        id: 'kyc_003',
-        scrapperId: 'scrapper_003',
-        scrapperName: 'Amit Sharma',
-        scrapperPhone: '+91 98765 43211',
-        aadhaarNumber: '2345-****-6789',
-        aadhaarPhotoUrl: 'https://via.placeholder.com/400x300?text=Aadhaar+Card',
-        selfieUrl: 'https://via.placeholder.com/400x400?text=Selfie',
-        status: 'pending',
-        submittedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-        vehicleInfo: 'Auto Rickshaw - DL-01-CD-5678'
-      },
-      {
-        id: 'kyc_004',
-        scrapperId: 'scrapper_004',
-        scrapperName: 'Priya Patel',
-        scrapperPhone: '+91 98765 43212',
-        aadhaarNumber: '3456-****-7890',
-        aadhaarPhotoUrl: 'https://via.placeholder.com/400x300?text=Aadhaar+Card',
-        selfieUrl: 'https://via.placeholder.com/400x400?text=Selfie',
-        status: 'verified',
-        submittedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        verifiedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
-        vehicleInfo: 'Van - GJ-01-EF-9012'
-      },
-      {
-        id: 'kyc_005',
-        scrapperId: 'scrapper_005',
-        scrapperName: 'Suresh Reddy',
-        scrapperPhone: '+91 98765 43213',
-        aadhaarNumber: '4567-****-8901',
-        aadhaarPhotoUrl: 'https://via.placeholder.com/400x300?text=Aadhaar+Card',
-        selfieUrl: 'https://via.placeholder.com/400x400?text=Selfie',
-        status: 'rejected',
-        submittedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        rejectedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        rejectionReason: 'Aadhaar photo unclear',
-        vehicleInfo: 'Truck - KA-01-GH-3456'
+  const loadKYCData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch scrappers with KYC status from backend
+      const queryParams = new URLSearchParams();
+      if (filter !== 'all' && ['pending', 'verified', 'rejected'].includes(filter)) {
+        queryParams.append('status', filter);
       }
-    ];
+      queryParams.append('page', '1');
+      queryParams.append('limit', '100');
 
-    setKycList([...kycItems, ...mockKYCs]);
+      const response = await adminAPI.getScrappersWithKyc(queryParams.toString());
+
+      if (response.success && response.data?.scrappers) {
+        // Transform backend data to frontend format
+        const transformedKYCs = response.data.scrappers
+          .filter(scrapper => scrapper.kyc) // Only show scrappers with KYC data
+          .map((scrapper) => ({
+            id: scrapper._id || scrapper.id,
+            scrapperId: scrapper._id || scrapper.id,
+            scrapperName: scrapper.name || 'N/A',
+            scrapperPhone: scrapper.phone || 'N/A',
+            aadhaarNumber: scrapper.kyc?.aadhaarNumber ?
+              `${scrapper.kyc.aadhaarNumber.substring(0, 4)}-****-${scrapper.kyc.aadhaarNumber.substring(8)}` :
+              'N/A',
+            aadhaarPhotoUrl: scrapper.kyc?.aadhaarPhotoUrl || null,
+            selfieUrl: scrapper.kyc?.selfieUrl || null,
+            licenseUrl: scrapper.kyc?.licenseUrl || null,
+            status: scrapper.kyc?.status || 'not_submitted',
+            submittedAt: scrapper.createdAt || new Date().toISOString(),
+            verifiedAt: scrapper.kyc?.verifiedAt || null,
+            rejectedAt: scrapper.kyc?.status === 'rejected' ? scrapper.updatedAt : null,
+            rejectionReason: scrapper.kyc?.rejectionReason || null,
+            vehicleInfo: scrapper.vehicleInfo ?
+              `${scrapper.vehicleInfo.type || ''} - ${scrapper.vehicleInfo.number || ''}` :
+              'Not provided',
+            kycData: scrapper.kyc || null
+          }));
+        setKycList(transformedKYCs);
+      } else {
+        setError('Failed to load KYC data');
+        setKycList([]);
+      }
+    } catch (err) {
+      console.error('Error loading KYC data:', err);
+      setError(err.message || 'Failed to load KYC data');
+      setKycList([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredKYCs = kycList.filter(kyc => {
     const matchesFilter = filter === 'all' || kyc.status === filter;
-    const matchesSearch = 
+    const matchesSearch =
       kyc.scrapperName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       kyc.scrapperPhone.includes(searchQuery) ||
       kyc.aadhaarNumber.includes(searchQuery);
@@ -109,39 +80,34 @@ const KYCQueue = () => {
   });
 
   const handleViewDetails = (kyc) => {
-    setSelectedKYC(kyc);
+    // Ensure scrapperId is set (it's the same as id in our transformed data)
+    setSelectedKYC({
+      ...kyc,
+      scrapperId: kyc.scrapperId || kyc.id
+    });
     setShowModal(true);
   };
 
-  const handleKYCUpdate = (kycId, newStatus, reason = '') => {
-    // Update KYC status
-    setKycList(prev => prev.map(kyc => 
-      kyc.id === kycId 
-        ? { 
-            ...kyc, 
-            status: newStatus,
-            ...(newStatus === 'verified' && { verifiedAt: new Date().toISOString() }),
-            ...(newStatus === 'rejected' && { rejectedAt: new Date().toISOString(), rejectionReason: reason })
-          }
-        : kyc
-    ));
-
-    // Update localStorage if it's the current scrapper's KYC
-    if (kycId === 'kyc_001') {
-      localStorage.setItem('scrapperKYCStatus', newStatus);
-      const kycData = JSON.parse(localStorage.getItem('scrapperKYC') || '{}');
-      kycData.status = newStatus;
+  const handleKYCUpdate = async (scrapperId, newStatus, reason = '') => {
+    console.log('handleKYCUpdate called:', { scrapperId, newStatus, reason });
+    try {
+      // Call backend API to verify/reject KYC
       if (newStatus === 'verified') {
-        kycData.verifiedAt = new Date().toISOString();
+        await adminAPI.verifyKyc(scrapperId);
       } else if (newStatus === 'rejected') {
-        kycData.rejectedAt = new Date().toISOString();
-        kycData.rejectionReason = reason;
+        await adminAPI.rejectKyc(scrapperId, reason);
       }
-      localStorage.setItem('scrapperKYC', JSON.stringify(kycData));
-    }
+      console.log('API call successful');
 
-    setShowModal(false);
-    setSelectedKYC(null);
+      // Reload KYC data from backend to get updated status
+      await loadKYCData();
+
+      setShowModal(false);
+      setSelectedKYC(null);
+    } catch (error) {
+      console.error('Error updating KYC status:', error);
+      alert(error.message || 'Failed to update KYC status. Please try again.');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -234,9 +200,8 @@ const KYCQueue = () => {
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  filter === status ? 'shadow-md' : ''
-                }`}
+                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${filter === status ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: filter === status ? '#64946e' : '#f7fafc',
                   color: filter === status ? '#ffffff' : '#2d3748'
@@ -249,87 +214,125 @@ const KYCQueue = () => {
         </div>
       </motion.div>
 
+      {/* Loading / Error State */}
+      {loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+            Loading KYC data...
+          </p>
+        </motion.div>
+      )}
+
+      {error && !loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <FaTimesCircle className="mx-auto mb-4 text-4xl" style={{ color: '#ef4444' }} />
+          <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
+            Error loading KYC data
+          </h3>
+          <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
+            {error}
+          </p>
+          <button
+            onClick={loadKYCData}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: '#64946e' }}
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* KYC List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white rounded-2xl shadow-lg overflow-hidden"
-      >
-        <AnimatePresence>
-          {filteredKYCs.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="p-12 text-center"
-            >
-              <FaUserShield className="mx-auto mb-4" style={{ color: '#cbd5e0', fontSize: '48px' }} />
-              <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-                No KYC submissions found
-              </p>
-              <p className="text-sm" style={{ color: '#718096' }}>
-                {searchQuery ? 'Try a different search term' : 'All KYC submissions have been processed'}
-              </p>
-            </motion.div>
-          ) : (
-            filteredKYCs.map((kyc, index) => (
+      {!loading && !error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-lg overflow-hidden"
+        >
+          <AnimatePresence>
+            {filteredKYCs.length === 0 ? (
               <motion.div
-                key={kyc.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                  index !== filteredKYCs.length - 1 ? 'border-b' : ''
-                }`}
-                style={{ borderColor: '#e2e8f0' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-12 text-center"
               >
-                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                  {/* Scrapper Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-2 md:gap-4">
-                      <div
-                        className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: '#f7fafc' }}
-                      >
-                        <FaUserShield style={{ color: '#64946e' }} className="text-lg md:text-2xl" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2 flex-wrap">
-                          <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                            {kyc.scrapperName}
-                          </h3>
-                          {getStatusBadge(kyc.status)}
+                <FaUserShield className="mx-auto mb-4" style={{ color: '#cbd5e0', fontSize: '48px' }} />
+                <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
+                  No KYC submissions found
+                </p>
+                <p className="text-sm" style={{ color: '#718096' }}>
+                  {searchQuery ? 'Try a different search term' : 'All KYC submissions have been processed'}
+                </p>
+              </motion.div>
+            ) : (
+              filteredKYCs.map((kyc, index) => (
+                <motion.div
+                  key={kyc.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== filteredKYCs.length - 1 ? 'border-b' : ''
+                    }`}
+                  style={{ borderColor: '#e2e8f0' }}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                    {/* Scrapper Info */}
+                    <div className="flex-1">
+                      <div className="flex items-start gap-2 md:gap-4">
+                        <div
+                          className="w-10 h-10 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: '#f7fafc' }}
+                        >
+                          <FaUserShield style={{ color: '#64946e' }} className="text-lg md:text-2xl" />
                         </div>
-                        <div className="space-y-0.5 md:space-y-1 text-xs md:text-sm" style={{ color: '#718096' }}>
-                          <p>📱 {kyc.scrapperPhone}</p>
-                          <p>🆔 Aadhaar: {kyc.aadhaarNumber}</p>
-                          <p>🚗 {kyc.vehicleInfo}</p>
-                          <p className="text-xs">Submitted {getTimeAgo(kyc.submittedAt)}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 md:gap-2 mb-1 md:mb-2 flex-wrap">
+                            <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                              {kyc.scrapperName}
+                            </h3>
+                            {getStatusBadge(kyc.status)}
+                          </div>
+                          <div className="space-y-0.5 md:space-y-1 text-xs md:text-sm" style={{ color: '#718096' }}>
+                            <p>📱 {kyc.scrapperPhone}</p>
+                            <p>🆔 Aadhaar: {kyc.aadhaarNumber}</p>
+                            <p>🚗 {kyc.vehicleInfo}</p>
+                            <p className="text-xs">Submitted {getTimeAgo(kyc.submittedAt)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => handleViewDetails(kyc)}
-                      className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
-                      style={{ backgroundColor: '#64946e', color: '#ffffff' }}
-                    >
-                      <FaEye className="text-xs md:text-sm" />
-                      <span className="hidden sm:inline">View Details</span>
-                      <span className="sm:hidden">View</span>
-                    </motion.button>
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleViewDetails(kyc)}
+                        className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1.5 md:gap-2 transition-all"
+                        style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                      >
+                        <FaEye className="text-xs md:text-sm" />
+                        <span className="hidden sm:inline">View Details</span>
+                        <span className="sm:hidden">View</span>
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
-      </motion.div>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
 
       {/* KYC Detail Modal */}
       <AnimatePresence>
@@ -340,8 +343,8 @@ const KYCQueue = () => {
               setShowModal(false);
               setSelectedKYC(null);
             }}
-            onApprove={(kycId) => handleKYCUpdate(kycId, 'verified')}
-            onReject={(kycId, reason) => handleKYCUpdate(kycId, 'rejected', reason)}
+            onApprove={(scrapperId) => handleKYCUpdate(scrapperId, 'verified')}
+            onReject={(scrapperId, reason) => handleKYCUpdate(scrapperId, 'rejected', reason)}
           />
         )}
       </AnimatePresence>

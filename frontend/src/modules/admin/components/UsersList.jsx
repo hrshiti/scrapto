@@ -2,120 +2,125 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUsers, FaSearch, FaFilter, FaUserCheck, FaUserTimes, FaEye, FaPhone, FaMapMarkerAlt, FaRupeeSign } from 'react-icons/fa';
+import { adminAPI } from '../../shared/utils/api';
 
 const UsersList = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [filter, setFilter] = useState('all'); // all, active, blocked
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadUsersData();
-  }, []);
+  }, [filter]);
 
-  const loadUsersData = () => {
-    // Aggregate user data from localStorage
-    const userAuth = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('user');
-
-    const userList = [];
-
-    // If there's a user, add it
-    if (userAuth === 'true' && userData) {
-      const user = JSON.parse(userData);
-      userList.push({
-        id: 'user_001',
-        name: user.name || 'User',
-        phone: user.phone || 'N/A',
-        email: user.email || 'N/A',
-        status: 'active',
-        totalRequests: 5,
-        walletBalance: 1250,
-        joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActive: new Date().toISOString()
-      });
-    }
-
-    // Add mock data
-    const mockUsers = [
-      {
-        id: 'user_002',
-        name: 'Rahul Sharma',
-        phone: '+91 98765 43210',
-        email: 'rahul@example.com',
-        status: 'active',
-        totalRequests: 12,
-        walletBalance: 3450,
-        joinedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'user_003',
-        name: 'Priya Patel',
-        phone: '+91 98765 43211',
-        email: 'priya@example.com',
-        status: 'active',
-        totalRequests: 8,
-        walletBalance: 2100,
-        joinedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActive: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'user_004',
-        name: 'Amit Kumar',
-        phone: '+91 98765 43212',
-        email: 'amit@example.com',
-        status: 'blocked',
-        totalRequests: 3,
-        walletBalance: 0,
-        joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActive: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        blockedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        blockReason: 'Violation of terms'
-      },
-      {
-        id: 'user_005',
-        name: 'Sneha Reddy',
-        phone: '+91 98765 43213',
-        email: 'sneha@example.com',
-        status: 'active',
-        totalRequests: 15,
-        walletBalance: 5200,
-        joinedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-        lastActive: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+  const loadUsersData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const queryParams = new URLSearchParams();
+      if (filter === 'blocked') {
+        queryParams.append('isActive', 'false');
+      } else if (filter === 'active') {
+        queryParams.append('isActive', 'true');
       }
-    ];
+      if (searchQuery) {
+        queryParams.append('search', searchQuery);
+      }
+      queryParams.append('page', '1');
+      queryParams.append('limit', '100');
 
-    setUsers([...userList, ...mockUsers]);
+      const response = await adminAPI.getAllUsers(queryParams.toString());
+      
+      if (response.success && response.data?.users) {
+        // Transform backend data to frontend format
+        const transformedUsers = response.data.users.map((user) => ({
+          id: user._id || user.id,
+          name: user.name || 'N/A',
+          phone: user.phone || 'N/A',
+          email: user.email || 'N/A',
+          status: user.isActive === false ? 'blocked' : 'active',
+          totalRequests: user.totalOrders || 0,
+          walletBalance: user.walletBalance || 0,
+          joinedAt: user.createdAt || new Date().toISOString(),
+          lastActive: user.lastActive || user.updatedAt || new Date().toISOString(),
+          blockedAt: user.blockedAt || null,
+          blockReason: user.blockReason || null
+        }));
+        setUsers(transformedUsers);
+      } else {
+        setError('Failed to load users');
+        setUsers([]);
+      }
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setError(err.message || 'Failed to load users');
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Filter is now handled by backend query, but we can still filter locally for search
   const filteredUsers = users.filter(user => {
-    const matchesFilter = filter === 'all' || user.status === filter;
     const matchesSearch = 
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.phone.includes(searchQuery) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesSearch;
   });
 
   const handleViewDetails = (userId) => {
     navigate(`/admin/users/${userId}`);
   };
 
-  const handleToggleBlock = (userId, currentStatus) => {
+  const handleToggleBlock = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'blocked' ? 'active' : 'blocked';
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { 
-            ...user, 
-            status: newStatus,
-            ...(newStatus === 'blocked' && { 
-              blockedAt: new Date().toISOString(),
-              blockReason: 'Admin action'
-            })
+    
+    if (window.confirm(
+      `Are you sure you want to ${currentStatus === 'blocked' ? 'unblock' : 'block'} this user?`
+    )) {
+      try {
+        if (currentStatus === 'blocked') {
+          // Unblock user (backend should handle this via updateUser or a separate endpoint)
+          // For now, we'll use updateUser to set isActive: true
+          const response = await adminAPI.updateUser(userId, { isActive: true });
+          if (response.success) {
+            setUsers(prev => prev.map(user => 
+              user.id === userId 
+                ? { ...user, status: 'active', blockedAt: null, blockReason: null }
+                : user
+            ));
+            alert('User unblocked successfully!');
+          } else {
+            throw new Error(response.message || 'Failed to unblock user');
           }
-        : user
-    ));
+        } else {
+          // Block user
+          const response = await adminAPI.blockUser(userId);
+          if (response.success) {
+            setUsers(prev => prev.map(user => 
+              user.id === userId 
+                ? { 
+                    ...user, 
+                    status: 'blocked',
+                    blockedAt: new Date().toISOString(),
+                    blockReason: 'Admin action'
+                  }
+                : user
+            ));
+            alert('User blocked successfully!');
+          } else {
+            throw new Error(response.message || 'Failed to block user');
+          }
+        }
+      } catch (error) {
+        console.error('Error toggling user block status:', error);
+        alert(error.message || 'Failed to update user status. Please try again.');
+      }
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -192,7 +197,21 @@ const UsersList = () => {
               type="text"
               placeholder="Search by name, phone, or email..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                // Debounce search - reload data after user stops typing
+                const timeoutId = setTimeout(() => {
+                  if (e.target.value) {
+                    loadUsersData();
+                  }
+                }, 500);
+                return () => clearTimeout(timeoutId);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  loadUsersData();
+                }
+              }}
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
               style={{
                 borderColor: '#e2e8f0',
@@ -223,7 +242,45 @@ const UsersList = () => {
         </div>
       </motion.div>
 
+      {/* Loading / Error State */}
+      {loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+            Loading users...
+          </p>
+        </motion.div>
+      )}
+
+      {error && !loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <FaUserTimes className="mx-auto mb-4 text-4xl" style={{ color: '#ef4444' }} />
+          <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
+            Error loading users
+          </h3>
+          <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
+            {error}
+          </p>
+          <button
+            onClick={loadUsersData}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: '#64946e' }}
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* Users List */}
+      {!loading && !error && (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -343,6 +400,7 @@ const UsersList = () => {
           )}
         </AnimatePresence>
       </motion.div>
+      )}
     </div>
   );
 };

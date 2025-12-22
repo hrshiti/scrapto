@@ -75,8 +75,8 @@ const LoginSignup = () => {
 
     try {
       if (isLogin) {
-        // Send login OTP
-        const response = await authAPI.sendLoginOTP(phone);
+        // Send login OTP with user role
+        const response = await authAPI.sendLoginOTP(phone, 'user');
         if (response.success) {
           setOtpSent(true);
           setTimeout(() => {
@@ -186,9 +186,9 @@ const LoginSignup = () => {
     setLoading(true);
 
     try {
-      // Verify OTP
+      // Verify OTP with user role
       const purpose = isLogin ? 'login' : 'verification';
-      const response = await authAPI.verifyOTP(phone, otp, purpose);
+      const response = await authAPI.verifyOTP(phone, otp, purpose, 'user');
 
       if (response.success) {
         const userData = response.data.user;

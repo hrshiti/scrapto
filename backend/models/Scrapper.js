@@ -57,6 +57,10 @@ const scrapperSchema = new mongoose.Schema({
       type: String,
       default: null
     },
+    licenseUrl: {
+      type: String,
+      default: null
+    },
     status: {
       type: String,
       enum: ['pending', 'verified', 'rejected'],
@@ -68,7 +72,7 @@ const scrapperSchema = new mongoose.Schema({
     },
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Admin',
+      ref: 'User',
       default: null
     },
     rejectionReason: {
@@ -96,6 +100,22 @@ const scrapperSchema = new mongoose.Schema({
       default: null
     },
     razorpaySubscriptionId: {
+      type: String,
+      default: null
+    },
+    razorpayPaymentId: {
+      type: String,
+      default: null
+    },
+    autoRenew: {
+      type: Boolean,
+      default: true
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
+    },
+    cancellationReason: {
       type: String,
       default: null
     }
@@ -139,10 +159,28 @@ const scrapperSchema = new mongoose.Schema({
     index: true
   },
   rating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    breakdown: {
+      5: { type: Number, default: 0 },
+      4: { type: Number, default: 0 },
+      3: { type: Number, default: 0 },
+      2: { type: Number, default: 0 },
+      1: { type: Number, default: 0 }
+    },
+    lastUpdated: {
+      type: Date,
+      default: null
+    }
   },
   totalPickups: {
     type: Number,
@@ -204,7 +242,7 @@ scrapperSchema.index({ isOnline: 1, 'kyc.status': 1, 'subscription.status': 1 })
 scrapperSchema.index({ phone: 1 }, { unique: true });
 
 // Hash password before saving
-scrapperSchema.pre('save', async function(next) {
+scrapperSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) {
     next();
     return;
@@ -215,7 +253,7 @@ scrapperSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-scrapperSchema.methods.matchPassword = async function(enteredPassword) {
+scrapperSchema.methods.matchPassword = async function (enteredPassword) {
   if (!this.password) {
     return false;
   }
@@ -223,7 +261,7 @@ scrapperSchema.methods.matchPassword = async function(enteredPassword) {
 };
 
 // Generate OTP for phone verification
-scrapperSchema.methods.generateOTP = function() {
+scrapperSchema.methods.generateOTP = function () {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   this.phoneVerificationOTP = otp;
   this.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -231,24 +269,26 @@ scrapperSchema.methods.generateOTP = function() {
 };
 
 // Verify OTP
-scrapperSchema.methods.verifyOTP = function(otp) {
+scrapperSchema.methods.verifyOTP = function (otp) {
   if (!this.phoneVerificationOTP || !this.otpExpiresAt) {
     return false;
   }
-  
+
   if (this.otpExpiresAt < new Date()) {
     return false;
   }
-  
+
   return this.phoneVerificationOTP === otp;
 };
 
 // Remove sensitive data from JSON output
-scrapperSchema.methods.toJSON = function() {
+scrapperSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.phoneVerificationOTP;
-  delete obj.kyc.aadhaarNumber;
+  if (obj.kyc) {
+    delete obj.kyc.aadhaarNumber;
+  }
   return obj;
 };
 

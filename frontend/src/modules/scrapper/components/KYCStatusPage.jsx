@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
+import { kycAPI } from '../../shared/utils/api';
 
 const KYCStatusPage = () => {
   const navigate = useNavigate();
@@ -12,96 +13,65 @@ const KYCStatusPage = () => {
   const [countdown, setCountdown] = useState(10); // For testing: countdown timer
 
   useEffect(() => {
-    // Check if user is authenticated as scrapper
-    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
-    const scrapperUser = localStorage.getItem('scrapperUser');
-    if (scrapperAuth !== 'true' || !scrapperUser) {
-      navigate('/scrapper/login', { replace: true });
-      return;
-    }
-    
-    // Load KYC data from localStorage
-    const storedKYC = localStorage.getItem('scrapperKYC');
-    const storedStatus = localStorage.getItem('scrapperKYCStatus');
-    
-    if (storedKYC) {
-      setKycData(JSON.parse(storedKYC));
-    }
-    if (storedStatus) {
-      setKycStatus(storedStatus);
-      
-      // If KYC is verified, check subscription and redirect accordingly
-      if (storedStatus === 'verified') {
-        setTimeout(() => {
-          const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-          if (subscriptionStatus === 'active') {
-            navigate('/scrapper', { replace: true });
-          } else {
-            navigate('/scrapper/subscription', { replace: true });
-          }
-        }, 1500); // Small delay to show verified status
-      }
-      
-      // FOR TESTING: Auto-verify KYC after 10 seconds if status is pending
-      if (storedStatus === 'pending') {
-        const autoVerifyTimer = setTimeout(() => {
-          localStorage.setItem('scrapperKYCStatus', 'verified');
-          setKycStatus('verified');
-          
-          // Process KYC verified milestone
-          const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
-          if (scrapperUser.phone || scrapperUser.id) {
+
+    let interval;
+    const fetchKyc = async () => {
+      try {
+        const res = await kycAPI.getMy();
+        const kyc = res.data?.kyc;
+        const subscription = res.data?.subscription;
+
+        if (kyc) {
+          setKycData(kyc);
+          setKycStatus(kyc.status || 'pending');
+
+          // Sync to local storage just in case other components need it partially
+          localStorage.setItem('scrapperKYCStatus', kyc.status || 'pending');
+          localStorage.setItem('scrapperKYC', JSON.stringify(kyc));
+
+          if (kyc.status === 'verified') {
             try {
-              checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'kycVerified');
-            } catch (error) {
-              console.error('Error processing milestone:', error);
+              const scrUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
+              if (scrUser.phone || scrUser.id) {
+                checkAndProcessMilestone(scrUser.phone || scrUser.id, 'scrapper', 'kycVerified');
+              }
+            } catch (err) {
+              console.error('Milestone error:', err);
             }
-          }
-          
-          // Redirect to subscription page after verification
-          setTimeout(() => {
-            const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-            if (subscriptionStatus === 'active') {
-              navigate('/scrapper', { replace: true });
-            } else {
-              navigate('/scrapper/subscription', { replace: true });
-            }
-          }, 1000);
-        }, 10000); // 10 seconds
-        
-        return () => clearTimeout(autoVerifyTimer);
-      }
-    }
-  }, [navigate]);
 
-  // Check for status updates periodically (in real app, this would be via WebSocket or polling)
-  useEffect(() => {
-    const checkStatusInterval = setInterval(() => {
-      const currentStatus = localStorage.getItem('scrapperKYCStatus');
-      if (currentStatus === 'verified' && kycStatus !== 'verified') {
-        setKycStatus('verified');
-        
-        // Process KYC verified milestone
-        const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
-        if (scrapperUser.phone || scrapperUser.id) {
-          try {
-            checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'kycVerified');
-          } catch (error) {
-            console.error('Error processing milestone:', error);
+            // Check subscription status relative to backend data
+            let isActive = false;
+            if (subscription && subscription.status === 'active' && subscription.expiryDate) {
+              const expiry = new Date(subscription.expiryDate);
+              if (expiry > new Date()) {
+                isActive = true;
+              }
+            }
+
+            setTimeout(() => {
+              if (isActive) {
+                navigate('/scrapper', { replace: true });
+              } else {
+                navigate('/scrapper/subscription', { replace: true });
+              }
+            }, 1000);
+          } else if (kyc.status === 'rejected') {
+            // Stay here, user sees rejected status and button to resubmit
           }
-        }
-        
-        const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-        if (subscriptionStatus === 'active') {
-          navigate('/scrapper', { replace: true });
         } else {
-          navigate('/scrapper/subscription', { replace: true });
+          // No KYC found -> Redirect to upload page
+          navigate('/scrapper/kyc', { replace: true });
         }
+      } catch (error) {
+        console.error('Failed to fetch KYC status', error);
       }
-    }, 2000); // Check every 2 seconds
+    };
 
-    return () => clearInterval(checkStatusInterval);
-  }, [kycStatus, navigate]);
+    fetchKyc();
+    interval = setInterval(fetchKyc, 5000);
+
+    return () => clearInterval(interval);
+  }, [navigate]);
 
   const getStatusConfig = () => {
     switch (kycStatus) {
@@ -111,8 +81,8 @@ const KYCStatusPage = () => {
           color: '#f59e0b',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#f59e0b" strokeWidth="2" fill="none" opacity="0.2"/>
-              <path d="M12 6v6l4 2" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#f59e0b" strokeWidth="2" fill="none" opacity="0.2" />
+              <path d="M12 6v6l4 2" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ),
           message: 'Your KYC is under review',
@@ -125,8 +95,8 @@ const KYCStatusPage = () => {
           color: '#10b981',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#10b981" strokeWidth="2" fill="#10b981" fillOpacity="0.1"/>
-              <path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#10b981" strokeWidth="2" fill="#10b981" fillOpacity="0.1" />
+              <path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ),
           message: 'Your KYC has been verified',
@@ -139,8 +109,8 @@ const KYCStatusPage = () => {
           color: '#ef4444',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#ef4444" strokeWidth="2" fill="#ef4444" fillOpacity="0.1"/>
-              <path d="M15 9l-6 6M9 9l6 6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="12" cy="12" r="10" stroke="#ef4444" strokeWidth="2" fill="#ef4444" fillOpacity="0.1" />
+              <path d="M15 9l-6 6M9 9l6 6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
             </svg>
           ),
           message: 'Your KYC was rejected',
@@ -232,7 +202,7 @@ const KYCStatusPage = () => {
             <p className="text-sm md:text-base mb-4" style={{ color: '#2d3748' }}>
               {statusConfig.description}
             </p>
-            
+
             {/* Testing: Auto-verification countdown */}
             {kycStatus === 'pending' && countdown > 0 && (
               <motion.div
@@ -243,8 +213,8 @@ const KYCStatusPage = () => {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
-                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <p className="text-sm font-semibold" style={{ color: '#64946e' }}>
                     Testing Mode: Auto-verification in {countdown} seconds
@@ -261,14 +231,14 @@ const KYCStatusPage = () => {
                 </div>
               </motion.div>
             )}
-            
+
             {/* Estimated Time */}
             <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none"/>
-                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="none" />
+                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>
                     Estimated Completion Time:
@@ -333,7 +303,7 @@ const KYCStatusPage = () => {
                 Resubmit KYC
               </motion.button>
             )}
-            
+
             {kycStatus === 'verified' && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -377,7 +347,7 @@ const KYCStatusPage = () => {
         >
           <div className="flex items-start gap-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e', flexShrink: 0, marginTop: '2px' }}>
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor" />
             </svg>
             <div>
               <p className="text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>

@@ -1,8 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  FaCreditCard, FaSearch, FaCheckCircle, FaTimesCircle, FaClock, 
-  FaEye, FaCalendarAlt, FaRupeeSign, FaUser 
+import { useNavigate } from 'react-router-dom';
+import {
+  FaCreditCard, FaSearch, FaCheckCircle, FaTimesCircle, FaClock,
+  FaEye, FaCalendarAlt, FaRupeeSign, FaUser
 } from 'react-icons/fa';
 
 const SubscriptionsList = () => {
@@ -98,7 +99,7 @@ const SubscriptionsList = () => {
 
   const filteredSubscriptions = subscriptions.filter(sub => {
     const matchesFilter = filter === 'all' || sub.status === filter;
-    const matchesSearch = 
+    const matchesSearch =
       sub.scrapperName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sub.scrapperPhone.includes(searchQuery) ||
       sub.planName.toLowerCase().includes(searchQuery.toLowerCase());
@@ -222,9 +223,8 @@ const SubscriptionsList = () => {
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  filter === status ? 'shadow-md' : ''
-                }`}
+                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${filter === status ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: filter === status ? '#64946e' : '#f7fafc',
                   color: filter === status ? '#ffffff' : '#2d3748'
@@ -268,9 +268,8 @@ const SubscriptionsList = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                    index !== filteredSubscriptions.length - 1 ? 'border-b' : ''
-                  }`}
+                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== filteredSubscriptions.length - 1 ? 'border-b' : ''
+                    }`}
                   style={{ borderColor: '#e2e8f0' }}
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
@@ -298,7 +297,7 @@ const SubscriptionsList = () => {
                         <div className="flex items-center gap-1.5 md:gap-2">
                           <FaCalendarAlt className="text-xs" />
                           <span className="text-xs">
-                            {sub.status === 'active' 
+                            {sub.status === 'active'
                               ? `${daysRemaining > 0 ? `${daysRemaining} days left` : 'Expired'}`
                               : `Expired on ${new Date(sub.expiryDate).toLocaleDateString()}`
                             }

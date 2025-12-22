@@ -2,33 +2,13 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import ScrapperMap from './GoogleMaps/ScrapperMap';
 import {
-  addScrapperRequest,
   checkTimeConflict,
   getScrapperAssignedRequests,
   migrateOldActiveRequest
 } from '../../shared/utils/scrapperRequestUtils';
-
-// Fix for default marker icons in React Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-// Component to update map center when location changes
-function MapUpdater({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    if (center) {
-      map.setView(center, 15);
-    }
-  }, [center, map]);
-  return null;
-}
+import { scrapperOrdersAPI, orderAPI } from '../../shared/utils/api';
 
 const ActiveRequestsPage = () => {
   const navigate = useNavigate();
@@ -50,13 +30,41 @@ const ActiveRequestsPage = () => {
       navigate('/scrapper/login', { replace: true });
       return;
     }
-    
+
     // Migrate old activeRequest to new format (one-time)
     migrateOldActiveRequest();
-    
-    // Load existing requests
-    const requests = getScrapperAssignedRequests();
-    setExistingRequests(requests);
+
+    // Load existing requests from backend
+    const fetchExistingRequests = async () => {
+      try {
+        const response = await scrapperOrdersAPI.getMyAssigned();
+        const orders = response?.data?.orders || response?.orders || [];
+
+        // Map backend orders to format expected by conflict checker
+        const mappedRequests = orders
+          .filter(o => o.status !== 'completed' && o.status !== 'cancelled')
+          .map(order => ({
+            id: order._id || order.id,
+            pickupSlot: order.pickupSlot,
+            preferredTime: order.preferredTime,
+            status: order.status,
+            location: {
+              lat: order.pickupAddress?.coordinates?.lat || 0,
+              lng: order.pickupAddress?.coordinates?.lng || 0,
+              address: order.pickupAddress?.street || 'Unknown'
+            },
+            userName: order.user?.name || 'User',
+            scrapType: Array.isArray(order.scrapItems) ? order.scrapItems[0]?.category : 'Scrap',
+            estimatedEarnings: `₹${order.totalAmount || 0}`
+          }));
+
+        setExistingRequests(mappedRequests);
+      } catch (err) {
+        console.error('Failed to fetch existing requests:', err);
+      }
+    };
+
+    fetchExistingRequests();
   }, [navigate]);
 
   // Get current location
@@ -104,84 +112,108 @@ const ActiveRequestsPage = () => {
     }
   }, []);
 
-  // Simulate incoming request (for testing)
+  // Poll for available orders from backend
   useEffect(() => {
-    // Simulate request after 3 seconds for testing
-    const requestTimer = setTimeout(() => {
-      // Try to use latest user request (with pickupSlot) if available
-      let latestUserRequest = null;
+    if (!isOnline) return;
+
+    const loadAvailableOrders = async () => {
       try {
-        const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
-        if (Array.isArray(userRequests) && userRequests.length > 0) {
-          latestUserRequest = userRequests[userRequests.length - 1];
+        const response = await scrapperOrdersAPI.getAvailable();
+        if (response.success && response.data?.orders) {
+          const orders = response.data.orders;
+
+
+          // Get existing assigned requests from backend for conflict checking
+          let currentAssigned = [];
+          try {
+            const assignedRes = await scrapperOrdersAPI.getMyAssigned();
+            const rawAssigned = assignedRes?.data?.orders || assignedRes?.orders || [];
+            currentAssigned = rawAssigned.map(order => ({
+              id: order._id || order.id,
+              pickupSlot: order.pickupSlot,
+              preferredTime: order.preferredTime,
+              status: order.status
+            }));
+            setExistingRequests(rawAssigned.filter(o => o.status !== 'completed' && o.status !== 'cancelled').map(order => ({
+              id: order._id || order.id,
+              pickupSlot: order.pickupSlot,
+              preferredTime: order.preferredTime,
+              status: order.status,
+              location: {
+                lat: order.pickupAddress?.coordinates?.lat || 0,
+                lng: order.pickupAddress?.coordinates?.lng || 0,
+                address: order.pickupAddress?.street || 'Unknown'
+              },
+              userName: order.user?.name || 'User',
+              scrapType: Array.isArray(order.scrapItems) ? order.scrapItems[0]?.category : 'Scrap',
+              estimatedEarnings: `₹${order.totalAmount || 0}`
+            })));
+          } catch (err) {
+            console.error('Failed to update assigned requests during poll:', err);
+            // Fallback to state? or keep previous
+          }
+
+          const conflictCheckList = currentAssigned.length > 0 ? currentAssigned : existingRequests;
+
+          // If there are available orders, show the first one
+          if (orders.length > 0 && !incomingRequest) {
+            const order = orders[0];
+
+            // Map backend order to frontend request format
+            const mappedRequest = {
+              id: order._id || order.id,
+              _id: order._id || order.id, // Keep backend ID
+              userName: order.user?.name || 'User',
+              userPhone: order.user?.phone || '',
+              userEmail: order.user?.email || '',
+              scrapType: order.scrapItems?.map(item => item.category).join(', ') || 'Scrap',
+              weight: order.totalWeight,
+              pickupSlot: order.pickupSlot || null,
+              preferredTime: order.preferredTime || null,
+              images: order.images?.map(img => ({
+                id: img.publicId || img.url,
+                preview: img.url,
+                url: img.url
+              })) || [],
+              location: {
+                address: order.pickupAddress?.street
+                  ? `${order.pickupAddress.street}, ${order.pickupAddress.city || ''}, ${order.pickupAddress.state || ''} ${order.pickupAddress.pincode || ''}`.trim()
+                  : 'Address not available',
+                lat: order.pickupAddress?.coordinates?.lat || 19.0760,
+                lng: order.pickupAddress?.coordinates?.lng || 72.8777
+              },
+              distance: 'Calculating...', // Can calculate from current location
+              estimatedEarnings: `₹${order.totalAmount || 0}`,
+              // Backend fields
+              status: order.status,
+              assignmentStatus: order.assignmentStatus
+            };
+
+            setIncomingRequest(mappedRequest);
+            setIsSlideOpen(true);
+
+            // Check for time conflicts
+            const hasConflict = checkTimeConflict(mappedRequest, conflictCheckList);
+            setTimeConflict(hasConflict);
+
+            // Start playing sound
+            setAudioPlaying(true);
+          }
         }
-      } catch (e) {
-        console.error('Error reading userRequests for incoming request mock:', e);
+      } catch (error) {
+        console.error('Failed to load available orders:', error);
+        // Silently fail - don't show error to user, just retry
       }
+    };
 
-      // Mock scrap images (for now, using placeholder images)
-      const mockImages = [
-        {
-          id: 1,
-          preview: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=400&h=300&fit=crop',
-          name: 'scrap-image-1.jpg'
-        },
-        {
-          id: 2,
-          preview: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=400&h=300&fit=crop',
-          name: 'scrap-image-2.jpg'
-        },
-        {
-          id: 3,
-          preview: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop',
-          name: 'scrap-image-3.jpg'
-        }
-      ];
+    // Load immediately
+    loadAvailableOrders();
 
-      // Derive pickup slot & readable time string from latest user request (new or old data)
-      const latestPickupSlot = latestUserRequest?.pickupSlot || null;
-      const latestPreferredTime =
-        latestUserRequest?.preferredTime ||
-        (latestPickupSlot
-          ? `${latestPickupSlot.dayName}, ${latestPickupSlot.date} • ${latestPickupSlot.slot}`
-          : '');
+    // Poll every 10 seconds for new orders
+    const pollInterval = setInterval(loadAvailableOrders, 10000);
 
-      const mockRequest = {
-        id: latestUserRequest?.id || 'REQ-' + Date.now(),
-        userName: latestUserRequest?.userName || 'Rajesh Kumar',
-        userPhone: latestUserRequest?.userPhone || '+919876543210',
-        userEmail: latestUserRequest?.userEmail || 'rajesh.k@example.com',
-        scrapType: latestUserRequest?.categories?.map?.((c) => c.name).join(', ') || 'Metal Scrap',
-        weight: latestUserRequest?.weight || undefined,
-        pickupSlot: latestPickupSlot,
-        preferredTime: latestPreferredTime,
-        images: latestUserRequest?.images || mockImages, // Prefer real images if present
-        location: latestUserRequest?.location || {
-          address: '123, MG Road, Mumbai',
-          lat: 19.0760 + (Math.random() - 0.5) * 0.1,
-          lng: 72.8777 + (Math.random() - 0.5) * 0.1
-        },
-        distance: latestUserRequest?.distance || '2.5 km',
-        estimatedEarnings: latestUserRequest?.estimatedPayout
-          ? `₹${latestUserRequest.estimatedPayout.toFixed(0)}`
-          : '₹450'
-      };
-      
-      setIncomingRequest(mockRequest);
-      setIsSlideOpen(true);
-      
-      // Check for time conflicts
-      const requests = getScrapperAssignedRequests();
-      const hasConflict = checkTimeConflict(mockRequest, requests);
-      setTimeConflict(hasConflict);
-      setExistingRequests(requests);
-      
-      // Start playing sound
-      setAudioPlaying(true);
-    }, 3000);
-
-    return () => clearTimeout(requestTimer);
-  }, []);
+    return () => clearInterval(pollInterval);
+  }, [isOnline, incomingRequest]);
 
   // Handle sound playback - Voice alert + vibration instead of ringtone
   useEffect(() => {
@@ -270,13 +302,13 @@ const ActiveRequestsPage = () => {
   };
 
   // Handle request accept
-  const handleAcceptRequest = () => {
+  const handleAcceptRequest = async () => {
     if (!incomingRequest) return;
-    
+
     // Check for time conflict one more time before accepting
     const requests = getScrapperAssignedRequests();
     const hasConflict = checkTimeConflict(incomingRequest, requests);
-    
+
     if (hasConflict) {
       // Show warning but allow user to proceed if they want
       const proceed = window.confirm(
@@ -284,28 +316,39 @@ const ActiveRequestsPage = () => {
         'This request overlaps with one of your existing requests.\n\n' +
         'Do you still want to accept this request?'
       );
-      
+
       if (!proceed) {
         return; // User cancelled
       }
     }
-    
-    console.log('✅ Request accepted!', incomingRequest);
-    
+
     // Stop sound & vibration immediately
     setAudioPlaying(false);
-    
+
     try {
-      // Add request using new utility function
-      const addedRequest = addScrapperRequest(incomingRequest);
-      
-      // Navigate to my active requests list page
-      navigate('/scrapper/my-active-requests', {
-        replace: false
-      });
+      // Accept order via backend API
+      const orderId = incomingRequest._id || incomingRequest.id;
+      const response = await scrapperOrdersAPI.accept(orderId);
+
+      if (response.success) {
+        console.log('✅ Order accepted successfully!', response.data);
+
+        // Clear incoming request
+        setIncomingRequest(null);
+        setIsSlideOpen(false);
+
+        // Navigate to my active requests list page
+        navigate('/scrapper/my-active-requests', {
+          replace: false
+        });
+      } else {
+        throw new Error(response.message || 'Failed to accept order');
+      }
     } catch (error) {
       console.error('Failed to accept request:', error);
-      alert('Failed to accept request. Please try again.');
+      alert(error.message || 'Failed to accept request. Please try again.');
+      // Re-enable audio if error
+      setAudioPlaying(true);
     }
   };
 
@@ -313,24 +356,14 @@ const ActiveRequestsPage = () => {
   const handleRejectRequest = () => {
     // Stop sound & vibration immediately
     setAudioPlaying(false);
-    
+
     setIsSlideOpen(false);
     setIncomingRequest(null);
     // Request will be removed, wait for next one
   };
 
   // Create custom icons
-  const scrapperIcon = new L.Icon({
-    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
-      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="12" fill="#10b981" stroke="white" stroke-width="2"/>
-        <circle cx="16" cy="16" r="6" fill="white"/>
-      </svg>
-    `),
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32],
-  });
+
 
   return (
     <motion.div
@@ -351,7 +384,7 @@ const ActiveRequestsPage = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        
+
         <div className="flex items-center gap-3">
           {/* Active Requests Button */}
           {existingRequests.length > 0 && (
@@ -361,7 +394,7 @@ const ActiveRequestsPage = () => {
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               {existingRequests.length} Active
             </button>
@@ -375,63 +408,13 @@ const ActiveRequestsPage = () => {
 
       {/* Map Container - Full Screen */}
       <div className="w-full h-screen">
-        {currentLocation ? (
-          <MapContainer
-            center={[currentLocation.lat, currentLocation.lng]}
-            zoom={15}
-            style={{ height: '100%', width: '100%', zIndex: 1 }}
-            scrollWheelZoom={true}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapUpdater center={[currentLocation.lat, currentLocation.lng]} />
-            <Marker position={[currentLocation.lat, currentLocation.lng]} icon={scrapperIcon}>
-              <Popup>
-                <div>
-                  <p className="font-semibold">Your Location</p>
-                  <p className="text-xs" style={{ color: '#718096' }}>Waiting for requests...</p>
-                </div>
-              </Popup>
-            </Marker>
-            {incomingRequest && (
-              <Marker position={[incomingRequest.location.lat, incomingRequest.location.lng]}>
-                <Popup>
-                  <div>
-                    <p className="font-semibold">{incomingRequest.userName}</p>
-                    <p className="text-xs" style={{ color: '#718096' }}>{incomingRequest.scrapType}</p>
-                    <p className="text-xs" style={{ color: '#718096' }}>{incomingRequest.location.address}</p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-            {/* Show markers for existing active requests */}
-            {existingRequests.map((req) => (
-              <Marker key={req.id} position={[req.location.lat, req.location.lng]}>
-                <Popup>
-                  <div>
-                    <p className="font-semibold">{req.userName}</p>
-                    <p className="text-xs" style={{ color: '#718096' }}>{req.scrapType}</p>
-                    <p className="text-xs" style={{ color: '#718096' }}>{req.location.address}</p>
-                    <button
-                      onClick={() => navigate(`/scrapper/active-request/${req.id}`, { state: { request: req } })}
-                      className="mt-2 px-2 py-1 text-xs rounded bg-green-500 text-white"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-          </MapContainer>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#e2e8f0' }}>
-            <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>Loading map...</p>
-            </div>
-          </div>
-        )}
+        <ScrapperMap
+          stage="request"
+          scrapperLocation={currentLocation}
+          // If there's an incoming request, show user location. Otherwise just show Scrapper's location.
+          userLocation={incomingRequest ? incomingRequest.location : null}
+          userName={incomingRequest ? incomingRequest.userName : 'Active Request'}
+        />
       </div>
 
       {/* Incoming Request Slide - Bottom */}
@@ -459,7 +442,7 @@ const ActiveRequestsPage = () => {
                 style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444' }}>
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
@@ -483,7 +466,7 @@ const ActiveRequestsPage = () => {
 
               <div className="flex items-center gap-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#9ca3af', flexShrink: 0 }}>
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
                 </svg>
                 <p className="text-xs flex-1 truncate" style={{ color: '#e5e7eb' }}>{incomingRequest.location.address}</p>
                 <p className="text-xs" style={{ color: '#9ca3af' }}>
@@ -503,7 +486,7 @@ const ActiveRequestsPage = () => {
               {(incomingRequest.pickupSlot || incomingRequest.preferredTime) && (
                 <div className="flex items-center gap-2 mt-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#9ca3af', flexShrink: 0 }}>
-                    <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs" style={{ color: '#9ca3af' }}>Pickup slot</p>
@@ -520,7 +503,7 @@ const ActiveRequestsPage = () => {
               {timeConflict && (
                 <div className="mt-2 p-2 rounded-lg flex items-start gap-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }}>
-                    <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div className="flex-1">
                     <p className="text-xs font-semibold" style={{ color: '#fca5a5' }}>Time Conflict</p>
@@ -559,7 +542,7 @@ const ActiveRequestsPage = () => {
               style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Accept Order
             </motion.button>
@@ -587,7 +570,7 @@ const ActiveRequestsPage = () => {
                 style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: '#ef4444' }}>
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </button>
             </div>

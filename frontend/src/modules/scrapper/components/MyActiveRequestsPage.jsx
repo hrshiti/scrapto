@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getScrapperAssignedRequests } from '../../shared/utils/scrapperRequestUtils';
+import { scrapperOrdersAPI } from '../../shared/utils/api';
 
 const MyActiveRequestsPage = () => {
   const navigate = useNavigate();
   const [activeRequests, setActiveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Check authentication
   useEffect(() => {
@@ -19,20 +20,92 @@ const MyActiveRequestsPage = () => {
   }, [navigate]);
 
   // Load active requests
-  const loadActiveRequests = () => {
+  const mapOrderToRequest = (order) => {
+    if (!order) return null;
+
+    const categories = Array.isArray(order.scrapItems)
+      ? order.scrapItems.map((item) => item.category).filter(Boolean)
+      : [];
+
+    const addressParts = [
+      order.pickupAddress?.street,
+      order.pickupAddress?.city,
+      order.pickupAddress?.state,
+      order.pickupAddress?.pincode
+    ].filter(Boolean);
+
+    const address = addressParts.join(', ');
+
+    const statusLower = order.status?.toLowerCase();
+    const paymentStatusLower = order.paymentStatus?.toLowerCase();
+
+    let uiStatus = 'accepted'; // Default status
+
+    if (statusLower === 'completed') {
+      uiStatus = 'completed';
+    } else if (statusLower === 'in_progress') {
+      if (paymentStatusLower === 'paid' || paymentStatusLower === 'completed') {
+        uiStatus = 'payment_done';
+      } else {
+        uiStatus = 'picked_up';
+      }
+    }
+
+    const estimatedAmount =
+      typeof order.totalAmount === 'number'
+        ? `₹${order.totalAmount.toFixed(0)}`
+        : order.totalAmount || '₹0';
+
+    return {
+      id: order._id,
+      orderId: order._id,
+      userId: order.user?._id || order.user,
+      userName: order.user?.name || 'User',
+      userPhone: order.user?.phone || '',
+      scrapType: categories.join(', ') || 'Scrap',
+      weight: order.totalWeight,
+      pickupSlot: order.pickupSlot,
+      preferredTime: order.preferredTime,
+      images: (order.images || []).map((img) => img.url || img.preview || img),
+      location: {
+        address: address || 'Address not available',
+        lat: order.pickupAddress?.coordinates?.lat || 19.076,
+        lng: order.pickupAddress?.coordinates?.lng || 72.8777
+      },
+      distance: null,
+      estimatedEarnings: estimatedAmount,
+      status: uiStatus,
+      acceptedAt: order.acceptedAt
+    };
+  };
+
+  const loadActiveRequests = async () => {
+    setError('');
     try {
-      const requests = getScrapperAssignedRequests();
-      const active = requests.filter(req => req.status !== 'completed');
+      // Fetch scrapper's assigned orders from backend
+      const response = await scrapperOrdersAPI.getMyAssigned();
+      const rawOrders = response?.data?.orders || response?.orders || response || [];
+
+      const mapped = (rawOrders || [])
+        .filter(o => {
+          const s = o.status?.toLowerCase();
+          return s !== 'completed' && s !== 'cancelled';
+        })
+        .map(mapOrderToRequest)
+        .filter(Boolean);
+
       // Sort by acceptedAt (newest first)
-      active.sort((a, b) => {
-        const dateA = new Date(a.acceptedAt || 0);
-        const dateB = new Date(b.acceptedAt || 0);
+      mapped.sort((a, b) => {
+        const dateA = new Date(a.acceptedAt || a.createdAt || 0);
+        const dateB = new Date(b.acceptedAt || b.createdAt || 0);
         return dateB - dateA;
       });
-      setActiveRequests(active);
+
+      setActiveRequests(mapped);
       setLoading(false);
-    } catch (error) {
-      console.error('Failed to load active requests:', error);
+    } catch (err) {
+      console.error('Failed to load active requests:', err);
+      setError(err?.message || 'Failed to load active requests');
       setLoading(false);
     }
   };
@@ -81,6 +154,12 @@ const MyActiveRequestsPage = () => {
         color: '#f97316',
         label: 'Payment Pending',
         icon: '💰'
+      },
+      payment_done: {
+        bg: 'rgba(34, 197, 94, 0.1)',
+        color: '#16a34a',
+        label: 'Payment Done',
+        icon: '✓'
       }
     };
     return configs[status] || configs.accepted;
@@ -132,6 +211,11 @@ const MyActiveRequestsPage = () => {
               <p className="text-xs md:text-sm mt-1" style={{ color: '#718096' }}>
                 {activeRequests.length} {activeRequests.length === 1 ? 'request' : 'requests'} in progress
               </p>
+              {error && (
+                <p className="text-[11px] md:text-xs mt-1" style={{ color: '#dc2626' }}>
+                  {error}
+                </p>
+              )}
             </div>
           </div>
           {activeRequests.length > 0 && (
@@ -156,7 +240,7 @@ const MyActiveRequestsPage = () => {
           >
             <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
@@ -233,7 +317,7 @@ const MyActiveRequestsPage = () => {
                     {request.location?.address && (
                       <div className="flex items-start gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0, marginTop: '2px' }}>
-                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor"/>
+                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
                         </svg>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 mb-0.5">Location</p>
@@ -247,7 +331,7 @@ const MyActiveRequestsPage = () => {
                     {/* Pickup Time */}
                     <div className="flex items-start gap-2">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0, marginTop: '2px' }}>
-                        <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-500 mb-0.5">Pickup Time</p>
@@ -261,7 +345,7 @@ const MyActiveRequestsPage = () => {
                     {request.distance && (
                       <div className="flex items-start gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0, marginTop: '2px' }}>
-                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                         </svg>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 mb-0.5">Distance</p>
@@ -276,7 +360,7 @@ const MyActiveRequestsPage = () => {
                     {request.acceptedAt && (
                       <div className="flex items-start gap-2">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0, marginTop: '2px' }}>
-                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-500 mb-0.5">Accepted</p>
@@ -317,6 +401,11 @@ const MyActiveRequestsPage = () => {
 };
 
 export default MyActiveRequestsPage;
+
+
+
+
+
 
 
 

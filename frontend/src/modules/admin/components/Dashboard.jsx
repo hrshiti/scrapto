@@ -11,6 +11,7 @@ import {
   FaArrowDown,
   FaUserShield
 } from 'react-icons/fa';
+import { adminAPI } from '../../shared/utils/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -23,58 +24,89 @@ const Dashboard = () => {
   });
 
   const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load and aggregate data from localStorage
+  // Load dashboard data from backend
   useEffect(() => {
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = () => {
-    // Count users (from user localStorage)
-    const userAuth = localStorage.getItem('isAuthenticated');
-    const userData = localStorage.getItem('user');
-    const totalUsers = userAuth === 'true' && userData ? 1 : 0; // Mock: In real app, count all users
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getDashboardStats();
+      
+      if (response.success && response.data?.stats) {
+        const backendStats = response.data.stats;
+        
+        setStats({
+          totalUsers: backendStats.users?.total || 0,
+          totalScrappers: backendStats.scrappers?.total || 0,
+          activeRequests: backendStats.orders?.pending || 0,
+          kycPending: backendStats.scrappers?.pendingKyc || 0,
+          revenue: backendStats.payments?.monthlyRevenue || 0,
+          todayPickups: backendStats.orders?.today || 0
+        });
 
-    // Count scrappers (from scrapper localStorage)
-    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
-    const scrapperUser = localStorage.getItem('scrapperUser');
-    const totalScrappers = scrapperAuth === 'true' && scrapperUser ? 1 : 0; // Mock: In real app, count all scrappers
+        // Mock recent activity (can be replaced with backend activity feed later)
+        const activity = [
+          { id: 1, type: 'kyc', message: `${backendStats.scrappers?.pendingKyc || 0} KYC submissions pending review`, time: 'Just now', icon: FaClock },
+          { id: 2, type: 'request', message: `${backendStats.orders?.pending || 0} pickup requests pending`, time: 'Just now', icon: FaFileInvoice },
+          { id: 3, type: 'order', message: `${backendStats.orders?.completed || 0} orders completed`, time: 'Just now', icon: FaCheckCircle },
+          { id: 4, type: 'scrapper', message: `${backendStats.scrappers?.total || 0} scrappers registered`, time: 'Just now', icon: FaTruck }
+        ];
+        setRecentActivity(activity);
+      } else {
+        throw new Error(response.message || 'Failed to load dashboard stats');
+      }
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError(err.message || 'Failed to load dashboard data');
+      
+      // Fallback to localStorage if backend fails
+      const userAuth = localStorage.getItem('isAuthenticated');
+      const userData = localStorage.getItem('user');
+      const totalUsers = userAuth === 'true' && userData ? 1 : 0;
 
-    // Count KYC pending
-    const kycStatus = localStorage.getItem('scrapperKYCStatus');
-    const kycPending = kycStatus === 'pending' ? 1 : 0;
+      const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
+      const scrapperUser = localStorage.getItem('scrapperUser');
+      const totalScrappers = scrapperAuth === 'true' && scrapperUser ? 1 : 0;
 
-    // Check active request
-    const activeRequest = localStorage.getItem('activeRequest');
-    const activeRequests = activeRequest ? 1 : 0;
+      const kycStatus = localStorage.getItem('scrapperKYCStatus');
+      const kycPending = kycStatus === 'pending' ? 1 : 0;
 
-    // Get completed orders for revenue calculation
-    const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-    const revenue = completedOrders.reduce((sum, order) => sum + (parseFloat(order.paidAmount) || 0), 0);
-    const todayPickups = completedOrders.filter(order => {
-      const orderDate = new Date(order.completedAt || order.pickedUpAt);
-      const today = new Date();
-      return orderDate.toDateString() === today.toDateString();
-    }).length;
+      const activeRequest = localStorage.getItem('activeRequest');
+      const activeRequests = activeRequest ? 1 : 0;
 
-    // Mock recent activity
-    const activity = [
-      { id: 1, type: 'kyc', message: 'New KYC submission pending review', time: '2 minutes ago', icon: FaClock },
-      { id: 2, type: 'request', message: 'New pickup request created', time: '15 minutes ago', icon: FaFileInvoice },
-      { id: 3, type: 'order', message: 'Order completed successfully', time: '1 hour ago', icon: FaCheckCircle },
-      { id: 4, type: 'scrapper', message: 'New scrapper registered', time: '2 hours ago', icon: FaTruck }
-    ];
+      const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
+      const revenue = completedOrders.reduce((sum, order) => sum + (parseFloat(order.paidAmount) || 0), 0);
+      const todayPickups = completedOrders.filter(order => {
+        const orderDate = new Date(order.completedAt || order.pickedUpAt);
+        const today = new Date();
+        return orderDate.toDateString() === today.toDateString();
+      }).length;
 
-    setStats({
-      totalUsers: totalUsers + 150, // Mock data
-      totalScrappers: totalScrappers + 45, // Mock data
-      activeRequests,
-      kycPending: kycPending + 8, // Mock data
-      revenue: revenue + 125000, // Mock data
-      todayPickups: todayPickups + 12 // Mock data
-    });
+      setStats({
+        totalUsers: totalUsers + 150,
+        totalScrappers: totalScrappers + 45,
+        activeRequests,
+        kycPending: kycPending + 8,
+        revenue: revenue + 125000,
+        todayPickups: todayPickups + 12
+      });
 
-    setRecentActivity(activity);
+      const activity = [
+        { id: 1, type: 'kyc', message: 'New KYC submission pending review', time: '2 minutes ago', icon: FaClock },
+        { id: 2, type: 'request', message: 'New pickup request created', time: '15 minutes ago', icon: FaFileInvoice },
+        { id: 3, type: 'order', message: 'Order completed successfully', time: '1 hour ago', icon: FaCheckCircle },
+        { id: 4, type: 'scrapper', message: 'New scrapper registered', time: '2 hours ago', icon: FaTruck }
+      ];
+      setRecentActivity(activity);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const statCards = [

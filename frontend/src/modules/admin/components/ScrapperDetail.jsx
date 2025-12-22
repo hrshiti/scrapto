@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  FaArrowLeft, FaTruck, FaPhone, FaIdCard, FaStar, FaRupeeSign, 
-  FaCheckCircle, FaClock, FaUserTimes, FaCar, FaCreditCard, FaChartLine 
+import {
+  FaArrowLeft, FaTruck, FaPhone, FaIdCard, FaStar, FaRupeeSign,
+  FaCheckCircle, FaClock, FaUserTimes, FaCar, FaCreditCard, FaChartLine
 } from 'react-icons/fa';
+import { adminAPI, earningsAPI } from '../../shared/utils/api';
 
 const ScrapperDetail = () => {
   const { scrapperId } = useParams();
@@ -12,76 +13,90 @@ const ScrapperDetail = () => {
   const [scrapper, setScrapper] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadScrapperData();
   }, [scrapperId]);
 
-  const loadScrapperData = () => {
-    // Load scrapper data
-    const mockScrapper = {
-      id: scrapperId,
-      name: 'Rajesh Kumar',
-      phone: '+91 98765 43210',
-      kycStatus: 'verified',
-      kycData: {
-        aadhaarNumber: '1234-****-5678',
-        submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        verifiedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      subscription: {
-        status: 'active',
-        plan: 'Pro Plan',
-        price: 199,
-        subscribedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-        expiryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      rating: 4.9,
-      totalPickups: 45,
-      totalEarnings: 125000,
-      vehicleInfo: 'Truck - MH-01-AB-1234',
-      joinedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-      earnings: {
-        today: 2500,
-        week: 15000,
-        month: 45000,
-        total: 125000
+  const loadScrapperData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load scrapper details from backend
+      const scrapperResponse = await adminAPI.getScrapperById(scrapperId);
+      if (!scrapperResponse.success || !scrapperResponse.data?.scrapper) {
+        throw new Error(scrapperResponse.message || 'Scrapper not found');
       }
-    };
 
-    const mockOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-    
-    // Add more mock orders if needed
-    if (mockOrders.length === 0) {
-      const additionalOrders = [
-        {
-          id: 'order_001',
-          orderId: 'ORD-2024-001',
-          userName: 'Rahul Sharma',
-          categories: ['Metal', 'Plastic'],
-          weight: 25.5,
-          paidAmount: 4500,
-          completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          location: '123 Main Street, Mumbai'
-        },
-        {
-          id: 'order_002',
-          orderId: 'ORD-2024-002',
-          userName: 'Priya Patel',
-          categories: ['Electronics'],
-          weight: 8.2,
-          paidAmount: 2800,
-          completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          location: '456 Business Park, Delhi'
+      const backendScrapper = scrapperResponse.data.scrapper;
+
+      // Load earnings from backend
+      let earningsData = { today: 0, week: 0, month: 0, total: 0 };
+      try {
+        const earningsResponse = await earningsAPI.getScrapperEarnings(scrapperId);
+        if (earningsResponse.success && earningsResponse.data?.summary) {
+          earningsData = {
+            today: earningsResponse.data.summary.today || 0,
+            week: earningsResponse.data.summary.week || 0,
+            month: earningsResponse.data.summary.month || 0,
+            total: earningsResponse.data.summary.total || 0
+          };
         }
-      ];
-      setOrders(additionalOrders);
-    } else {
-      setOrders(mockOrders);
-    }
+      } catch (earningsError) {
+        console.warn('Failed to load earnings:', earningsError);
+      }
 
-    setScrapper(mockScrapper);
-    setLoading(false);
+      // Transform backend data to frontend format
+      const transformedScrapper = {
+        id: backendScrapper._id || backendScrapper.id,
+        name: backendScrapper.name || 'N/A',
+        phone: backendScrapper.phone || 'N/A',
+        profilePic: backendScrapper.profilePic || null,
+        kycStatus: backendScrapper.kyc?.status || 'not_submitted',
+        kycData: backendScrapper.kyc || null,
+        subscription: backendScrapper.subscription || null,
+        rating: backendScrapper.rating || 0,
+        totalPickups: backendScrapper.totalPickups || 0,
+        totalEarnings: earningsData.total,
+        vehicleInfo: backendScrapper.vehicleInfo
+          ? `${backendScrapper.vehicleInfo.type || ''} - ${backendScrapper.vehicleInfo.number || ''}`
+          : 'Not provided',
+        joinedAt: backendScrapper.createdAt || new Date().toISOString(),
+        earnings: earningsData,
+        status: backendScrapper.status || 'active'
+      };
+
+      setScrapper(transformedScrapper);
+
+      // Load completed orders from earnings history
+      try {
+        const historyResponse = await earningsAPI.getScrapperEarnings(scrapperId, 'limit=20');
+        if (historyResponse.success && historyResponse.data?.summary?.orders) {
+          const transformedOrders = historyResponse.data.summary.orders.map((order) => ({
+            id: order.id || order._id,
+            orderId: order.id || order._id,
+            userName: order.userName || 'User',
+            categories: order.scrapType ? order.scrapType.split(', ') : [],
+            weight: order.weight || 0,
+            paidAmount: order.amount || 0,
+            completedAt: order.completedAt || order.createdAt,
+            location: order.location || 'N/A'
+          }));
+          setOrders(transformedOrders);
+        } else {
+          setOrders([]);
+        }
+      } catch (historyError) {
+        console.warn('Failed to load order history:', historyError);
+        setOrders([]);
+      }
+    } catch (err) {
+      console.error('Error loading scrapper data:', err);
+      setError(err.message || 'Failed to load scrapper data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getKYCStatusBadge = (status) => {
@@ -112,18 +127,24 @@ const ScrapperDetail = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
-        <p style={{ color: '#718096' }}>Loading scrapper details...</p>
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p style={{ color: '#718096' }}>Loading scrapper details...</p>
+        </div>
       </div>
     );
   }
 
-  if (!scrapper) {
+  if (error || !scrapper) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>Scrapper not found</p>
+        <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
+          {error || 'Scrapper not found'}
+        </p>
         <button
           onClick={() => navigate('/admin/scrappers')}
-          className="text-sm" style={{ color: '#64946e' }}
+          className="text-sm px-4 py-2 rounded-lg font-semibold text-white"
+          style={{ backgroundColor: '#64946e' }}
         >
           Back to Scrappers List
         </button>
@@ -154,10 +175,18 @@ const ScrapperDetail = () => {
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           {/* Avatar */}
           <div
-            className="w-24 h-24 rounded-xl flex items-center justify-center flex-shrink-0 mx-auto md:mx-0"
+            className="w-24 h-24 rounded-xl flex items-center justify-center flex-shrink-0 mx-auto md:mx-0 overflow-hidden"
             style={{ backgroundColor: '#f7fafc' }}
           >
-            <FaTruck style={{ color: '#64946e', fontSize: '48px' }} />
+            {scrapper.profilePic ? (
+              <img
+                src={scrapper.profilePic}
+                alt={scrapper.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <FaTruck style={{ color: '#64946e', fontSize: '48px' }} />
+            )}
           </div>
 
           {/* Scrapper Info */}
@@ -181,14 +210,20 @@ const ScrapperDetail = () => {
                 <FaIdCard style={{ color: '#64946e' }} />
                 <div>
                   <p className="text-xs" style={{ color: '#718096' }}>Aadhaar</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.kycData?.aadhaarNumber || 'N/A'}</p>
+                  <p className="font-semibold" style={{ color: '#2d3748' }}>
+                    {scrapper.kycData?.aadhaarNumber
+                      ? `${scrapper.kycData.aadhaarNumber.substring(0, 4)}-****-${scrapper.kycData.aadhaarNumber.substring(8)}`
+                      : 'N/A'}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <FaStar style={{ color: '#fbbf24' }} />
                 <div>
                   <p className="text-xs" style={{ color: '#718096' }}>Rating</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.rating.toFixed(1)} ⭐</p>
+                  <p className="font-semibold" style={{ color: '#2d3748' }}>
+                    {scrapper.rating > 0 ? scrapper.rating.toFixed(1) : 'N/A'} {scrapper.rating > 0 ? '⭐' : ''}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -206,10 +241,10 @@ const ScrapperDetail = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pickups', value: scrapper.totalPickups, icon: FaCheckCircle, color: '#10b981' },
-          { label: 'Total Earnings', value: `₹${(scrapper.totalEarnings / 1000).toFixed(0)}k`, icon: FaRupeeSign, color: '#8b5cf6' },
-          { label: 'Rating', value: scrapper.rating.toFixed(1), icon: FaStar, color: '#fbbf24' },
-          { label: 'This Month', value: `₹${(scrapper.earnings.month / 1000).toFixed(0)}k`, icon: FaChartLine, color: '#06b6d4' }
+          { label: 'Total Pickups', value: scrapper.totalPickups || 0, icon: FaCheckCircle, color: '#10b981' },
+          { label: 'Total Earnings', value: `₹${((scrapper.totalEarnings || 0) / 1000).toFixed(0)}k`, icon: FaRupeeSign, color: '#8b5cf6' },
+          { label: 'Rating', value: scrapper.rating > 0 ? scrapper.rating.toFixed(1) : 'N/A', icon: FaStar, color: '#fbbf24' },
+          { label: 'This Month', value: `₹${((scrapper.earnings?.month || 0) / 1000).toFixed(0)}k`, icon: FaChartLine, color: '#06b6d4' }
         ].map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -237,27 +272,71 @@ const ScrapperDetail = () => {
       </div>
 
       {/* KYC Information */}
-      {scrapper.kycStatus === 'verified' && scrapper.kycData && (
+      {scrapper.kycData && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="bg-white rounded-2xl shadow-lg p-6"
         >
-          <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-            KYC Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
+              KYC Information
+            </h2>
+            <span className="text-sm px-2 py-1 bg-gray-100 rounded text-gray-600">
+              Status: {scrapper.kycStatus.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <p className="text-xs mb-1" style={{ color: '#718096' }}>Aadhaar Number</p>
-              <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.kycData.aadhaarNumber}</p>
+              <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.kycData.aadhaarNumber || 'Not provided'}</p>
             </div>
             <div>
               <p className="text-xs mb-1" style={{ color: '#718096' }}>Verified On</p>
               <p className="font-semibold" style={{ color: '#2d3748' }}>
-                {new Date(scrapper.kycData.verifiedAt).toLocaleDateString()}
+                {scrapper.kycData.verifiedAt ? new Date(scrapper.kycData.verifiedAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
+          </div>
+
+          {/* KYC Documents */}
+          <h3 className="text-md font-semibold mb-3 border-t pt-4" style={{ color: '#4a5568' }}>Documents</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {scrapper.kycData.aadhaarPhotoUrl && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Aadhaar Photo</p>
+                <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
+                  <img src={scrapper.kycData.aadhaarPhotoUrl} alt="Aadhaar" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => window.open(scrapper.kycData.aadhaarPhotoUrl, '_blank')}
+                  />
+                </div>
+              </div>
+            )}
+            {scrapper.kycData.licenseUrl && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Driving License</p>
+                <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
+                  <img src={scrapper.kycData.licenseUrl} alt="License" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => window.open(scrapper.kycData.licenseUrl, '_blank')}
+                  />
+                </div>
+              </div>
+            )}
+            {scrapper.kycData.selfieUrl && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Selfie</p>
+                <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
+                  <img src={scrapper.kycData.selfieUrl} alt="Selfie" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => window.open(scrapper.kycData.selfieUrl, '_blank')}
+                  />
+                </div>
+              </div>
+            )}
+            {!scrapper.kycData.aadhaarPhotoUrl && !scrapper.kycData.licenseUrl && !scrapper.kycData.selfieUrl && (
+              <p className="text-sm text-gray-500 italic">No documents uploaded.</p>
+            )}
           </div>
         </motion.div>
       )}

@@ -13,17 +13,37 @@ export const generateToken = (userId, role) => {
   }
 
   // Warn if using default secret
-  if (secret === DEFAULT_JWT_SECRET && process.env.NODE_ENV !== 'development') {
+  if (secret === DEFAULT_JWT_SECRET && process.env.NODE_ENV !== 'production') {
     logger.warn('⚠️  WARNING: Using default JWT_SECRET. This is insecure for production!');
   }
 
-  return jwt.sign(
+  // Debug logging to show which secret is being used
+  const secretSource = process.env.JWT_SECRET ? 'process.env.JWT_SECRET' : 'DEFAULT_JWT_SECRET';
+  const secretPreview = secret.length > 20 ? `${secret.substring(0, 20)}...` : secret;
+  logger.info('🔑 Generating JWT Token:', {
+    userId,
+    role,
+    secretSource,
+    secretLength: secret.length,
+    secretPreview,
+    expiresIn: process.env.JWT_EXPIRE || '7d'
+  });
+
+  const token = jwt.sign(
     { id: userId, role },
     secret,
     {
+      // Respect env override; default to 7 days for longer sessions
       expiresIn: process.env.JWT_EXPIRE || '7d'
     }
   );
+
+  logger.info('✅ Token generated successfully:', {
+    tokenLength: token.length,
+    tokenPreview: `${token.substring(0, 30)}...`
+  });
+
+  return token;
 };
 
 export const generateRefreshToken = (userId) => {

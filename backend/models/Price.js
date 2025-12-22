@@ -27,7 +27,7 @@ const priceSchema = new mongoose.Schema({
   },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin',
+    ref: 'User',
     default: null
   },
   isActive: {

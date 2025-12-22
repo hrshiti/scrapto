@@ -5,7 +5,17 @@ const paymentSchema = new mongoose.Schema({
   order: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order',
-    required: true
+    required: false,
+    default: null
+  },
+  entityId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
+  },
+  entityType: {
+    type: String,
+    enum: ['order', 'subscription', 'price_feed'],
+    default: 'order'
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -73,6 +83,19 @@ const paymentSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+  planName: {
+    type: String,
+    default: null
+  },
+  durationDays: {
+    type: Number,
+    default: null
+  },
+  planId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SubscriptionPlan',
+    default: null
   }
 }, {
   timestamps: true
@@ -80,6 +103,7 @@ const paymentSchema = new mongoose.Schema({
 
 // Indexes for better query performance
 paymentSchema.index({ order: 1 });
+paymentSchema.index({ entityId: 1, entityType: 1 });
 paymentSchema.index({ user: 1 });
 paymentSchema.index({ razorpayOrderId: 1 });
 paymentSchema.index({ razorpayPaymentId: 1 });

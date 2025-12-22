@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
 import { DEFAULT_PRICE_FEED } from '../../shared/utils/priceFeedUtils';
+import { adminAPI } from '../../shared/utils/api';
 
 const PriceFeedEditor = () => {
   const [prices, setPrices] = useState([]);
@@ -9,25 +10,46 @@ const PriceFeedEditor = () => {
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadPrices();
   }, []);
 
-  const loadPrices = () => {
-    // Load prices from localStorage or use shared defaults
-    const storedPrices = localStorage.getItem('adminPriceFeed');
-    if (storedPrices) {
-      setPrices(JSON.parse(storedPrices));
-    } else {
-      const nowIso = new Date().toISOString();
-      const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
-        ...p,
-        effectiveDate: p.effectiveDate || nowIso,
-        updatedAt: p.updatedAt || nowIso
-      }));
-      setPrices(defaultPrices);
-      localStorage.setItem('adminPriceFeed', JSON.stringify(defaultPrices));
+  const loadPrices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminAPI.getAllPrices();
+
+      if (response.success && response.data?.prices) {
+        // Transform backend prices to frontend format
+        const transformedPrices = response.data.prices.map((price) => ({
+          id: price._id || price.id,
+          category: price.category || 'Unknown',
+          pricePerKg: price.pricePerKg || 0,
+          region: price.regionCode || price.region || 'IN-DL',
+          effectiveDate: price.effectiveDate || price.createdAt || new Date().toISOString(),
+          updatedAt: price.updatedAt || price.createdAt || new Date().toISOString()
+        }));
+        setPrices(transformedPrices);
+      } else {
+        // If no prices exist, initialize with defaults
+        const nowIso = new Date().toISOString();
+        const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
+          ...p,
+          effectiveDate: p.effectiveDate || nowIso,
+          updatedAt: p.updatedAt || nowIso
+        }));
+        setPrices(defaultPrices);
+      }
+    } catch (err) {
+      console.error('Error loading prices:', err);
+      setError(err.message || 'Failed to load prices');
+      setPrices([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -36,7 +58,7 @@ const PriceFeedEditor = () => {
     setEditValue(price.pricePerKg.toString());
   };
 
-  const handleSave = (id) => {
+  const handleSave = async (id) => {
     const newPrice = parseFloat(editValue);
     if (isNaN(newPrice) || newPrice < 0) {
       alert('Please enter a valid price');
@@ -44,18 +66,47 @@ const PriceFeedEditor = () => {
     }
 
     setIsSaving(true);
-    setTimeout(() => {
-      const updatedPrices = prices.map(price =>
-        price.id === id
-          ? { ...price, pricePerKg: newPrice, updatedAt: new Date().toISOString() }
-          : price
-      );
-      setPrices(updatedPrices);
-      localStorage.setItem('adminPriceFeed', JSON.stringify(updatedPrices));
-      setEditingId(null);
-      setEditValue('');
+    try {
+      // Find the price to update
+      const priceToUpdate = prices.find(p => p.id === id);
+      if (!priceToUpdate) {
+        throw new Error('Price not found');
+      }
+
+      let response;
+      // Check if price exists in backend (has _id format) or needs to be created
+      if (id && id.startsWith('price_')) {
+        // New price, create it
+        response = await adminAPI.createPrice({
+          category: priceToUpdate.category,
+          pricePerKg: newPrice,
+          regionCode: priceToUpdate.region || 'IN-DL',
+          effectiveDate: new Date().toISOString(),
+          isActive: true
+        });
+      } else {
+        // Existing price, update it
+        response = await adminAPI.updatePrice(id, {
+          pricePerKg: newPrice,
+          effectiveDate: new Date().toISOString()
+        });
+      }
+
+      if (response.success) {
+        // Reload prices from backend to get updated data
+        await loadPrices();
+        setEditingId(null);
+        setEditValue('');
+        alert('Price saved successfully!');
+      } else {
+        throw new Error(response.error || response.message || 'Failed to save price');
+      }
+    } catch (error) {
+      console.error('Error saving price:', error);
+      alert(error.message || 'Failed to save price. Please try again.');
+    } finally {
       setIsSaving(false);
-    }, 500);
+    }
   };
 
   const handleCancel = () => {
@@ -63,13 +114,45 @@ const PriceFeedEditor = () => {
     setEditValue('');
   };
 
-  const handleBulkSave = () => {
+  const handleBulkSave = async () => {
     setIsSaving(true);
-    setTimeout(() => {
-      localStorage.setItem('adminPriceFeed', JSON.stringify(prices));
+    try {
+      // Save all prices to backend
+      const savePromises = prices.map(price => {
+        if (price.id && price.id.startsWith('price_')) {
+          // New price, create it
+          return adminAPI.createPrice({
+            category: price.category,
+            pricePerKg: price.pricePerKg,
+            regionCode: price.region || 'IN-DL',
+            effectiveDate: price.effectiveDate || new Date().toISOString(),
+            isActive: true
+          });
+        } else {
+          // Existing price, update it
+          return adminAPI.updatePrice(price.id, {
+            pricePerKg: price.pricePerKg,
+            effectiveDate: price.effectiveDate || new Date().toISOString()
+          });
+        }
+      });
+
+      const results = await Promise.all(savePromises);
+      const failed = results.filter(r => !r.success);
+
+      if (failed.length === 0) {
+        // Reload prices from backend
+        await loadPrices();
+        alert('All prices saved successfully!');
+      } else {
+        throw new Error(`${failed.length} prices failed to save`);
+      }
+    } catch (error) {
+      console.error('Error saving prices:', error);
+      alert(error.message || 'Failed to save some prices. Please try again.');
+    } finally {
       setIsSaving(false);
-      alert('All prices saved successfully!');
-    }, 500);
+    }
   };
 
   const handleExportCSV = () => {
@@ -97,11 +180,11 @@ const PriceFeedEditor = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target.result;
       const lines = text.split('\n');
       const headers = lines[0].split(',').map(h => h.trim());
-      
+
       // Simple CSV parser (in production, use a proper CSV library)
       const importedPrices = [];
       for (let i = 1; i < lines.length; i++) {
@@ -109,7 +192,7 @@ const PriceFeedEditor = () => {
           const values = lines[i].split(',');
           const category = values[0]?.trim();
           const price = parseFloat(values[1]?.trim());
-          
+
           if (category && !isNaN(price)) {
             const existingPrice = prices.find(p => p.category === category);
             if (existingPrice) {
@@ -133,10 +216,35 @@ const PriceFeedEditor = () => {
       }
 
       if (importedPrices.length > 0) {
-        setPrices(importedPrices);
-        localStorage.setItem('adminPriceFeed', JSON.stringify(importedPrices));
-        alert(`Successfully imported ${importedPrices.length} prices!`);
-        setShowCSVModal(false);
+        // Save imported prices to backend
+        const savePromises = importedPrices.map(price => {
+          if (price.id && price.id.startsWith('price_')) {
+            // New price, create it
+            return adminAPI.createPrice({
+              category: price.category,
+              pricePerKg: price.pricePerKg,
+              regionCode: price.region || 'IN-DL',
+              effectiveDate: price.effectiveDate || new Date().toISOString(),
+              isActive: true
+            });
+          } else {
+            // Existing price, update it
+            return adminAPI.updatePrice(price.id, {
+              pricePerKg: price.pricePerKg,
+              effectiveDate: price.effectiveDate || new Date().toISOString()
+            });
+          }
+        });
+
+        try {
+          await Promise.all(savePromises);
+          await loadPrices(); // Reload from backend
+          alert(`Successfully imported ${importedPrices.length} prices!`);
+          setShowCSVModal(false);
+        } catch (error) {
+          console.error('Error saving imported prices:', error);
+          alert('Failed to save some imported prices. Please try again.');
+        }
       } else {
         alert('No valid prices found in CSV file');
       }
@@ -200,113 +308,148 @@ const PriceFeedEditor = () => {
         </div>
       </motion.div>
 
+      {/* Loading / Error State */}
+      {loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+            Loading prices...
+          </p>
+        </motion.div>
+      )}
+
+      {error && !loading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+        >
+          <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
+            {error}
+          </p>
+          <button
+            onClick={loadPrices}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+            style={{ backgroundColor: '#64946e' }}
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* Price Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead style={{ backgroundColor: '#f7fafc' }}>
-              <tr>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  Category
-                </th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  <span className="hidden sm:inline">Price per Kg (₹)</span>
-                  <span className="sm:hidden">Price (₹)</span>
-                </th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden md:table-cell" style={{ color: '#2d3748' }}>
-                  Region
-                </th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden lg:table-cell" style={{ color: '#2d3748' }}>
-                  Last Updated
-                </th>
-                <th className="px-2 py-2 md:px-6 md:py-4 text-center text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {prices.map((price, index) => (
-                <motion.tr
-                  key={price.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + index * 0.05 }}
-                  className="border-b" style={{ borderColor: '#e2e8f0' }}
-                >
-                  <td className="px-2 py-2 md:px-6 md:py-4">
-                    <span className="font-semibold text-xs md:text-sm" style={{ color: '#2d3748' }}>{price.category}</span>
-                  </td>
-                  <td className="px-2 py-2 md:px-6 md:py-4">
-                    {editingId === price.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="w-24 px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
-                          style={{
-                            borderColor: '#e2e8f0',
-                            focusBorderColor: '#64946e',
-                            focusRingColor: '#64946e'
-                          }}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => handleSave(price.id)}
-                          className="p-2 rounded-lg transition-all"
-                          style={{ backgroundColor: '#d1fae5', color: '#10b981' }}
+      {!loading && !error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead style={{ backgroundColor: '#f7fafc' }}>
+                <tr>
+                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                    Category
+                  </th>
+                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                    <span className="hidden sm:inline">Price per Kg (₹)</span>
+                    <span className="sm:hidden">Price (₹)</span>
+                  </th>
+                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden md:table-cell" style={{ color: '#2d3748' }}>
+                    Region
+                  </th>
+                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden lg:table-cell" style={{ color: '#2d3748' }}>
+                    Last Updated
+                  </th>
+                  <th className="px-2 py-2 md:px-6 md:py-4 text-center text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {prices.map((price, index) => (
+                  <motion.tr
+                    key={price.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 + index * 0.05 }}
+                    className="border-b" style={{ borderColor: '#e2e8f0' }}
+                  >
+                    <td className="px-2 py-2 md:px-6 md:py-4">
+                      <span className="font-semibold text-xs md:text-sm" style={{ color: '#2d3748' }}>{price.category}</span>
+                    </td>
+                    <td className="px-2 py-2 md:px-6 md:py-4">
+                      {editingId === price.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-24 px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
+                            style={{
+                              borderColor: '#e2e8f0',
+                              focusBorderColor: '#64946e',
+                              focusRingColor: '#64946e'
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleSave(price.id)}
+                            className="p-2 rounded-lg transition-all"
+                            style={{ backgroundColor: '#d1fae5', color: '#10b981' }}
+                          >
+                            <FaCheck />
+                          </button>
+                          <button
+                            onClick={handleCancel}
+                            className="p-2 rounded-lg transition-all"
+                            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <FaRupeeSign style={{ color: '#64946e' }} />
+                          <span className="font-semibold" style={{ color: '#2d3748' }}>
+                            {price.pricePerKg}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-2 py-2 md:px-6 md:py-4 hidden md:table-cell">
+                      <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{price.region}</span>
+                    </td>
+                    <td className="px-2 py-2 md:px-6 md:py-4 hidden lg:table-cell">
+                      <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                        {new Date(price.updatedAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2 md:px-6 md:py-4 text-center">
+                      {editingId !== price.id && (
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleEdit(price)}
+                          className="p-1.5 md:p-2 rounded-lg transition-all"
+                          style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
                         >
-                          <FaCheck />
-                        </button>
-                        <button
-                          onClick={handleCancel}
-                          className="p-2 rounded-lg transition-all"
-                          style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
-                        >
-                          <FaTimes />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <FaRupeeSign style={{ color: '#64946e' }} />
-                        <span className="font-semibold" style={{ color: '#2d3748' }}>
-                          {price.pricePerKg}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 md:px-6 md:py-4 hidden md:table-cell">
-                    <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{price.region}</span>
-                  </td>
-                  <td className="px-2 py-2 md:px-6 md:py-4 hidden lg:table-cell">
-                    <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                      {new Date(price.updatedAt).toLocaleDateString()}
-                    </span>
-                  </td>
-                  <td className="px-2 py-2 md:px-6 md:py-4 text-center">
-                    {editingId !== price.id && (
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleEdit(price)}
-                        className="p-1.5 md:p-2 rounded-lg transition-all"
-                        style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
-                      >
-                        <FaEdit className="text-xs md:text-sm" />
-                      </motion.button>
-                    )}
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
+                          <FaEdit className="text-xs md:text-sm" />
+                        </motion.button>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
 
       {/* CSV Import Modal */}
       {showCSVModal && (

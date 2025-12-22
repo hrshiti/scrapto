@@ -21,9 +21,6 @@ export const createOrder = asyncHandler(async (req, res) => {
     totalAmount += item.total || 0;
   });
 
-  // Set assignment timeout (90 seconds from now)
-  const assignmentTimeout = new Date(Date.now() + 90 * 1000);
-
   const order = await Order.create({
     user: userId,
     scrapItems,
@@ -34,7 +31,6 @@ export const createOrder = asyncHandler(async (req, res) => {
     pickupSlot,
     images: images || [],
     notes: notes || '',
-    assignmentTimeout,
     assignmentStatus: 'unassigned',
     status: ORDER_STATUS.PENDING
   });
@@ -62,7 +58,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   const orders = await Order.find(query)
-    .populate('scrapper', 'name phone')
+    .populate('scrapper', 'name phone email vehicleInfo')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(parseInt(limit));
@@ -85,21 +81,14 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 // @access  Private (Scrapper)
 export const getAvailableOrders = asyncHandler(async (req, res) => {
   // Get orders that are:
-  // 1. Unassigned or timeout
+  // 1. Unassigned
   // 2. Status is pending
   // 3. Not already assigned to this scrapper
   const scrapperId = req.user.id;
 
   const query = {
     status: ORDER_STATUS.PENDING,
-    $or: [
-      { assignmentStatus: 'unassigned' },
-      { assignmentStatus: 'timeout' },
-      { 
-        assignmentStatus: 'assigned',
-        assignmentTimeout: { $lt: new Date() }
-      }
-    ],
+    assignmentStatus: 'unassigned',
     scrapper: { $ne: scrapperId }
   };
 
@@ -124,7 +113,8 @@ export const getMyAssignedOrders = asyncHandler(async (req, res) => {
   }
 
   const orders = await Order.find(query)
-    .populate('user', 'name phone email address')
+    .populate('user', 'name phone email')
+    .populate('scrapper', 'name phone')
     .sort({ createdAt: -1 });
 
   sendSuccess(res, 'Assigned orders retrieved successfully', { orders });
@@ -136,10 +126,11 @@ export const getMyAssignedOrders = asyncHandler(async (req, res) => {
 export const getOrderById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
+  const scrapperId = req.user.scrapperId || req.user.id;
   const userRole = req.user.role;
 
   const order = await Order.findById(id)
-    .populate('user', 'name phone email address')
+    .populate('user', 'name phone email')
     .populate('scrapper', 'name phone');
 
   if (!order) {
@@ -151,7 +142,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
     return sendError(res, 'Not authorized to access this order', 403);
   }
 
-  if (userRole === 'scrapper' && order.scrapper && order.scrapper._id.toString() !== userId) {
+  if (userRole === 'scrapper' && order.scrapper && order.scrapper._id.toString() !== scrapperId) {
     return sendError(res, 'Not authorized to access this order', 403);
   }
 
@@ -163,7 +154,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 // @access  Private (Scrapper)
 export const acceptOrder = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const scrapperId = req.user.id;
+  const scrapperId = req.user.scrapperId || req.user.id;
 
   const order = await Order.findById(id);
 
@@ -171,12 +162,20 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     return sendError(res, 'Order not found', 404);
   }
 
-  // Check if order is available
-  if (order.status !== ORDER_STATUS.PENDING) {
-    return sendError(res, 'Order is not available for acceptance', 400);
+  // Idempotency check: If already accepted by THIS scrapper, return success
+  if (order.status === ORDER_STATUS.CONFIRMED && order.scrapper && order.scrapper.toString() === scrapperId) {
+    logger.info(`[AcceptOrder] Order ${id} already accepted by this scrapper. Returning success.`);
+    return sendSuccess(res, 'Order already accepted', { order });
   }
 
-  if (order.assignmentStatus === 'accepted' && order.scrapper) {
+  // Check if order is available
+  if (order.status !== ORDER_STATUS.PENDING) {
+    logger.warn(`[AcceptOrder] Failed: Order ${id} status is ${order.status}, expected ${ORDER_STATUS.PENDING}`);
+    return sendError(res, `Order is not available for acceptance (Status: ${order.status})`, 400);
+  }
+
+  if (order.assignmentStatus === 'accepted' || (order.scrapper && order.scrapper.toString() !== scrapperId)) {
+    logger.warn(`[AcceptOrder] Failed: Order ${id} already accepted/assigned. Status: ${order.assignmentStatus}, Scrapper: ${order.scrapper}`);
     return sendError(res, 'Order is already accepted by another scrapper', 400);
   }
 
@@ -186,7 +185,6 @@ export const acceptOrder = asyncHandler(async (req, res) => {
   order.status = ORDER_STATUS.CONFIRMED;
   order.assignedAt = new Date();
   order.acceptedAt = new Date();
-  order.assignmentTimeout = null;
 
   // Add to assignment history
   order.assignmentHistory.push({
@@ -238,6 +236,28 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   // Update status
   order.status = status;
 
+  // Update paymentStatus if provided (e.g. for cash payments)
+  const { paymentStatus } = req.body;
+  if (paymentStatus) {
+    const validPaymentStatuses = Object.values(PAYMENT_STATUS);
+    if (!validPaymentStatuses.includes(paymentStatus)) {
+      return sendError(res, 'Invalid payment status', 400);
+    }
+    order.paymentStatus = paymentStatus;
+
+    // Set paidAt if completed
+    if (paymentStatus === PAYMENT_STATUS.COMPLETED) {
+      // Create a dummy payment record for tracking if one doesn't exist? 
+      // For now, just update order level status
+    }
+  }
+
+  // Update totalAmount if provided (e.g. final negotiated price)
+  const { totalAmount } = req.body;
+  if (totalAmount !== undefined && totalAmount !== null) {
+    order.totalAmount = Number(totalAmount);
+  }
+
   // Set completion date if completed
   if (status === ORDER_STATUS.COMPLETED) {
     order.completedDate = new Date();
@@ -248,7 +268,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   await order.populate('user', 'name phone');
   await order.populate('scrapper', 'name phone');
 
-  logger.info(`Order ${id} status updated to ${status} by ${userRole} ${userId}`);
+  logger.info(`Order ${id} status updated to ${status} (Payment: ${order.paymentStatus}) by ${userRole} ${userId}`);
 
   sendSuccess(res, 'Order status updated successfully', { order });
 });

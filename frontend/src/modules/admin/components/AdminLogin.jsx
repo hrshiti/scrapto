@@ -1,14 +1,16 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../shared/context/AdminAuthContext';
+import { authAPI } from '../../shared/utils/api';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [otpSent, setOtpSent] = useState(false);
-  const inputRefs = useRef([]);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAdminAuth();
 
   // Redirect if already authenticated
@@ -18,56 +20,57 @@ const AdminLogin = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const handlePhoneSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (phone.length === 10) {
-      setOtpSent(true);
-      // Auto-focus first OTP input
-      setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 100);
-    }
-  };
+    setError('');
+    setLoading(true);
 
-  const handleOtpChange = (index, value) => {
-    if (value.length > 1) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    // Validate email format
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
     }
 
-    // Auto-submit when all OTP digits are filled
-    if (value && index === 5) {
-      const updatedOtp = [...newOtp];
-      if (updatedOtp.every((digit) => digit !== '')) {
-        setTimeout(() => {
-          const adminData = {
-            id: 'admin_001',
-            name: 'Admin User',
-            phone: phone,
-            email: 'admin@scrapto.com',
-            role: 'admin',
-            permissions: ['all']
-          };
-          login(adminData);
-          navigate('/admin', { replace: true });
-        }, 300);
+    try {
+      // Call backend API for admin login
+      const response = await authAPI.login(email, password);
+
+      if (response.success && response.data?.user) {
+        const userData = response.data.user;
+        const token = response.data.token;
+
+        // Verify user is admin
+        if (userData.role !== 'admin') {
+          setError('Access denied. Admin access only.');
+          setLoading(false);
+          return;
+        }
+
+        // Store token in localStorage
+        localStorage.setItem('token', token);
+        localStorage.setItem('adminToken', token);
+
+        // Prepare admin data
+        const adminData = {
+          id: userData._id || userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: 'admin',
+          permissions: ['all']
+        };
+
+        login(adminData);
+        navigate('/admin', { replace: true });
+      } else {
+        setError('Invalid email or password');
       }
+    } catch (err) {
+      console.error('Admin login error:', err);
+      setError(err.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleResendOtp = () => {
-    setOtp(['', '', '', '', '', '']);
-    setOtpSent(false);
   };
 
   return (
@@ -107,96 +110,93 @@ const AdminLogin = () => {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="bg-white rounded-2xl shadow-xl p-6 md:p-8"
         >
-          <AnimatePresence mode="wait">
-            {!otpSent ? (
-              <motion.form
-                key="phone-form"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handlePhoneSubmit}
-                className="space-y-6"
-              >
-                <div>
-                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="Enter 10-digit phone number"
-                    maxLength={10}
-                    className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                    style={{
-                      borderColor: '#e2e8f0',
-                      focusBorderColor: '#64946e',
-                      focusRingColor: '#64946e'
-                    }}
-                    required
-                  />
-                </div>
-
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all"
-                  style={{ backgroundColor: '#64946e' }}
-                  disabled={phone.length !== 10}
-                >
-                  Send OTP
-                </motion.button>
-              </motion.form>
-            ) : (
+          <motion.form
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
+            {error && (
               <motion.div
-                key="otp-form"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 rounded-xl text-sm font-semibold text-center"
+                style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
               >
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-center" style={{ color: '#2d3748' }}>
-                    Enter OTP sent to {phone}
-                  </label>
-                  <div className="flex gap-2 justify-center">
-                    {otp.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => (inputRefs.current[index] = el)}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-12 h-12 md:w-14 md:h-14 text-center text-xl font-bold rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                        style={{
-                          borderColor: '#e2e8f0',
-                          focusBorderColor: '#64946e',
-                          focusRingColor: '#64946e'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={handleResendOtp}
-                    className="text-sm font-semibold transition-colors"
-                    style={{ color: '#64946e' }}
-                  >
-                    Resend OTP
-                  </button>
-                </div>
+                {error}
               </motion.div>
             )}
-          </AnimatePresence>
+
+            <div>
+              <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter email address"
+                className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                style={{
+                  borderColor: error ? '#dc2626' : '#e2e8f0',
+                  focusBorderColor: '#64946e',
+                  focusRingColor: '#64946e'
+                }}
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                  style={{
+                    borderColor: error ? '#dc2626' : '#e2e8f0',
+                    focusBorderColor: '#64946e',
+                    focusRingColor: '#64946e'
+                  }}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {showPassword ? (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <motion.button
+              type="submit"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#64946e' }}
+              disabled={!email || !password || loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </motion.button>
+          </motion.form>
         </motion.div>
 
         {/* Footer */}

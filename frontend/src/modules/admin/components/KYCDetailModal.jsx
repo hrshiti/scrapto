@@ -8,13 +8,21 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleApprove = () => {
-    if (window.confirm('Are you sure you want to approve this KYC?')) {
-      setIsProcessing(true);
-      setTimeout(() => {
-        onApprove(kyc.id);
-        setIsProcessing(false);
-      }, 500);
+    // Add logging
+    console.log('Approve clicked for KYC:', kyc);
+    const scrapperId = kyc.scrapperId || kyc.id;
+    console.log('Scrapper ID:', scrapperId);
+
+    if (!scrapperId) {
+      alert('Error: Scrapper ID is missing');
+      return;
     }
+
+    // Removed window.confirm to debug blocking issue
+    setIsProcessing(true);
+    onApprove(scrapperId).finally(() => {
+      setIsProcessing(false);
+    });
   };
 
   const handleReject = () => {
@@ -24,10 +32,11 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
     }
     if (window.confirm('Are you sure you want to reject this KYC?')) {
       setIsProcessing(true);
-      setTimeout(() => {
-        onReject(kyc.id, rejectionReason);
+      // Use scrapperId if available, otherwise fallback to id
+      const scrapperId = kyc.scrapperId || kyc.id;
+      onReject(scrapperId, rejectionReason).finally(() => {
         setIsProcessing(false);
-      }, 500);
+      });
     }
   };
 

@@ -13,7 +13,7 @@ const Header = () => {
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center">
         <div>
-          <h2 
+          <h2
             className="text-xl md:text-2xl font-bold"
             style={{ color: '#2d3748' }}
           >

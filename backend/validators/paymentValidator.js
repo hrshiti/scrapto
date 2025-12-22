@@ -43,3 +43,36 @@ export const refundPaymentValidator = [
     .withMessage('Reason cannot exceed 200 characters')
 ];
 
+export const createSubscriptionPaymentValidator = [
+  body('amount')
+    .notEmpty()
+    .withMessage('Amount is required')
+    .isFloat({ min: 1 })
+    .withMessage('Amount must be greater than 0'),
+  body('planName')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Plan name too long'),
+  body('durationDays')
+    .optional()
+    .isInt({ min: 1, max: 365 })
+    .withMessage('Duration must be between 1 and 365 days')
+];
+
+export const verifySubscriptionPaymentValidator = [
+  body('razorpay_order_id')
+    .notEmpty()
+    .withMessage('Razorpay order ID is required')
+    .trim(),
+  body('razorpay_payment_id')
+    .notEmpty()
+    .withMessage('Razorpay payment ID is required')
+    .trim(),
+  body('razorpay_signature')
+    .notEmpty()
+    .withMessage('Razorpay signature is required')
+    .trim()
+];
+

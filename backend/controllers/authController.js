@@ -2,13 +2,29 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendError } from '../utils/responseHandler.js';
 import { generateToken } from '../utils/generateToken.js';
 import User from '../models/User.js';
+import Scrapper from '../models/Scrapper.js';
 import { sendOTP, sendWelcomeSMS } from '../utils/otpService.js';
 import logger from '../utils/logger.js';
+import { USER_ROLES } from '../config/constants.js';
 
-// Helper: bypass OTP sending for specific test numbers
-const isBypassOtpNumber = (phone) => {
-  const bypassList = new Set(['9685974247', '9876543210', '9999999999', '7610416911']);
-  return bypassList.has(phone);
+// Helper: bypass OTP sending for specific test numbers (disabled in production by default)
+const isBypassEnabled = process.env.ENABLE_BYPASS_OTP !== 'false' && process.env.NODE_ENV !== 'production';
+// User test numbers
+const userBypassList = new Set(['9685974247', '9876543210', '9999999999', '7610416911', '6260491554']);
+// Scrapper test numbers (dedicated for scrapper testing)
+const scrapperBypassList = new Set(['8888888888', '7777777777', '6666666666']);
+// Combined bypass list
+const bypassList = new Set([...userBypassList, ...scrapperBypassList]);
+const isBypassOtpNumber = (phone) => isBypassEnabled && bypassList.has(phone);
+// Get bypass OTP for a phone number
+const getBypassOtp = (phone) => {
+  if (phone === '7610416911') {
+    return '110211';
+  } else if (scrapperBypassList.has(phone)) {
+    return '123456'; // Default OTP for scrapper test numbers
+  } else {
+    return '123456'; // Default OTP for other test numbers
+  }
 };
 
 // @desc    Register user
@@ -16,31 +32,74 @@ const isBypassOtpNumber = (phone) => {
 // @access  Public
 export const register = asyncHandler(async (req, res) => {
   const { name, email, phone, password, role } = req.body;
+  const userRole = role || USER_ROLES.USER;
 
-  // Check if user exists
-  const userExists = await User.findOne({ $or: [{ email }, { phone }] });
-  if (userExists) {
-    return sendError(res, 'User already exists with this email or phone', 400);
+  // Check if phone number is already registered in opposite role
+  if (userRole === USER_ROLES.USER) {
+    // If registering as user, check if phone exists in Scrapper collection
+    const scrapperExists = await Scrapper.findOne({ phone });
+    if (scrapperExists) {
+      return sendError(res, 'This phone number is already registered as a scrapper. Please use a different number or login as scrapper.', 400);
+    }
+    // Check if user exists
+    const userExists = await User.findOne({ $or: [{ email }, { phone }] });
+    if (userExists) {
+      return sendError(res, 'User already exists with this email or phone', 400);
+    }
+  } else if (userRole === USER_ROLES.SCRAPPER) {
+    // If registering as scrapper, check if phone exists in User collection
+    const userExists = await User.findOne({ phone });
+    if (userExists) {
+      return sendError(res, 'This phone number is already registered as a user. Please use a different number or login as user.', 400);
+    }
+    // Check if scrapper exists
+    const scrapperExists = await Scrapper.findOne({ phone });
+    if (scrapperExists) {
+      return sendError(res, 'Scrapper already exists with this phone number', 400);
+    }
   }
 
-  // Create user
+  // Create user (primary auth record)
   const user = await User.create({
     name,
     email,
     phone,
     password,
-    role: role || 'user'
+    role: userRole
   });
+
+  // If registering as scrapper, also create scrapper profile (if not already created)
+  if (userRole === USER_ROLES.SCRAPPER) {
+    try {
+      // Basic default vehicle info - can be updated later via profile
+      const defaultVehicleInfo = {
+        type: 'bike',
+        number: 'NA',
+        capacity: 0
+      };
+
+      await Scrapper.create({
+        _id: user._id, // keep scrapper id in sync with user id
+        phone,
+        name,
+        email,
+        vehicleInfo: defaultVehicleInfo
+      });
+    } catch (scrapperError) {
+      // If scrapper creation fails, log error but don't block registration
+      logger.error('❌ Failed to create scrapper profile during registration:', {
+        error: scrapperError.message,
+        phone,
+        userId: user._id
+      });
+    }
+  }
 
   // Generate OTP for phone verification
   let otp;
   if (isBypassOtpNumber(phone)) {
     // Use custom OTP for specific phone numbers
-    if (phone === '7610416911') {
-      otp = '110211';
-    } else {
-      otp = '123456';
-    }
+    otp = getBypassOtp(phone);
     user.phoneVerificationOTP = otp;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
   } else {
@@ -94,6 +153,13 @@ export const login = asyncHandler(async (req, res) => {
     return sendError(res, 'Account is deactivated', 403);
   }
 
+  // For admin users, ensure they use password-based login (not OTP)
+  if (user.role === USER_ROLES.ADMIN) {
+    if (!password) {
+      return sendError(res, 'Admin users must use password-based login', 400);
+    }
+  }
+
   // Check password
   const isMatch = await user.matchPassword(password);
   if (!isMatch) {
@@ -143,12 +209,65 @@ export const updateProfile = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/verify-otp
 // @access  Public
 export const verifyOTP = asyncHandler(async (req, res) => {
-  const { phone, otp, purpose } = req.body;
+  const { phone, otp, purpose, role } = req.body;
+  const requestedRole = role || (purpose === 'login' ? USER_ROLES.USER : null);
 
-  const user = await User.findOne({ phone });
+  // If role is specified, check cross-role validation
+  if (requestedRole) {
+    if (requestedRole === USER_ROLES.USER) {
+      const scrapperExists = await Scrapper.findOne({ phone });
+      if (scrapperExists) {
+        return sendError(res, 'This phone number is registered as a scrapper. Please login from the scrapper portal.', 400);
+      }
+    } else if (requestedRole === USER_ROLES.SCRAPPER) {
+      const userExists = await User.findOne({ phone, role: USER_ROLES.USER });
+      if (userExists) {
+        return sendError(res, 'This phone number is registered as a user. Please login from the user portal.', 400);
+      }
+    }
+  }
+
+  // Find user by phone, but if role is specified, also filter by role
+  let user;
+  if (requestedRole) {
+    // First try to find with exact role match
+    user = await User.findOne({ phone, role: requestedRole });
+    
+    // If not found with role, try without role (for existing users who might have wrong role)
+    if (!user) {
+      user = await User.findOne({ phone });
+      if (user && user.role !== requestedRole) {
+        logger.warn('⚠️ User found but role mismatch. Updating role:', {
+          phone,
+          currentRole: user.role,
+          requestedRole,
+          userId: user._id
+        });
+        // Update user role to match requested role
+        user.role = requestedRole;
+        await user.save();
+      }
+    }
+  } else {
+    user = await User.findOne({ phone });
+  }
 
   if (!user) {
-    return sendError(res, 'User not found', 404);
+    const errorMsg = requestedRole 
+      ? `User not found with phone ${phone} and role ${requestedRole}`
+      : `User not found with phone ${phone}`;
+    return sendError(res, errorMsg, 404);
+  }
+
+  // Ensure role matches (after potential update above)
+  if (requestedRole && user.role !== requestedRole) {
+    logger.error('❌ Role mismatch in verifyOTP after update:', {
+      phone,
+      requestedRole,
+      userRole: user.role,
+      userId: user._id
+    });
+    return sendError(res, `Role mismatch. Expected ${requestedRole}, but user has role ${user.role}`, 400);
   }
 
   // Debug logging
@@ -166,7 +285,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
   // Bypass acceptance: if number is in bypass list, accept the configured code
   if (isBypassOtpNumber(phone)) {
-    const expectedBypassOtp = phone === '7610416911' ? '110211' : '123456';
+    const expectedBypassOtp = getBypassOtp(phone);
     isOTPValid = otp === expectedBypassOtp;
     if (isOTPValid) {
       // Mark OTP as valid regardless of stored values
@@ -190,13 +309,22 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     return sendError(res, 'Invalid or expired OTP', 400);
   }
 
-  // If this is login verification (purpose === 'login' or token exists), generate login token
-  const isLoginVerification = purpose === 'login' || req.headers.authorization;
-
   // Mark phone as verified
   if (!user.isPhoneVerified) {
     user.isPhoneVerified = true;
     user.isVerified = true;
+  }
+
+  // CRITICAL: Update role BEFORE clearing OTP and saving
+  // This ensures role is correct in database before token generation
+  if (requestedRole && user.role !== requestedRole) {
+    logger.warn('⚠️ Role mismatch in verifyOTP - updating user role:', {
+      phone,
+      requestedRole,
+      currentUserRole: user.role,
+      userId: user._id
+    });
+    user.role = requestedRole;
   }
 
   // Clear OTP
@@ -204,15 +332,44 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   user.otpExpiresAt = null;
   await user.save();
 
-  // Generate token if login verification
-  let token = null;
-  if (isLoginVerification) {
-    token = generateToken(user._id, user.role);
+  // Always issue a fresh access token after successful verification
+  // Use user.role which should now be correct (updated above if needed)
+  const tokenRole = user.role;
+  
+  // Final safety check: if requestedRole was specified, ensure we use it
+  if (requestedRole && tokenRole !== requestedRole) {
+    logger.error('❌ CRITICAL: Role still wrong after update:', {
+      phone,
+      requestedRole,
+      userRole: user.role,
+      tokenRole,
+      userId: user._id
+    });
+    // Force correct role
+    const finalRole = requestedRole;
+    const token = generateToken(user._id, finalRole);
+    user.role = finalRole; // Update for response
+    sendSuccess(res, 'OTP verified successfully', {
+      user,
+      token
+    });
+    return;
   }
+  
+  const token = generateToken(user._id, tokenRole);
+  
+  // Log token generation for debugging
+  logger.info('🔑 Token generated in verifyOTP:', {
+    userId: user._id,
+    phone,
+    role: tokenRole,
+    requestedRole: requestedRole || 'none',
+    userRoleInDB: user.role
+  });
 
   sendSuccess(res, 'OTP verified successfully', {
     user,
-    ...(token && { token })
+    token
   });
 });
 
@@ -232,11 +389,7 @@ export const resendOTP = asyncHandler(async (req, res) => {
   let otp;
   if (isBypassOtpNumber(phone)) {
     // Use custom OTP for specific phone numbers
-    if (phone === '7610416911') {
-      otp = '110211';
-    } else {
-      otp = '123456';
-    }
+    otp = getBypassOtp(phone);
     user.phoneVerificationOTP = otp;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     logger.info(`🔧 Bypass OTP generated for ${phone}: ${otp}, expires at: ${user.otpExpiresAt}`);
@@ -274,9 +427,23 @@ export const resendOTP = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/login-otp
 // @access  Public
 export const sendLoginOTP = asyncHandler(async (req, res) => {
-  const { phone } = req.body;
+  const { phone, role } = req.body;
+  const requestedRole = role || USER_ROLES.USER;
 
-  const user = await User.findOne({ phone });
+  // Check if phone exists in opposite role and prevent cross-login
+  if (requestedRole === USER_ROLES.USER) {
+    const scrapperExists = await Scrapper.findOne({ phone });
+    if (scrapperExists) {
+      return sendError(res, 'This phone number is registered as a scrapper. Please login from the scrapper portal.', 400);
+    }
+  } else if (requestedRole === USER_ROLES.SCRAPPER) {
+    const userExists = await User.findOne({ phone, role: USER_ROLES.USER });
+    if (userExists) {
+      return sendError(res, 'This phone number is registered as a user. Please login from the user portal.', 400);
+    }
+  }
+
+  const user = await User.findOne({ phone, role: requestedRole });
 
   if (!user) {
     return sendError(res, 'User not found with this phone number', 404);
@@ -291,11 +458,7 @@ export const sendLoginOTP = asyncHandler(async (req, res) => {
   let otp;
   if (isBypassOtpNumber(phone)) {
     // Use custom OTP for specific phone numbers
-    if (phone === '7610416911') {
-      otp = '110211';
-    } else {
-      otp = '123456';
-    }
+    otp = getBypassOtp(phone);
     user.phoneVerificationOTP = otp;
     user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     logger.info(`🔧 Bypass OTP generated for ${phone}: ${otp}, expires at: ${user.otpExpiresAt}`);
@@ -340,23 +503,15 @@ export const refreshToken = asyncHandler(async (req, res) => {
   }
 
   try {
-    const { getRefreshToken, deleteRefreshToken } = await import('../config/redis.js');
     const jwt = await import('jsonwebtoken');
-    
     const secret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
-    
+
     if (!secret) {
       return sendError(res, 'Server configuration error', 500);
     }
 
-    // Verify refresh token
+    // Verify refresh token (stateless, Redis disabled)
     const decoded = jwt.default.verify(token, secret);
-    
-    // Check if refresh token exists in Redis
-    const storedToken = await getRefreshToken(decoded.id);
-    if (!storedToken || storedToken !== token) {
-      return sendError(res, 'Invalid or expired refresh token', 401);
-    }
 
     // Find user
     const user = await User.findById(decoded.id);
@@ -366,22 +521,14 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
     // Generate new access token
     const newAccessToken = generateToken(user._id, user.role);
-    
-    // Optionally generate new refresh token (token rotation)
+
+    // Optional rotation without persistence
     const rotateRefreshToken = process.env.ROTATE_REFRESH_TOKEN !== 'false';
     let newRefreshToken = null;
-    
+
     if (rotateRefreshToken) {
       const { generateRefreshToken } = await import('../utils/generateToken.js');
-      const { storeRefreshToken } = await import('../config/redis.js');
-      
       newRefreshToken = generateRefreshToken(user._id);
-      
-      // Delete old refresh token
-      await deleteRefreshToken(decoded.id);
-      
-      // Store new refresh token
-      await storeRefreshToken(user._id, newRefreshToken);
     }
 
     sendSuccess(res, 'Token refreshed successfully', {

@@ -1,41 +1,171 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { orderAPI, paymentAPI } from '../../../modules/shared/utils/api';
+import { useAuth } from '../../../modules/shared/context/AuthContext';
 
 const RequestStatusPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [requestData, setRequestData] = useState(null);
-  const [status, setStatus] = useState('pending'); // pending, accepted, on_way, arrived, completed
+  const [status, setStatus] = useState('pending'); // pending, accepted, on_way, completed
   const [scrapperInfo, setScrapperInfo] = useState(null);
   const [eta, setEta] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
+
+  const mapStatus = (backendStatus) => {
+    switch (backendStatus) {
+      case 'pending':
+        return 'pending';
+      case 'confirmed':
+        return 'accepted';
+      case 'in_progress':
+        return 'on_way';
+      case 'completed':
+        return 'completed';
+      case 'cancelled':
+        return 'completed';
+      default:
+        return 'pending';
+    }
+  };
+
+  const loadRazorpay = () => {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+      document.body.appendChild(script);
+    });
+  };
 
   useEffect(() => {
-    // Load request data from sessionStorage or location state
-    const storedRequest = sessionStorage.getItem('scrapRequest');
-    if (storedRequest) {
-      const data = JSON.parse(storedRequest);
-      setRequestData(data);
-      
-      // Simulate status updates (in real app, this would come from API)
-      setTimeout(() => {
-        setStatus('accepted');
-        setScrapperInfo({
-          name: 'Rajesh Kumar',
-          rating: 4.8,
-          phone: '+91 98765 43210',
-          vehicle: 'Truck - MH-12-AB-1234',
-          distance: '2.5 km away'
-        });
-        setEta('30-45 minutes');
-      }, 3000);
-    } else if (location.state?.requestData) {
-      setRequestData(location.state.requestData);
-    } else {
-      // Redirect if no data
-      navigate('/');
+    const initial = location.state?.requestData;
+    if (!initial) {
+      navigate('/my-requests');
+      return;
     }
-  }, [navigate, location]);
+
+    setRequestData(initial);
+    if (initial.status) {
+      setStatus(mapStatus(initial.status));
+    }
+    if (initial.scrapper) {
+      setScrapperInfo({
+        name: initial.scrapper.name,
+        phone: initial.scrapper.phone
+      });
+    }
+
+    if (!initial._id) {
+      return;
+    }
+
+    let isMounted = true;
+    const fetchOrder = async () => {
+      try {
+        const res = await orderAPI.getById(initial._id);
+        const order = res.data?.order;
+        if (!order || !isMounted) return;
+        setRequestData(order);
+        setStatus(mapStatus(order.status));
+        if (order.scrapper) {
+          setScrapperInfo({
+            name: order.scrapper.name,
+            phone: order.scrapper.phone
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch order status', err);
+      }
+    };
+
+    fetchOrder();
+    const interval = setInterval(fetchOrder, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [location.state, navigate]);
+
+  const handlePay = async () => {
+    if (!requestData?._id || isPaying) return;
+    // Only allow when backend status is confirmed/in_progress
+    const backendStatus = requestData.status;
+    if (!['confirmed', 'in_progress'].includes(backendStatus)) {
+      alert('Payment will be available once the request is confirmed by scrapper.');
+      return;
+    }
+
+    try {
+      setIsPaying(true);
+      await loadRazorpay();
+
+      const createRes = await paymentAPI.createPaymentOrder(requestData._id);
+      const { orderId: razorpayOrderId, amount, currency, keyId } = createRes.data || {};
+
+      const options = {
+        key: keyId,
+        amount,
+        currency: currency || 'INR',
+        name: 'Scrapto',
+        description: 'Pickup payment',
+        order_id: razorpayOrderId,
+        prefill: {
+          name: user?.name || 'User',
+          email: user?.email || 'user@example.com',
+          contact: user?.phone || ''
+        },
+        handler: async (response) => {
+          try {
+            await paymentAPI.verifyPayment({
+              orderId: requestData._id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            });
+            // Refresh order status
+            const refreshed = await orderAPI.getById(requestData._id);
+            const order = refreshed.data?.order;
+            if (order) {
+              setRequestData(order);
+              setStatus(mapStatus(order.status));
+              if (order.scrapper) {
+                setScrapperInfo({
+                  name: order.scrapper.name,
+                  phone: order.scrapper.phone
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Payment verify failed', err);
+            alert(err.message || 'Payment verification failed. Please contact support.');
+          } finally {
+            setIsPaying(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setIsPaying(false)
+        },
+        theme: {
+          color: '#64946e'
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert(error.message || 'Failed to initiate payment. Please try again.');
+      setIsPaying(false);
+    }
+  };
 
   // Modern SVG Icons Component
   const StatusIcon = ({ status, color }) => {
@@ -220,6 +350,45 @@ const RequestStatusPage = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Payment CTA */}
+        {requestData?.status && !['completed', 'cancelled'].includes(requestData.status) && requestData?.paymentStatus !== 'completed' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="rounded-2xl p-4 md:p-5 mb-4 md:mb-6 shadow-lg border"
+            style={{ backgroundColor: '#ffffff', borderColor: 'rgba(100,148,110,0.2)' }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>Payment</p>
+                <p className="text-xs" style={{ color: '#718096' }}>
+                  Complete payment after scrapper confirms your request.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handlePay}
+                disabled={isPaying || !['confirmed', 'in_progress'].includes(requestData.status)}
+                className="px-4 py-2 rounded-full text-sm font-semibold shadow-md transition-all duration-300 disabled:opacity-50"
+                style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+              >
+                {isPaying ? 'Processing...' : 'Pay Now'}
+              </button>
+            </div>
+            {requestData.paymentStatus === 'pending' && (
+              <p className="mt-2 text-xs" style={{ color: '#f59e0b' }}>
+                Status: Pending
+              </p>
+            )}
+            {requestData.paymentStatus === 'failed' && (
+              <p className="mt-2 text-xs" style={{ color: '#dc2626' }}>
+                Status: Failed — please retry payment.
+              </p>
+            )}
+          </motion.div>
+        )}
 
         {/* Timeline */}
         <motion.div

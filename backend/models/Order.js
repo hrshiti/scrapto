@@ -9,7 +9,12 @@ const orderSchema = new mongoose.Schema({
   },
   scrapper: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    ref: 'Scrapper',
+    default: null
+  },
+  review: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Review',
     default: null
   },
   scrapItems: [{
@@ -90,13 +95,9 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  assignmentTimeout: {
-    type: Date,
-    default: null
-  },
   assignmentStatus: {
     type: String,
-    enum: ['unassigned', 'assigned', 'accepted', 'rejected', 'timeout'],
+    enum: ['unassigned', 'assigned', 'accepted', 'rejected'],
     default: 'unassigned'
   },
   assignmentHistory: [{

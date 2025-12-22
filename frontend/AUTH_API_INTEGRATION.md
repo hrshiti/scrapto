@@ -7,7 +7,7 @@ The frontend has been integrated with the backend authentication APIs. All auth 
 ## API Endpoints Used
 
 ### Base URL
-- Development: `http://localhost:5000/api`
+- Development: `http://localhost:7000/api`
 - Set via environment variable: `VITE_API_BASE_URL`
 
 ### Endpoints
@@ -54,7 +54,7 @@ The frontend has been integrated with the backend authentication APIs. All auth 
 
 2. **Environment Variables**
    - Backend `.env` should have SMSIndia Hub credentials
-   - Frontend can use default `http://localhost:5000/api` or set `VITE_API_BASE_URL`
+   - Frontend can use default `http://localhost:7000/api` or set `VITE_API_BASE_URL`
 
 3. **MongoDB Running**
    - Ensure MongoDB is running and connected
@@ -142,7 +142,7 @@ For other numbers, OTP will be sent via SMS (if SMSIndia Hub is configured).
 
 ### Frontend `.env` (optional)
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=http://localhost:7000/api
 ```
 
 ### Backend `.env` (required)

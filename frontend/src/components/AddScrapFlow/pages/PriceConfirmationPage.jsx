@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../../modules/shared/utils/referralUtils';
+import { orderAPI } from '../../../modules/shared/utils/api';
 
 const PriceConfirmationPage = () => {
   const navigate = useNavigate();
@@ -71,6 +72,17 @@ const PriceConfirmationPage = () => {
     return days;
   };
 
+  const mapCategoryToBackend = (cat) => {
+    const id = (cat.id || '').toLowerCase();
+    const name = (cat.name || '').toLowerCase();
+    if (id.includes('metal') || name === 'metal') return 'metal';
+    if (id.includes('plastic') || name === 'plastic') return 'plastic';
+    if (id.includes('paper') || name === 'paper') return 'paper';
+    if (id.includes('electronic') || name === 'electronics' || name === 'electronic') return 'electronic';
+    if (id.includes('glass') || name === 'glass') return 'glass';
+    return 'other';
+  };
+
   const handleSubmit = useCallback(async (e) => {
     if (e) {
       e.preventDefault();
@@ -85,14 +97,18 @@ const PriceConfirmationPage = () => {
     console.log('handleSubmit called');
     setIsSubmitting(true);
     
-    // Require user to manually select pickup date & time slot
     if (!selectedDate || !selectedSlot) {
       alert('Please select a pickup date and time slot before applying.');
       setIsSubmitting(false);
       return;
     }
 
-    // Prepare pickup slot object (date + day + time window)
+    if (!user) {
+      alert('Please login to place a pickup request.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const dateObj = new Date(selectedDate);
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayName = dayNames[dateObj.getDay()];
@@ -102,86 +118,58 @@ const PriceConfirmationPage = () => {
       slot: selectedSlot
     };
 
-    // Prepare submission data
-    const submissionData = {
-      categories: selectedCategories,
-      images: uploadedImages,
-      weight: weightData?.weight,
-      estimatedPayout: estimatedPayout,
-      notes: notes,
-      preferredTime: preferredTime,
+    const totalWeight = Number(weightData?.weight || 0);
+    const itemCount = Math.max(selectedCategories.length, 1);
+    const weightPerItem = totalWeight > 0 ? totalWeight / itemCount : 0;
+
+    const scrapItems = selectedCategories.map((cat) => {
+      const category = mapCategoryToBackend(cat);
+      const rate = cat.price || marketPrices[cat.name] || 0;
+      const total = weightPerItem * rate;
+      return {
+        category,
+        weight: weightPerItem || 1,
+        rate,
+        total
+      };
+    });
+
+    const images = uploadedImages.map((img) => ({
+      url: img.url || img.preview,
+      publicId: img.publicId || null
+    }));
+
+    const payload = {
+      scrapItems,
+      preferredTime,
       pickupSlot,
-      timestamp: new Date().toISOString()
+      images,
+      notes
     };
 
     try {
-      console.log('Storing data in sessionStorage', submissionData);
-      // Store in sessionStorage for now (in real app, send to backend)
-      sessionStorage.setItem('scrapRequest', JSON.stringify(submissionData));
-      console.log('Data stored successfully');
-      
-      // Check if this is user's first request and process milestone
-      if (user) {
-        const userRequests = JSON.parse(localStorage.getItem('userRequests') || '[]');
-        const isFirstRequest = userRequests.length === 0;
-        
-        if (isFirstRequest) {
-          // Process first request milestone
-          try {
-            checkAndProcessMilestone(user.phone || user.id, 'user', 'firstRequest');
-          } catch (error) {
-            console.error('Error processing milestone:', error);
-          }
+      const response = await orderAPI.create(payload);
+      const createdOrder = response.data?.order || null;
+
+      if (createdOrder) {
+        try {
+          checkAndProcessMilestone(user.phone || user.id, 'user', 'firstRequest');
+        } catch (err) {
+          console.error('Error processing milestone:', err);
         }
-        
-        // Add to user requests with admin-assignable fields
-        const newRequest = {
-          id: `req_${Date.now()}`,
-          ...submissionData,
-          userId: user.phone || user.id,
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          assignedScrapperId: null,
-          assignedScrapperName: null,
-          assignmentStatus: 'unassigned', // unassigned | admin_assigned | accepted | rejected
-          assignmentHistory: [] // [{ scrapperId, scrapperName, assignedBy, assignedAt, status }]
-        };
-        userRequests.push(newRequest);
-        localStorage.setItem('userRequests', JSON.stringify(userRequests));
       }
-      
-      // Simulate brief API call delay (reduced for better UX)
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      console.log('About to navigate to /request-status');
-      console.log('Current pathname:', window.location.pathname);
-      console.log('Navigate function type:', typeof navigate);
-      
-      // Redirect to status page - use replace: true to avoid back button issues
+
       navigate('/request-status', { 
-        state: { requestData: submissionData },
+        state: { requestData: createdOrder || payload },
         replace: true 
       });
-      
-      console.log('Navigation called');
-      
-      // Force navigation after a short delay to ensure it happens
-      setTimeout(() => {
-        const currentPath = window.location.pathname;
-        console.log('Checking path after delay:', currentPath);
-        if (currentPath !== '/request-status') {
-          console.log('Fallback: Using window.location.href');
-          window.location.href = '/request-status';
-        } else {
-          console.log('Navigation successful via React Router');
-        }
-      }, 200);
     } catch (error) {
       console.error('Error submitting request:', error);
       console.error('Error stack:', error.stack);
+      alert(error.message || 'Failed to submit request. Please try again.');
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, estimatedPayout, notes, preferredTime, user, navigate]);
+  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, preferredTime, user, navigate, marketPrices]);
 
   const timeSlots = [
     '9:00 AM - 11:00 AM',

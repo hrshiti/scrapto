@@ -27,8 +27,40 @@ const ScrapperLogin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const inputRefs = useRef([]);
-  const { login, isAuthenticated } = useAuth();
-  
+  const { login, isAuthenticated, user } = useAuth();
+
+  // Note: Auth verification is handled by ScrapperModule
+  // This component only handles login/signup flow
+
+  // Validate referral code input
+  const validateReferralCodeInput = (code) => {
+    if (!code || code.trim() === '') {
+      setReferralCodeError('');
+      setReferrerName('');
+      return;
+    }
+
+    const validation = validateReferralCode(code.toUpperCase());
+    if (!validation.valid) {
+      setReferralCodeError(validation.error);
+      setReferrerName('');
+    } else {
+      // Check if cross-referrals are allowed
+      const settings = getReferralSettings();
+      if (!settings.allowCrossReferrals && validation.referrerType !== 'scrapper') {
+        setReferralCodeError('This code is for users only. Please use a scrapper referral code.');
+        setReferrerName('');
+      } else {
+        setReferralCodeError('');
+        if (validation.referrerType === 'user') {
+          setReferrerName('User Friend'); // Cross-referral
+        } else {
+          setReferrerName('Scrapper Friend');
+        }
+      }
+    }
+  };
+
   // Check for referral code in URL
   useEffect(() => {
     const refCode = searchParams.get('ref');
@@ -37,13 +69,14 @@ const ScrapperLogin = () => {
       setShowReferralCode(true);
       validateReferralCodeInput(refCode.toUpperCase());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Helper function to check KYC status
   const getKYCStatus = () => {
     const kycStatus = localStorage.getItem('scrapperKYCStatus');
     const kycData = localStorage.getItem('scrapperKYC');
-    
+
     if (!kycData) return 'not_submitted';
     if (kycStatus === 'verified') return 'verified';
     if (kycStatus === 'pending') return 'pending';
@@ -53,37 +86,73 @@ const ScrapperLogin = () => {
 
   // Redirect after authentication state updates
   useEffect(() => {
-    if (isAuthenticated && shouldRedirect) {
-      const kycStatus = getKYCStatus();
-      
-      // Strict routing: Only verified can access dashboard
-      if (kycStatus === 'not_submitted' || kycStatus === 'rejected') {
-        // First time login or rejected - must do KYC
-        navigate('/scrapper/kyc', { replace: true });
-      } else if (kycStatus === 'pending') {
-        // KYC submitted but pending - show status page
-        navigate('/scrapper/kyc-status', { replace: true });
-      } else if (kycStatus === 'verified') {
-        // KYC verified - check subscription status
-        const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-        if (subscriptionStatus === 'active') {
-          navigate('/scrapper', { replace: true });
-        } else {
-          navigate('/scrapper/subscription', { replace: true });
+    const checkStatusAndRedirect = async () => {
+      if (isAuthenticated && shouldRedirect) {
+        setLoading(true); // Re-use loading state or add new one if needed
+        try {
+          // Fetch FRESH KYC status from backend immediately after login
+          // We must dynamically import to avoid circular dependencies if any, 
+          // or just assume api.js is safe. Here we use the existing authAPI/kycAPI imports.
+          // Note: create a tiny helper or just use the API direct.
+          // Since we are inside ScrapperLogin, we can use kycAPI if imported, or import it.
+          // We need kycAPI import at top. Let's assume we add it.
+
+          const { kycAPI } = await import('../../shared/utils/api');
+          const response = await kycAPI.getMy();
+
+          const kyc = response.data?.kyc;
+          const kycStatus = kyc?.status || 'not_submitted';
+
+          // Update local storage with fresh data
+          localStorage.setItem('scrapperKYCStatus', kycStatus);
+          if (kyc) {
+            localStorage.setItem('scrapperKYC', JSON.stringify(kyc));
+          }
+
+          if (kycStatus === 'not_submitted') {
+            navigate('/scrapper/kyc', { replace: true });
+          } else if (kycStatus === 'pending') {
+            // FORCE redirect to status page if pending
+            navigate('/scrapper/kyc-status', { replace: true });
+          } else if (kycStatus === 'rejected') {
+            navigate('/scrapper/kyc', { replace: true });
+          } else if (kycStatus === 'verified') {
+            // Check subscription if verified
+            const subscription = response.data?.subscription;
+            const isActive = subscription?.status === 'active';
+
+            // Also check expiration
+            let isActuallyActive = false;
+            if (isActive && subscription.expiryDate) {
+              const expiry = new Date(subscription.expiryDate);
+              if (expiry > new Date()) {
+                isActuallyActive = true;
+              }
+            }
+
+            if (isActuallyActive) {
+              navigate('/scrapper', { replace: true });
+            } else {
+              navigate('/scrapper/subscription', { replace: true });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch initial status:', error);
+          // Fallback to KYC page if error
+          navigate('/scrapper/kyc', { replace: true });
         }
-      } else {
-        // Default: redirect to KYC
-        navigate('/scrapper/kyc', { replace: true });
+        setShouldRedirect(false);
+        setLoading(false);
       }
-      
-      setShouldRedirect(false);
-    }
+    };
+
+    checkStatusAndRedirect();
   }, [isAuthenticated, shouldRedirect, navigate]);
 
   const handlePhoneSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (phone.length !== 10) {
       setError('Please enter a valid 10-digit phone number');
       return;
@@ -110,8 +179,8 @@ const ScrapperLogin = () => {
 
     try {
       if (isLogin) {
-        // Send login OTP
-        const response = await authAPI.sendLoginOTP(phone);
+        // Send login OTP with scrapper role
+        const response = await authAPI.sendLoginOTP(phone, 'scrapper');
         if (response.success) {
           setOtpSent(true);
           setTimeout(() => {
@@ -121,7 +190,7 @@ const ScrapperLogin = () => {
       } else {
         // Register scrapper and send OTP
         const password = 'temp123'; // Temporary password (can be changed later)
-        
+
         const response = await authAPI.register({
           name,
           email: email.trim(),
@@ -191,35 +260,6 @@ const ScrapperLogin = () => {
     }
   };
 
-  // Validate referral code input
-  const validateReferralCodeInput = (code) => {
-    if (!code || code.trim() === '') {
-      setReferralCodeError('');
-      setReferrerName('');
-      return;
-    }
-    
-    const validation = validateReferralCode(code.toUpperCase());
-    if (!validation.valid) {
-      setReferralCodeError(validation.error);
-      setReferrerName('');
-    } else {
-      // Check if cross-referrals are allowed
-      const settings = getReferralSettings();
-      if (!settings.allowCrossReferrals && validation.referrerType !== 'scrapper') {
-        setReferralCodeError('This code is for users only. Please use a scrapper referral code.');
-        setReferrerName('');
-      } else {
-        setReferralCodeError('');
-        if (validation.referrerType === 'user') {
-          setReferrerName('User Friend'); // Cross-referral
-        } else {
-          setReferrerName('Scrapper Friend');
-        }
-      }
-    }
-  };
-
   const handleReferralCodeChange = (e) => {
     const value = e.target.value.toUpperCase();
     setReferralCode(value);
@@ -232,9 +272,9 @@ const ScrapperLogin = () => {
     setLoading(true);
 
     try {
-      // Verify OTP
+      // Verify OTP with scrapper role
       const purpose = isLogin ? 'login' : 'verification';
-      const response = await authAPI.verifyOTP(phone, otp, purpose);
+      const response = await authAPI.verifyOTP(phone, otp, purpose, 'scrapper');
 
       if (response.success) {
         const userData = response.data.user;
@@ -242,13 +282,19 @@ const ScrapperLogin = () => {
 
         // Login user with token
         login(userData, token);
-        
+
         // Set scrapper-specific authentication
         localStorage.setItem('scrapperAuthenticated', 'true');
         localStorage.setItem('scrapperUser', JSON.stringify(userData));
 
-        // If this is a new registration, try to link any existing lead by phone
+        // If this is a new registration, clear any old KYC/subscription data and link lead
         if (!isLogin) {
+          // Clear old KYC and subscription data for fresh start
+          localStorage.removeItem('scrapperKYCStatus');
+          localStorage.removeItem('scrapperKYC');
+          localStorage.removeItem('scrapperSubscriptionStatus');
+          localStorage.removeItem('scrapperSubscription');
+
           try {
             linkLeadToScrapper(phone, userData._id || userData.id);
           } catch (error) {
@@ -256,7 +302,7 @@ const ScrapperLogin = () => {
             console.error('Error linking scrapper lead:', error);
           }
         }
-        
+
         // Process referral if code is provided and valid
         if (!isLogin && referralCode && referralCode.trim() !== '' && !referralCodeError) {
           try {
@@ -385,11 +431,10 @@ const ScrapperLogin = () => {
                 setEmail('');
                 setVehicleInfo('');
               }}
-              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
-                isLogin
+              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${isLogin
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
+                }`}
             >
               Login
             </button>
@@ -402,11 +447,10 @@ const ScrapperLogin = () => {
                 setEmail('');
                 setVehicleInfo('');
               }}
-              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${
-                !isLogin
+              className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${!isLogin
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
+                }`}
             >
               Register
             </button>
@@ -419,336 +463,335 @@ const ScrapperLogin = () => {
             transition={{ delay: 0.25, duration: 0.4 }}
             className="rounded-2xl p-4 md:p-5 lg:p-6 bg-white shadow-sm border border-gray-100"
           >
-          <AnimatePresence mode="wait">
-            {!otpSent ? (
-              <motion.form
-                key="phone-form"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handlePhoneSubmit}
-                className="space-y-4"
-              >
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your full name"
-                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
-                      style={{
-                        borderColor: name ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                        color: '#2d3748',
-                        backgroundColor: '#f9f9f9'
-                      }}
-                      required={!isLogin}
-                    />
-                  </motion.div>
-                )}
-
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3, delay: 0.05 }}
-                  >
-                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
-                      style={{
-                        borderColor: email ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                        color: '#2d3748',
-                        backgroundColor: '#f9f9f9'
-                      }}
-                      required={!isLogin}
-                    />
-                  </motion.div>
-                )}
-
-                {/* How did you hear about Scrapto? (Signup only) */}
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  >
-                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      How did you hear about Scrapto?
-                    </label>
-                    <select
-                      value={heardFrom}
-                      onChange={(e) => setHeardFrom(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
-                      style={{
-                        borderColor: heardFrom ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                        color: '#2d3748',
-                        backgroundColor: '#f9f9f9'
-                      }}
+            <AnimatePresence mode="wait">
+              {!otpSent ? (
+                <motion.form
+                  key="phone-form"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3 }}
+                  onSubmit={handlePhoneSubmit}
+                  className="space-y-4"
+                >
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3 }}
                     >
-                      <option value="">Select an option</option>
-                      <option value="youtube">YouTube</option>
-                      <option value="instagram">Instagram</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="google_search">Google Search</option>
-                      <option value="friend_family">Friends / Family</option>
-                      <option value="whatsapp">WhatsApp</option>
-                      <option value="other">Other</option>
-                    </select>
-                    {heardFrom === 'other' && (
+                      <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                        Full Name
+                      </label>
                       <input
                         type="text"
-                        value={heardFromOther}
-                        onChange={(e) => setHeardFromOther(e.target.value)}
-                        placeholder="Please specify (e.g., association, poster)"
-                        className="mt-2 w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter your full name"
+                        className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                         style={{
-                          borderColor: heardFromOther ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          borderColor: name ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                           color: '#2d3748',
                           backgroundColor: '#f9f9f9'
                         }}
+                        required={!isLogin}
                       />
-                    )}
-                  </motion.div>
-                )}
+                    </motion.div>
+                  )}
 
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Vehicle Information
-                    </label>
-                    <input
-                      type="text"
-                      value={vehicleInfo}
-                      onChange={(e) => setVehicleInfo(e.target.value)}
-                      placeholder="e.g., Truck - MH-12-AB-1234"
-                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
-                      style={{
-                        borderColor: vehicleInfo ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                        color: '#2d3748',
-                        backgroundColor: '#f9f9f9'
-                      }}
-                      required={!isLogin}
-                    />
-                  </motion.div>
-                )}
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3, delay: 0.05 }}
+                    >
+                      <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email address"
+                        className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                        style={{
+                          borderColor: email ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          color: '#2d3748',
+                          backgroundColor: '#f9f9f9'
+                        }}
+                        required={!isLogin}
+                      />
+                    </motion.div>
+                  )}
 
-                {/* Referral Code Input (Signup only) */}
-                {!isLogin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3, delay: 0.15 }}
-                  >
-                    <div className="mb-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowReferralCode(!showReferralCode)}
-                        className="text-sm font-medium flex items-center gap-1"
-                        style={{ color: '#64946e' }}
+                  {/* How did you hear about Scrapto? (Signup only) */}
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                        How did you hear about Scrapto?
+                      </label>
+                      <select
+                        value={heardFrom}
+                        onChange={(e) => setHeardFrom(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                        style={{
+                          borderColor: heardFrom ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          color: '#2d3748',
+                          backgroundColor: '#f9f9f9'
+                        }}
                       >
-                        {showReferralCode ? 'Hide' : 'Have a referral code?'}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points={showReferralCode ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
-                        </svg>
-                      </button>
-                    </div>
-                    {showReferralCode && (
-                      <div>
+                        <option value="">Select an option</option>
+                        <option value="youtube">YouTube</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="google_search">Google Search</option>
+                        <option value="friend_family">Friends / Family</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="other">Other</option>
+                      </select>
+                      {heardFrom === 'other' && (
                         <input
                           type="text"
-                          value={referralCode}
-                          onChange={handleReferralCodeChange}
-                          placeholder="Enter referral code (e.g., SCRAP-ABC123)"
-                          className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base uppercase ${
-                            referralCodeError ? 'border-red-400' : referrerName ? 'border-green-400' : ''
-                          }`}
+                          value={heardFromOther}
+                          onChange={(e) => setHeardFromOther(e.target.value)}
+                          placeholder="Please specify (e.g., association, poster)"
+                          className="mt-2 w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                           style={{
-                            borderColor: referralCodeError ? '#ef4444' : referrerName ? '#10b981' : 'rgba(100, 148, 110, 0.3)',
+                            borderColor: heardFromOther ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                             color: '#2d3748',
                             backgroundColor: '#f9f9f9'
                           }}
-                          maxLength={13}
                         />
-                        {referralCodeError && (
-                          <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
-                            {referralCodeError}
-                          </p>
-                        )}
-                        {referrerName && !referralCodeError && (
-                          <p className="text-xs mt-1" style={{ color: '#10b981' }}>
-                            ✓ You were referred by {referrerName}
-                          </p>
-                        )}
+                      )}
+                    </motion.div>
+                  )}
+
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                        Vehicle Information
+                      </label>
+                      <input
+                        type="text"
+                        value={vehicleInfo}
+                        onChange={(e) => setVehicleInfo(e.target.value)}
+                        placeholder="e.g., Truck - MH-12-AB-1234"
+                        className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                        style={{
+                          borderColor: vehicleInfo ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          color: '#2d3748',
+                          backgroundColor: '#f9f9f9'
+                        }}
+                        required={!isLogin}
+                      />
+                    </motion.div>
+                  )}
+
+                  {/* Referral Code Input (Signup only) */}
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      transition={{ duration: 0.3, delay: 0.15 }}
+                    >
+                      <div className="mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowReferralCode(!showReferralCode)}
+                          className="text-sm font-medium flex items-center gap-1"
+                          style={{ color: '#64946e' }}
+                        >
+                          {showReferralCode ? 'Hide' : 'Have a referral code?'}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points={showReferralCode ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
+                          </svg>
+                        </button>
                       </div>
-                    )}
-                  </motion.div>
-                )}
+                      {showReferralCode && (
+                        <div>
+                          <input
+                            type="text"
+                            value={referralCode}
+                            onChange={handleReferralCodeChange}
+                            placeholder="Enter referral code (e.g., SCRAP-ABC123)"
+                            className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base uppercase ${referralCodeError ? 'border-red-400' : referrerName ? 'border-green-400' : ''
+                              }`}
+                            style={{
+                              borderColor: referralCodeError ? '#ef4444' : referrerName ? '#10b981' : 'rgba(100, 148, 110, 0.3)',
+                              color: '#2d3748',
+                              backgroundColor: '#f9f9f9'
+                            }}
+                            maxLength={13}
+                          />
+                          {referralCodeError && (
+                            <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                              {referralCodeError}
+                            </p>
+                          )}
+                          {referrerName && !referralCodeError && (
+                            <p className="text-xs mt-1" style={{ color: '#10b981' }}>
+                              ✓ You were referred by {referrerName}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
 
-                <div>
-                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setPhone(value);
-                    }}
-                    placeholder="Enter 10-digit phone number"
-                    className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
-                    style={{
-                      borderColor: phone.length === 10 ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                      color: '#2d3748',
-                      backgroundColor: '#f9f9f9'
-                    }}
-                    maxLength={10}
-                    required
-                  />
-                </div>
-
-                {isLogin && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="remember"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 rounded"
-                      style={{ accentColor: '#64946e' }}
-                    />
-                    <label htmlFor="remember" className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                      Remember me
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                      Phone Number
                     </label>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
-                  >
-                    <p className="text-sm text-red-600">{error}</p>
-                  </motion.div>
-                )}
-
-                <motion.button
-                  type="submit"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={loading || phone.length !== 10 || (!isLogin && (!name.trim() || !vehicleInfo.trim()))}
-                  className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#64946e', color: '#ffffff' }}
-                >
-                  {loading ? 'Processing...' : (isLogin ? 'Send OTP' : 'Register & Send OTP')}
-                </motion.button>
-              </motion.form>
-            ) : (
-              <motion.div
-                key="otp-form"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <div className="text-center">
-                  <h3 className="text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
-                    Enter OTP
-                  </h3>
-                  <p className="text-sm" style={{ color: '#718096' }}>
-                    We've sent a 6-digit OTP to <span className="font-semibold">+91 {phone}</span>
-                  </p>
-                </div>
-
-                <div className="flex justify-center flex-wrap gap-1.5 md:gap-3 px-2 max-w-xs mx-auto">
-                  {otp.map((digit, index) => (
-                    <motion.input
-                      key={index}
-                      ref={(el) => (inputRefs.current[index] = el)}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.1 + index * 0.05 }}
-                      className="w-9 h-11 text-lg md:w-12 md:h-12 md:text-2xl text-center font-bold rounded-lg md:rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
-                      style={{
-                        borderColor: digit ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                        color: '#2d3748',
-                        backgroundColor: digit ? 'rgba(100, 148, 110, 0.1)' : '#f9f9f9'
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setPhone(value);
                       }}
+                      placeholder="Enter 10-digit phone number"
+                      className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
+                      style={{
+                        borderColor: phone.length === 10 ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                        color: '#2d3748',
+                        backgroundColor: '#f9f9f9'
+                      }}
+                      maxLength={10}
+                      required
                     />
-                  ))}
-                </div>
+                  </div>
 
-                {/* Error Message */}
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+                  {isLogin && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded"
+                        style={{ accentColor: '#64946e' }}
+                      />
+                      <label htmlFor="remember" className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                        Remember me
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Error Message */}
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+                    >
+                      <p className="text-sm text-red-600">{error}</p>
+                    </motion.div>
+                  )}
+
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={loading || phone.length !== 10 || (!isLogin && (!name.trim() || !vehicleInfo.trim()))}
+                    className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
-                    <p className="text-sm text-red-600">{error}</p>
-                  </motion.div>
-                )}
-
-                <div className="text-center">
-                  <button
-                    onClick={handleResendOtp}
-                    disabled={loading}
-                    className="text-sm font-semibold transition-colors disabled:opacity-50"
-                    style={{ color: '#64946e' }}
-                  >
-                    {loading ? 'Sending...' : 'Resend OTP'}
-                  </button>
-                </div>
-
-                <motion.button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (otp.every((digit) => digit !== '')) {
-                      handleRegistration(otp);
-                    }
-                  }}
-                  type="button"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={loading || !otp.every((digit) => digit !== '')}
-                  className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                    {loading ? 'Processing...' : (isLogin ? 'Send OTP' : 'Register & Send OTP')}
+                  </motion.button>
+                </motion.form>
+              ) : (
+                <motion.div
+                  key="otp-form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-6"
                 >
-                  {loading ? 'Verifying...' : 'Verify & Continue'}
-                </motion.button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
+                      Enter OTP
+                    </h3>
+                    <p className="text-sm" style={{ color: '#718096' }}>
+                      We've sent a 6-digit OTP to <span className="font-semibold">+91 {phone}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex justify-center flex-wrap gap-1.5 md:gap-3 px-2 max-w-xs mx-auto">
+                    {otp.map((digit, index) => (
+                      <motion.input
+                        key={index}
+                        ref={(el) => (inputRefs.current[index] = el)}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(index, e)}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.1 + index * 0.05 }}
+                        className="w-9 h-11 text-lg md:w-12 md:h-12 md:text-2xl text-center font-bold rounded-lg md:rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
+                        style={{
+                          borderColor: digit ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                          color: '#2d3748',
+                          backgroundColor: digit ? 'rgba(100, 148, 110, 0.1)' : '#f9f9f9'
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Error Message */}
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="px-4 py-3 rounded-xl bg-red-50 border border-red-200"
+                    >
+                      <p className="text-sm text-red-600">{error}</p>
+                    </motion.div>
+                  )}
+
+                  <div className="text-center">
+                    <button
+                      onClick={handleResendOtp}
+                      disabled={loading}
+                      className="text-sm font-semibold transition-colors disabled:opacity-50"
+                      style={{ color: '#64946e' }}
+                    >
+                      {loading ? 'Sending...' : 'Resend OTP'}
+                    </button>
+                  </div>
+
+                  <motion.button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (otp.every((digit) => digit !== '')) {
+                        handleRegistration(otp);
+                      }
+                    }}
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={loading || !otp.every((digit) => digit !== '')}
+                    className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                  >
+                    {loading ? 'Verifying...' : 'Verify & Continue'}
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           {/* Footer */}
           <motion.div

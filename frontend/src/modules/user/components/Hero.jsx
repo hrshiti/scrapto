@@ -851,10 +851,11 @@ const Hero = () => {
       {/* Why Scrapto Section */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
         <motion.div
-          initial={{ y: 20 }}
-          animate={{ y: 0 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-          className="mt-6 md:mt-12 mb-6 md:mb-8"
+          initial={{ y: 16, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true, margin: '-80px' }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="mt-8 md:mt-12 mb-8 md:mb-12"
         >
           <h3 
             className="text-lg md:text-2xl font-bold mb-4 md:mb-8 text-center"
@@ -862,8 +863,17 @@ const Hero = () => {
           >
             Why Scrapto?
           </h3>
-          <div className="flex flex-row md:flex-row gap-2 md:gap-6 overflow-x-auto pb-2 md:pb-4 scrollbar-hide">
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-3 md:gap-6">
             {[
+              { 
+                icon: (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="22 2 11 13 6 8"></polyline>
+                  </svg>
+                ), 
+                title: 'Free Pickup', 
+                desc: 'No pickup charges. We reach your doorstep without any extra cost.'
+              },
               { 
                 icon: (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -871,8 +881,8 @@ const Hero = () => {
                     <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                   </svg>
                 ), 
-                title: 'Best Prices', 
-                desc: 'Real-time rates'
+                title: 'Best Rates', 
+                desc: 'Highest market rates with real-time pricing so every deal stays fair.'
               },
               { 
                 icon: (
@@ -880,38 +890,29 @@ const Hero = () => {
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                   </svg>
                 ), 
-                title: 'Verified', 
-                desc: 'KYC checked'
-              },
-              { 
-                icon: (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polyline>
-                  </svg>
-                ), 
-                title: 'Quick Pickup', 
-                desc: 'Same day'
+                title: 'Verified & Safe', 
+                desc: 'KYC-verified partners with reliable pickups for a worry-free experience.'
               },
             ].map((item, index) => (
               <motion.div
                 key={index}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 1.3 + index * 0.1 }}
-                className="flex-shrink-0 w-28 md:w-1/3"
+                initial={{ y: 12, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.45, delay: index * 0.12, ease: 'easeOut' }}
+                className="w-full"
               >
                 <div 
-                  className="rounded-xl md:rounded-2xl p-3 md:p-8 h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+                  className="rounded-xl md:rounded-2xl p-4 md:p-6 h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                   style={{ 
                     backgroundColor: '#ffffff',
-                    border: '1px solid rgba(100, 148, 110, 0.15)',
-                    minHeight: 'auto'
+                    border: '1px solid rgba(100, 148, 110, 0.15)'
                   }}
                 >
-                  <div className="flex flex-col md:flex-row md:items-start gap-2 md:gap-4">
+                  <div className="flex items-start gap-3">
                     {/* Icon Container */}
                     <div 
-                      className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0"
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ 
                         backgroundColor: 'rgba(100, 148, 110, 0.1)',
                         color: '#64946e'
@@ -923,28 +924,19 @@ const Hero = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <h4 
-                        className="font-bold text-xs md:text-xl mb-1 md:mb-2 truncate"
+                        className="font-bold text-sm md:text-xl mb-1 md:mb-2"
                         style={{ color: '#2d3748' }}
                       >
                         {item.title}
                       </h4>
                       <p 
-                        className="text-xs md:text-base leading-tight md:leading-relaxed text-gray-600"
+                        className="text-xs md:text-base leading-tight md:leading-relaxed"
                         style={{ color: '#718096' }}
                       >
                         {item.desc}
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Decorative accent line - hidden on mobile */}
-                  <div 
-                    className="hidden md:block mt-4 h-1 rounded-full"
-                    style={{ 
-                      backgroundColor: '#64946e',
-                      width: '40px'
-                    }}
-                  ></div>
                 </div>
               </motion.div>
             ))}

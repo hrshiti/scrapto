@@ -2,26 +2,54 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { kycAPI } from '../../shared/utils/api';
 
 const KYCUploadPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  // Check if user is authenticated as scrapper
-  useEffect(() => {
-    const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
-    const scrapperUser = localStorage.getItem('scrapperUser');
-    if (scrapperAuth !== 'true' || !scrapperUser) {
-      navigate('/scrapper/login', { replace: true });
-    }
-  }, [navigate]);
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarPhoto, setAadhaarPhoto] = useState(null);
   const [selfiePhoto, setSelfiePhoto] = useState(null);
+  const [licenseFile, setLicenseFile] = useState(null);
   const [aadhaarPreview, setAadhaarPreview] = useState(null);
   const [selfiePreview, setSelfiePreview] = useState(null);
+  const [licensePreview, setLicensePreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isLoadingCheck, setIsLoadingCheck] = useState(true);
+
+  // Check current status on mount
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const res = await kycAPI.getMy();
+        const kyc = res.data?.kyc;
+        const status = kyc?.status || 'not_submitted';
+
+        if (status === 'pending') {
+          navigate('/scrapper/kyc-status', { replace: true });
+        } else if (status === 'verified') {
+          navigate('/scrapper', { replace: true });
+        }
+      } catch (error) {
+        console.error('Failed to check status:', error);
+      } finally {
+        setIsLoadingCheck(false);
+      }
+    };
+    checkStatus();
+  }, [navigate]);
+
+  if (isLoadingCheck) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-4" style={{ borderColor: '#64946e' }} />
+          <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>Checking status...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleAadhaarPhotoChange = (e) => {
     const file = e.target.files[0];
@@ -47,6 +75,18 @@ const KYCUploadPage = () => {
     }
   };
 
+  const handleLicensePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLicenseFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLicensePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAadhaarNumberChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 12);
     setAadhaarNumber(value);
@@ -54,17 +94,17 @@ const KYCUploadPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!aadhaarNumber || aadhaarNumber.length !== 12) {
       alert('Please enter a valid 12-digit Aadhaar number');
       return;
     }
-    
+
     if (!aadhaarPhoto) {
       alert('Please upload Aadhaar photo');
       return;
     }
-    
+
     if (!selfiePhoto) {
       alert('Please upload selfie photo');
       return;
@@ -72,31 +112,37 @@ const KYCUploadPage = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Store KYC data in localStorage (frontend only)
-      const kycData = {
-        aadhaarNumber: aadhaarNumber.replace(/(\d{4})(\d{4})(\d{4})/, '$1-****-$3'), // Masked format
-        aadhaarPhotoUrl: aadhaarPreview,
-        selfieUrl: selfiePreview,
-        status: 'pending', // pending, verified, rejected
-        submittedAt: new Date().toISOString()
-      };
+    try {
+      const formData = new FormData();
+      formData.append('aadhaarNumber', aadhaarNumber);
+      formData.append('aadhaar', aadhaarPhoto);
+      formData.append('selfie', selfiePhoto);
+      if (licenseFile) {
+        formData.append('license', licenseFile);
+      }
 
-      localStorage.setItem('scrapperKYC', JSON.stringify(kycData));
-      localStorage.setItem('scrapperKYCStatus', 'pending');
+      const res = await kycAPI.submit(formData);
+      const kyc = res.data?.kyc;
+
+      // Persist minimal KYC state locally for routing guard compatibility
+      if (kyc) {
+        localStorage.setItem('scrapperKYCStatus', kyc.status || 'pending');
+        localStorage.setItem('scrapperKYC', JSON.stringify(kyc));
+      } else {
+        localStorage.setItem('scrapperKYCStatus', 'pending');
+      }
 
       setIsSubmitting(false);
-      
-      // Show success message
       setShowSuccess(true);
-      
-      // Redirect to KYC status page after showing success message
-      // Use window.location to force route re-evaluation
+
       setTimeout(() => {
         window.location.href = '/scrapper/kyc-status';
-      }, 2000);
-    }, 1500);
+      }, 1200);
+    } catch (error) {
+      console.error('KYC submit failed:', error);
+      alert(error.message || 'Failed to submit KYC. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   const maskedAadhaar = aadhaarNumber.replace(/(\d{4})(\d{4})(\d{4})/, '$1-****-$3');
@@ -288,11 +334,59 @@ const KYCUploadPage = () => {
             </div>
           </div>
 
+          {/* License Upload (optional) */}
+          <div>
+            <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+              Driving License (optional)
+            </label>
+            <div className="space-y-3">
+              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-green-500"
+                style={{
+                  borderColor: licenseFile ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
+                  backgroundColor: licenseFile ? 'rgba(100, 148, 110, 0.05)' : '#f9f9f9'
+                }}
+              >
+                {licensePreview ? (
+                  <img src={licensePreview} alt="License preview" className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg className="w-10 h-10 mb-3" style={{ color: '#64946e' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <p className="mb-2 text-sm" style={{ color: '#718096' }}>
+                      <span className="font-semibold">Click to upload</span> license
+                    </p>
+                    <p className="text-xs" style={{ color: '#a0aec0' }}>PNG, JPG or JPEG (MAX. 5MB)</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleLicensePhotoChange}
+                />
+              </label>
+              {licenseFile && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLicenseFile(null);
+                    setLicensePreview(null);
+                  }}
+                  className="text-xs font-semibold"
+                  style={{ color: '#ef4444' }}
+                >
+                  Remove License
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Info Box */}
           <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
             <div className="flex items-start gap-3">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e', flexShrink: 0, marginTop: '2px' }}>
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor" />
               </svg>
               <div>
                 <p className="text-sm font-semibold mb-1" style={{ color: '#2d3748' }}>
@@ -346,8 +440,8 @@ const KYCUploadPage = () => {
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="#10b981" strokeWidth="2" fill="#10b981" fillOpacity="0.1"/>
-                      <path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="12" cy="12" r="10" stroke="#10b981" strokeWidth="2" fill="#10b981" fillOpacity="0.1" />
+                      <path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                   <div className="flex-1">
