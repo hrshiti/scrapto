@@ -1,6 +1,58 @@
 import smsIndiaHubService from '../services/smsIndiaHubService.js';
-import { storeOTP, getOTP, deleteOTP } from '../config/redis.js';
 import logger from './logger.js';
+
+// In-memory store for OTPs (replacing Redis)
+const otpStore = new Map();
+
+/**
+ * Store OTP in memory
+ * @param {string} phone - Phone number
+ * @param {string} otp - OTP code
+ * @param {number} ttl - Time to live in seconds
+ * @returns {Promise<boolean>}
+ */
+const storeOTP = async (phone, otp, ttl = 600) => {
+  otpStore.set(phone, {
+    otp,
+    expiresAt: Date.now() + ttl * 1000
+  });
+
+  // Set timeout to cleanup
+  setTimeout(() => {
+    const data = otpStore.get(phone);
+    if (data && data.expiresAt <= Date.now()) {
+      otpStore.delete(phone);
+    }
+  }, ttl * 1000);
+
+  return true;
+};
+
+/**
+ * Get OTP from memory
+ * @param {string} phone - Phone number
+ * @returns {Promise<string|null>}
+ */
+const getOTP = async (phone) => {
+  const data = otpStore.get(phone);
+  if (!data) return null;
+
+  if (data.expiresAt <= Date.now()) {
+    otpStore.delete(phone);
+    return null;
+  }
+
+  return data.otp;
+};
+
+/**
+ * Delete OTP from memory
+ * @param {string} phone - Phone number
+ * @returns {Promise<boolean>}
+ */
+const deleteOTP = async (phone) => {
+  return otpStore.delete(phone);
+};
 
 /**
  * Send OTP via SMS using SMSIndia Hub and store in Redis
@@ -11,21 +63,21 @@ import logger from './logger.js';
 export const sendOTP = async (phone, otp) => {
   try {
     logger.info(`Attempting to send OTP ${otp} to phone: ${phone}`);
-    
+
     // Store OTP in Redis (10 minutes TTL)
     const stored = await storeOTP(phone, otp, 600);
     if (!stored) {
       logger.warn('Failed to store OTP in Redis, continuing with SMS');
     }
-    
+
     const result = await smsIndiaHubService.sendOTP(phone, otp);
-    
+
     logger.info(`SMS sent successfully via SMSIndia Hub:`, result);
     return result;
-    
+
   } catch (error) {
     logger.error('Failed to send OTP via SMSIndia Hub:', error.message);
-    
+
     // Re-throw the error to be handled by the calling function
     throw new Error(`SMS sending failed: ${error.message}`);
   }
