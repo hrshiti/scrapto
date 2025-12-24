@@ -18,12 +18,15 @@ const PriceConfirmationPage = () => {
   const [marketPrices, setMarketPrices] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
+  const [addressData, setAddressData] = useState(null);
 
   // Load all data from sessionStorage
   useEffect(() => {
     const storedCategories = sessionStorage.getItem('selectedCategories');
     const storedImages = sessionStorage.getItem('uploadedImages');
     const storedWeight = sessionStorage.getItem('weightData');
+
+    const storedAddress = sessionStorage.getItem('addressData');
 
     if (storedCategories) {
       setSelectedCategories(JSON.parse(storedCategories));
@@ -36,9 +39,12 @@ const PriceConfirmationPage = () => {
       setWeightData(weight);
       setEstimatedPayout(weight.estimatedPayout || 0);
     }
+    if (storedAddress) {
+      setAddressData(JSON.parse(storedAddress));
+    }
 
     // Redirect if missing required data
-    if (!storedCategories || !storedImages || !storedWeight) {
+    if (!storedCategories || !storedImages || !storedWeight || !storedAddress) {
       navigate('/add-scrap/category');
     }
   }, [navigate]);
@@ -171,10 +177,23 @@ const PriceConfirmationPage = () => {
       publicId: img.publicId || null
     }));
 
+    // Prepare pickup address from addressData
+    const pickupAddress = {
+      street: addressData?.address || 'Address not provided',
+      city: '', // Can be extracted from address if needed
+      state: '',
+      pincode: '',
+      coordinates: {
+        lat: addressData?.coordinates?.lat || 0,
+        lng: addressData?.coordinates?.lng || 0
+      }
+    };
+
     const payload = {
       scrapItems,
       preferredTime,
       pickupSlot,
+      pickupAddress,
       images,
       notes
     };
@@ -201,7 +220,7 @@ const PriceConfirmationPage = () => {
       alert(error.message || 'Failed to submit request. Please try again.');
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, preferredTime, user, navigate, marketPrices]);
+  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, addressData, preferredTime, user, navigate, marketPrices]);
 
   const timeSlots = [
     '9:00 AM - 11:00 AM',
@@ -225,7 +244,7 @@ const PriceConfirmationPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-3 md:p-6 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
         <button
-          onClick={() => navigate('/add-scrap/weight')}
+          onClick={() => navigate('/add-scrap/address')}
           className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white transition-colors"
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
         >
@@ -254,7 +273,7 @@ const PriceConfirmationPage = () => {
               style={{ backgroundColor: '#64946e' }}
             />
           </div>
-          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 4 of 4</span>
+          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 5 of 5</span>
         </div>
       </div>
 
@@ -326,6 +345,23 @@ const PriceConfirmationPage = () => {
                   </span>
                 )}
               </p>
+            </div>
+          )}
+
+          {/* Pickup Address */}
+          {addressData && (
+            <div className="mb-4 pb-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
+              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
+                Pickup Address:
+              </p>
+              <p className="text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
+                {addressData.address}
+              </p>
+              {addressData.coordinates && (
+                <p className="text-xs" style={{ color: '#718096' }}>
+                  📍 Location: {addressData.coordinates.lat.toFixed(6)}, {addressData.coordinates.lng.toFixed(6)}
+                </p>
+              )}
             </div>
           )}
 

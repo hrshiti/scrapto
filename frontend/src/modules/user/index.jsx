@@ -5,6 +5,7 @@ import LoginSignup from './components/LoginSignup';
 import CategorySelectionPage from '../../components/AddScrapFlow/pages/CategorySelectionPage';
 import ImageUploadPage from '../../components/AddScrapFlow/pages/ImageUploadPage';
 import WeightInputPage from '../../components/AddScrapFlow/pages/WeightInputPage';
+import AddressInputPage from '../../components/AddScrapFlow/pages/AddressInputPage';
 import MyProfilePage from './components/MyProfilePage';
 import SavedAddressesPage from './components/SavedAddressesPage';
 import MyRequestsPage from './components/MyRequestsPage';
@@ -31,6 +32,7 @@ const UserModule = () => {
       <Route path="/add-scrap/category" element={<CategorySelectionPage />} />
       <Route path="/add-scrap/upload" element={<ImageUploadPage />} />
       <Route path="/add-scrap/weight" element={<WeightInputPage />} />
+      <Route path="/add-scrap/address" element={<AddressInputPage />} />
       <Route path="/add-scrap/confirm" element={<PriceConfirmationPage />} />
       <Route path="/request-status" element={<RequestStatusPage />} />
       <Route path="/chats" element={<ChatListPage />} />

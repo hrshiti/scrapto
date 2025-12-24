@@ -135,7 +135,7 @@ const WeightInputPage = () => {
         estimatedPayout: estimatedPayout
       };
       sessionStorage.setItem('weightData', JSON.stringify(weightData));
-      navigate('/add-scrap/confirm');
+      navigate('/add-scrap/address');
     }
   };
 
