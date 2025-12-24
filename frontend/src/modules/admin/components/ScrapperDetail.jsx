@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft, FaTruck, FaPhone, FaIdCard, FaStar, FaRupeeSign,
-  FaCheckCircle, FaClock, FaUserTimes, FaCar, FaCreditCard, FaChartLine
+  FaCheckCircle, FaTimesCircle, FaClock, FaUserTimes, FaCar, FaCreditCard, FaChartLine
 } from 'react-icons/fa';
 import { adminAPI, earningsAPI } from '../../shared/utils/api';
 
@@ -14,6 +14,7 @@ const ScrapperDetail = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     loadScrapperData();
@@ -31,7 +32,7 @@ const ScrapperDetail = () => {
 
       const backendScrapper = scrapperResponse.data.scrapper;
 
-      // Load earnings from backend
+      // Load earnings (unchanged logic)
       let earningsData = { today: 0, week: 0, month: 0, total: 0 };
       try {
         const earningsResponse = await earningsAPI.getScrapperEarnings(scrapperId);
@@ -56,8 +57,14 @@ const ScrapperDetail = () => {
         kycStatus: backendScrapper.kyc?.status || 'not_submitted',
         kycData: backendScrapper.kyc || null,
         subscription: backendScrapper.subscription || null,
-        rating: backendScrapper.rating || 0,
-        totalPickups: backendScrapper.totalPickups || 0,
+        // Handle rating object correctly (average vs direct number)
+        rating: backendScrapper.rating?.average !== undefined
+          ? backendScrapper.rating.average
+          : (typeof backendScrapper.rating === 'number' ? backendScrapper.rating : 0),
+        // Use real-time total orders from earnings aggregation if available, otherwise fallback to stored count
+        totalPickups: earningsData.totalOrders !== undefined
+          ? earningsData.totalOrders
+          : (backendScrapper.totalPickups || 0),
         totalEarnings: earningsData.total,
         vehicleInfo: backendScrapper.vehicleInfo
           ? `${backendScrapper.vehicleInfo.type || ''} - ${backendScrapper.vehicleInfo.number || ''}`
@@ -69,26 +76,21 @@ const ScrapperDetail = () => {
 
       setScrapper(transformedScrapper);
 
-      // Load completed orders from earnings history
-      try {
-        const historyResponse = await earningsAPI.getScrapperEarnings(scrapperId, 'limit=20');
-        if (historyResponse.success && historyResponse.data?.summary?.orders) {
-          const transformedOrders = historyResponse.data.summary.orders.map((order) => ({
-            id: order.id || order._id,
-            orderId: order.id || order._id,
-            userName: order.userName || 'User',
-            categories: order.scrapType ? order.scrapType.split(', ') : [],
-            weight: order.weight || 0,
-            paidAmount: order.amount || 0,
-            completedAt: order.completedAt || order.createdAt,
-            location: order.location || 'N/A'
-          }));
-          setOrders(transformedOrders);
-        } else {
-          setOrders([]);
-        }
-      } catch (historyError) {
-        console.warn('Failed to load order history:', historyError);
+      // Load completed orders from earnings summary (which now includes them)
+      if (earningsResponse.success && earningsResponse.data?.summary?.orders) {
+        const transformedOrders = earningsResponse.data.summary.orders.map((order) => ({
+          id: order.id || order._id,
+          orderId: order.orderId || order.id || order._id,
+          userName: order.userName || 'User',
+          categories: order.scrapType ? order.scrapType.split(', ') : [],
+          weight: order.weight || 0,
+          paidAmount: order.amount || 0,
+          completedAt: order.completedAt || order.createdAt,
+          location: order.location || 'N/A'
+        }));
+        setOrders(transformedOrders);
+      } else {
+        // Fallback or empty if not in summary
         setOrders([]);
       }
     } catch (err) {
@@ -96,6 +98,45 @@ const ScrapperDetail = () => {
       setError(err.message || 'Failed to load scrapper data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyKYC = async () => {
+    if (!window.confirm('Are you sure you want to verify this KYC?')) return;
+
+    setActionLoading(true);
+    try {
+      await adminAPI.verifyKyc(scrapperId);
+      // Reload data to reflect changes
+      await loadScrapperData();
+      alert('KYC Verified successfully');
+    } catch (err) {
+      console.error('Error verifying KYC:', err);
+      alert('Failed to verify KYC: ' + (err.message || 'Unknown error'));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectKYC = async () => {
+    const reason = window.prompt('Please enter a reason for rejection:');
+    if (reason === null) return; // User cancelled
+    if (!reason.trim()) {
+      alert('Rejection reason is required.');
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await adminAPI.rejectKyc(scrapperId, reason);
+      // Reload data to reflect changes
+      await loadScrapperData();
+      alert('KYC Rejected successfully');
+    } catch (err) {
+      console.error('Error rejecting KYC:', err);
+      alert('Failed to reject KYC: ' + (err.message || 'Unknown error'));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -283,9 +324,35 @@ const ScrapperDetail = () => {
             <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
               KYC Information
             </h2>
-            <span className="text-sm px-2 py-1 bg-gray-100 rounded text-gray-600">
-              Status: {scrapper.kycStatus.toUpperCase()}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm px-2 py-1 bg-gray-100 rounded text-gray-600">
+                Status: {scrapper.kycStatus.toUpperCase()}
+              </span>
+
+              {/* KYC Action Buttons */}
+              {scrapper.kycStatus === 'pending' && (
+                <>
+                  <button
+                    onClick={handleRejectKYC}
+                    disabled={actionLoading}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                    style={{ backgroundColor: '#ef4444', opacity: actionLoading ? 0.7 : 1 }}
+                  >
+                    <FaTimesCircle />
+                    Reject
+                  </button>
+                  <button
+                    onClick={handleVerifyKYC}
+                    disabled={actionLoading}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold text-white transition-colors"
+                    style={{ backgroundColor: '#10b981', opacity: actionLoading ? 0.7 : 1 }}
+                  >
+                    <FaCheckCircle />
+                    Verify
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -299,6 +366,12 @@ const ScrapperDetail = () => {
                 {scrapper.kycData.verifiedAt ? new Date(scrapper.kycData.verifiedAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
+            {scrapper.kycData.rejectionReason && (
+              <div className="md:col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
+                <p className="text-xs mb-1 text-red-600 font-semibold">Rejection Reason</p>
+                <p className="text-sm text-red-800">{scrapper.kycData.rejectionReason}</p>
+              </div>
+            )}
           </div>
 
           {/* KYC Documents */}

@@ -689,6 +689,42 @@ export const scrapperProfileAPI = {
   },
 };
 
+// Banner API
+export const bannerAPI = {
+  // Get active banners (public)
+  getActive: async (audience = 'both') => {
+    return apiRequest(`/banners/public?audience=${audience}`, {
+      method: 'GET',
+    });
+  },
+  // Get all banners (admin)
+  getAllAdmin: async () => {
+    return apiRequest('/banners/admin/all', {
+      method: 'GET',
+    });
+  },
+  // Create banner
+  create: async (formData) => {
+    return apiRequest('/banners', {
+      method: 'POST',
+      body: formData,
+      // headers: {} // let browser set multipart content type
+    });
+  },
+  // Toggle status
+  toggleStatus: async (id) => {
+    return apiRequest(`/banners/${id}/status`, {
+      method: 'PATCH',
+    });
+  },
+  // Delete banner
+  delete: async (id) => {
+    return apiRequest(`/banners/${id}`, {
+      method: 'DELETE',
+    });
+  }
+};
+
 export { API_BASE_URL, API_ENDPOINTS };
 export default apiRequest;
 

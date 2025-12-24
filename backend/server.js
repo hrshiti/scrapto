@@ -22,6 +22,7 @@ import earningsRoutes from './routes/earningsRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import scrapperRoutes from './routes/scrapperRoutes.js';
+import bannerRoutes from './routes/bannerRoutes.js';
 import { initializeSocket } from './services/socketService.js';
 
 // Validate environment variables
@@ -124,6 +125,7 @@ v1Router.use('/scrapper/earnings', earningsRoutes);
 v1Router.use('/chats', chatRoutes);
 v1Router.use('/reviews', reviewRoutes);
 v1Router.use('/scrappers', scrapperRoutes);
+v1Router.use('/banners', bannerRoutes);
 
 // Mount versioned routes
 app.use('/api/v1', v1Router);
@@ -140,6 +142,7 @@ app.use('/api/scrapper/earnings', earningsRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/scrappers', scrapperRoutes);
+app.use('/api/banners', bannerRoutes);
 
 // Add more routes here as you create them
 

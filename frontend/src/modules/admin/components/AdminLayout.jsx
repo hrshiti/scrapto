@@ -15,7 +15,8 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
-  FaGift
+  FaGift,
+  FaBullhorn
 } from 'react-icons/fa';
 
 const AdminLayout = () => {
@@ -38,27 +39,34 @@ const AdminLayout = () => {
     { icon: FaHome, label: 'Dashboard', path: '/admin', exact: true },
     { icon: FaUserShield, label: 'KYC Queue', path: '/admin/kyc' },
     { icon: FaUsers, label: 'Users', path: '/admin/users' },
-    { icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers', submenu: [
-      { label: 'All Scrappers', path: '/admin/scrappers' },
-      { label: 'Leads', path: '/admin/scrappers/leads' }
-    ]},
+    {
+      icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers', submenu: [
+        { label: 'All Scrappers', path: '/admin/scrappers' },
+        { label: 'Leads', path: '/admin/scrappers/leads' }
+      ]
+    },
     { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
     { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
-    { icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions', submenu: [
-      { label: 'All Subscriptions', path: '/admin/subscriptions' },
-      { label: 'Manage Plans', path: '/admin/subscriptions/plans' }
-    ]},
-    { icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
-      { label: 'All Referrals', path: '/admin/referrals' },
-      { label: 'Settings', path: '/admin/referrals/settings' },
-      { label: 'Milestone Rewards', path: '/admin/referrals/milestones' },
-      { label: 'Tier Management', path: '/admin/referrals/tiers' },
-      { label: 'Leaderboard', path: '/admin/referrals/leaderboard' },
-      { label: 'Analytics', path: '/admin/referrals/analytics' },
-      { label: 'Fraud Detection', path: '/admin/referrals/fraud' },
-      { label: 'Campaigns', path: '/admin/referrals/campaigns' }
-    ]},
+    {
+      icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions', submenu: [
+        { label: 'All Subscriptions', path: '/admin/subscriptions' },
+        { label: 'Manage Plans', path: '/admin/subscriptions/plans' }
+      ]
+    },
+    {
+      icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
+        { label: 'All Referrals', path: '/admin/referrals' },
+        { label: 'Settings', path: '/admin/referrals/settings' },
+        { label: 'Milestone Rewards', path: '/admin/referrals/milestones' },
+        { label: 'Tier Management', path: '/admin/referrals/tiers' },
+        { label: 'Leaderboard', path: '/admin/referrals/leaderboard' },
+        { label: 'Analytics', path: '/admin/referrals/analytics' },
+        { label: 'Fraud Detection', path: '/admin/referrals/fraud' },
+        { label: 'Campaigns', path: '/admin/referrals/campaigns' }
+      ]
+    },
     { icon: FaChartBar, label: 'Reports', path: '/admin/reports' },
+    { icon: FaBullhorn, label: 'Ad Banners', path: '/admin/banners' },
     { icon: FaCog, label: 'Settings', path: '/admin/settings' }
   ];
 
@@ -83,9 +91,9 @@ const AdminLayout = () => {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
             <div>
@@ -119,9 +127,8 @@ const AdminLayout = () => {
                       navigate(item.submenu[0].path);
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                    active || isParentActive ? 'shadow-md' : ''
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active || isParentActive ? 'shadow-md' : ''
+                    }`}
                   style={{
                     backgroundColor: active || isParentActive ? '#64946e' : 'transparent',
                     color: active || isParentActive ? '#ffffff' : '#2d3748'
@@ -146,9 +153,8 @@ const AdminLayout = () => {
                         whileHover={{ x: 2 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => navigate(sub.path)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm transition-all ${
-                          location.pathname === sub.path ? 'font-semibold' : ''
-                        }`}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm transition-all ${location.pathname === sub.path ? 'font-semibold' : ''
+                          }`}
                         style={{
                           backgroundColor:
                             location.pathname === sub.path
@@ -208,9 +214,9 @@ const AdminLayout = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </div>
                   <div>
@@ -231,24 +237,67 @@ const AdminLayout = () => {
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item);
+                  const hasSubmenu = Array.isArray(item.submenu) && item.submenu.length > 0;
+                  const isParentActive =
+                    hasSubmenu && item.submenu.some((sub) => location.pathname === sub.path);
+
                   return (
-                    <button
-                      key={item.path}
-                      onClick={() => {
-                        navigate(item.path);
-                        setSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                        active ? 'shadow-md' : ''
-                      }`}
-                      style={{
-                        backgroundColor: active ? '#64946e' : 'transparent',
-                        color: active ? '#ffffff' : '#2d3748'
-                      }}
-                    >
-                      <Icon className="text-lg" />
-                      <span className="font-medium">{item.label}</span>
-                    </button>
+                    <div key={item.path}>
+                      <button
+                        onClick={() => {
+                          if (!hasSubmenu) {
+                            navigate(item.path);
+                            setSidebarOpen(false);
+                          } else if (!isParentActive) {
+                            navigate(item.submenu[0].path);
+                            // Don't close sidebar if opening a submenu section, or do close? 
+                            // Usually user wants to see where they are going. 
+                            // But usually submenus are expanded. 
+                            // Let's keep it consistent: click parent -> go to first child -> close sidebar
+                            setSidebarOpen(false);
+                          }
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active || isParentActive ? 'shadow-md' : ''
+                          }`}
+                        style={{
+                          backgroundColor: active || isParentActive ? '#64946e' : 'transparent',
+                          color: active || isParentActive ? '#ffffff' : '#2d3748'
+                        }}
+                      >
+                        <Icon className="text-lg" />
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+
+                      {hasSubmenu && (active || isParentActive) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          className="ml-6 mt-2 space-y-1"
+                        >
+                          {item.submenu.map((sub, subIndex) => (
+                            <button
+                              key={sub.path}
+                              onClick={() => {
+                                navigate(sub.path);
+                                setSidebarOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm transition-all ${location.pathname === sub.path ? 'font-semibold' : ''
+                                }`}
+                              style={{
+                                backgroundColor:
+                                  location.pathname === sub.path
+                                    ? 'rgba(100, 148, 110, 0.08)'
+                                    : 'transparent',
+                                color:
+                                  location.pathname === sub.path ? '#64946e' : '#718096'
+                              }}
+                            >
+                              <span>{sub.label}</span>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </div>
                   );
                 })}
               </nav>

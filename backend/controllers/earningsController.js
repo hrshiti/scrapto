@@ -155,23 +155,59 @@ export const getScrapperEarningsForAdmin = asyncHandler(async (req, res) => {
 
   const orders = await Order.find(query)
     .populate('user', 'name phone')
-    .select('totalAmount completedDate createdAt scrapItems totalWeight')
+    .select('totalAmount completedDate createdAt scrapItems totalWeight pickupAddress')
     .sort({ completedDate: -1 });
 
-  const totalEarnings = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  // Calculate earnings breakdown
+  const now = new Date();
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const summary = {
-    scrapperId,
-    totalEarnings,
-    totalOrders: orders.length,
-    orders: orders.map((order) => ({
+  let todayEarnings = 0;
+  let weekEarnings = 0;
+  let monthEarnings = 0;
+  let totalEarnings = 0;
+
+  const formattedOrders = orders.map((order) => {
+    const amount = order.totalAmount || 0;
+    const orderDate = order.completedDate || order.createdAt;
+
+    // Filter by date for stats (unless specific date range query is active, in which case we might just be showing filtered total, but for the profile view we generally want the standard breakdown)
+    // If no specific date filter is applied, we calculate standard stats.
+    if (!startDate && !endDate) {
+      totalEarnings += amount;
+      if (orderDate >= todayStart) todayEarnings += amount;
+      if (orderDate >= weekAgo) weekEarnings += amount;
+      if (orderDate >= monthStart) monthEarnings += amount;
+    } else {
+      // If date filtered, just sum total for that range
+      totalEarnings += amount;
+    }
+
+    return {
       id: order._id,
+      orderId: order._id,
       userName: order.user?.name || 'User',
       amount: order.totalAmount,
       completedAt: order.completedDate || order.createdAt,
       scrapType: order.scrapItems?.map((item) => item.category).join(', ') || 'Scrap',
-      weight: order.totalWeight
-    }))
+      weight: order.totalWeight,
+      location: order.pickupAddress
+        ? `${order.pickupAddress.street || ''}, ${order.pickupAddress.city || ''}, ${order.pickupAddress.state || ''} ${order.pickupAddress.pincode || ''}`.trim()
+        : 'Address not available',
+    };
+  });
+
+  const summary = {
+    scrapperId,
+    today: todayEarnings,
+    week: weekEarnings,
+    month: monthEarnings,
+    total: totalEarnings,
+    totalOrders: orders.length,
+    orders: formattedOrders
   };
 
   sendSuccess(res, 'Scrapper earnings retrieved successfully', { summary });

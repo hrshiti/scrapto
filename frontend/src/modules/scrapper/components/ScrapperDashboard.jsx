@@ -8,6 +8,7 @@ import ScrapperSolutions from './ScrapperSolutions';
 import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRequest } from '../../shared/utils/scrapperRequestUtils';
 import { earningsAPI, scrapperOrdersAPI } from '../../shared/utils/api';
 import { kycAPI } from '../../shared/utils/api';
+import BannerSlider from '../../shared/components/BannerSlider';
 
 const ScrapperDashboard = () => {
   const navigate = useNavigate();
@@ -497,6 +498,11 @@ const ScrapperDashboard = () => {
         {/* Live Market Prices for Scrappers (base admin feed / real-time with add-on) */}
         <div className="mt-4">
           <PriceTicker />
+        </div>
+
+        {/* Ad Banners */}
+        <div className="mt-4">
+          <BannerSlider audience="scrapper" />
         </div>
 
         {/* Market Price Subscription (separate from onboarding subscription) */}

@@ -25,15 +25,16 @@ import FraudDetection from './components/FraudDetection';
 import ReferralAnalytics from './components/ReferralAnalytics';
 import CampaignManagement from './components/CampaignManagement';
 import HelpSupport from './components/HelpSupport';
+import BannerManagement from './components/BannerManagement';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAdminAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/admin/login" replace />;
   }
-  
+
   return children;
 };
 
@@ -89,6 +90,8 @@ const AdminModuleRoutes = () => {
         <Route path="referrals/campaigns" element={<CampaignManagement />} />
         {/* Reports & Analytics */}
         <Route path="reports" element={<Reports />} />
+        {/* Banner Management */}
+        <Route path="banners" element={<BannerManagement />} />
         {/* Help & Support */}
         <Route path="support" element={<HelpSupport />} />
         {/* Profile */}
