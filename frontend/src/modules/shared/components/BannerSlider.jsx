@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { bannerAPI } from '../../utils/api';
+import { bannerAPI } from '../utils/api';
 
 const BannerSlider = ({ audience = 'both', autoPlayInterval = 5000 }) => {
     const [banners, setBanners] = useState([]);

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes, FaPlus } from 'react-icons/fa';
 import { DEFAULT_PRICE_FEED } from '../../shared/utils/priceFeedUtils';
 import { adminAPI } from '../../shared/utils/api';
 
@@ -10,6 +10,8 @@ const PriceFeedEditor = () => {
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newMaterialData, setNewMaterialData] = useState({ category: '', price: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,10 +24,11 @@ const PriceFeedEditor = () => {
     setError(null);
     try {
       const response = await adminAPI.getAllPrices();
+      let dbPrices = [];
 
       if (response.success && response.data?.prices) {
         // Transform backend prices to frontend format
-        const transformedPrices = response.data.prices.map((price) => ({
+        dbPrices = response.data.prices.map((price) => ({
           id: price._id || price.id,
           category: price.category || 'Unknown',
           pricePerKg: price.pricePerKg || 0,
@@ -33,21 +36,49 @@ const PriceFeedEditor = () => {
           effectiveDate: price.effectiveDate || price.createdAt || new Date().toISOString(),
           updatedAt: price.updatedAt || price.createdAt || new Date().toISOString()
         }));
-        setPrices(transformedPrices);
-      } else {
-        // If no prices exist, initialize with defaults
-        const nowIso = new Date().toISOString();
-        const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
-          ...p,
-          effectiveDate: p.effectiveDate || nowIso,
-          updatedAt: p.updatedAt || nowIso
-        }));
-        setPrices(defaultPrices);
       }
+
+      // Merge backend prices with defaults to ensure all categories are shown
+      const nowIso = new Date().toISOString();
+      const processedCategories = new Set();
+
+      // Start with defaults, replacing with DB version if available
+      const finalPrices = DEFAULT_PRICE_FEED.map((def) => {
+        const match = dbPrices.find(p => p.category === def.category);
+        if (match) {
+          processedCategories.add(match.category);
+          return match;
+        }
+        processedCategories.add(def.category);
+        return {
+          ...def,
+          effectiveDate: def.effectiveDate || nowIso,
+          updatedAt: def.updatedAt || nowIso
+        };
+      });
+
+      // Add any custom categories from DB that weren't in defaults
+      dbPrices.forEach(p => {
+        if (!processedCategories.has(p.category)) {
+          finalPrices.push(p);
+        }
+      });
+
+      setPrices(finalPrices);
     } catch (err) {
       console.error('Error loading prices:', err);
-      setError(err.message || 'Failed to load prices');
-      setPrices([]);
+      // Fallback to defaults on error
+      const nowIso = new Date().toISOString();
+      const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
+        ...p,
+        effectiveDate: p.effectiveDate || nowIso,
+        updatedAt: p.updatedAt || nowIso
+      }));
+      setPrices(defaultPrices);
+      // Don't show error to user if we have defaults, but maybe log it
+      if (err.response?.status !== 404) {
+        setError(err.message || 'Failed to load prices');
+      }
     } finally {
       setLoading(false);
     }
@@ -112,6 +143,39 @@ const PriceFeedEditor = () => {
   const handleCancel = () => {
     setEditingId(null);
     setEditValue('');
+  };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    if (!newMaterialData.category || !newMaterialData.price) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await adminAPI.createPrice({
+        category: newMaterialData.category,
+        pricePerKg: parseFloat(newMaterialData.price),
+        regionCode: 'IN-DL',
+        effectiveDate: new Date().toISOString(),
+        isActive: true
+      });
+
+      if (response.success) {
+        await loadPrices();
+        setShowAddModal(false);
+        setNewMaterialData({ category: '', price: '' });
+        alert('Material added successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to add material');
+      }
+    } catch (error) {
+      console.error('Error adding material:', error);
+      alert(error.message || 'Failed to add material');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleBulkSave = async () => {
@@ -273,6 +337,17 @@ const PriceFeedEditor = () => {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => setShowAddModal(true)}
+              className="px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1 md:gap-2 transition-all"
+              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+            >
+              <FaPlus className="text-xs md:text-sm" />
+              <span className="hidden sm:inline">Add Material</span>
+              <span className="sm:hidden">Add</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleExportCSV}
               className="px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1 md:gap-2 transition-all"
               style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
@@ -298,7 +373,7 @@ const PriceFeedEditor = () => {
               onClick={handleBulkSave}
               disabled={isSaving}
               className="px-2.5 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm flex items-center gap-1 md:gap-2 transition-all"
-              style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+              style={{ backgroundColor: '#2d3748', color: '#ffffff' }}
             >
               <FaSave className="text-xs md:text-sm" />
               <span className="hidden sm:inline">Save All</span>
@@ -492,9 +567,81 @@ const PriceFeedEditor = () => {
           </motion.div>
         </motion.div>
       )}
+
+      {/* Add Material Modal */}
+      {showAddModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAddModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+          >
+            <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+              Add New Material
+            </h2>
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>Category Name</label>
+                <input
+                  type="text"
+                  value={newMaterialData.category}
+                  onChange={(e) => setNewMaterialData(prev => ({ ...prev, category: e.target.value }))}
+                  placeholder="e.g. Copper Wire"
+                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                  style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>Price per Kg (₹)</label>
+                <input
+                  type="number"
+                  value={newMaterialData.price}
+                  onChange={(e) => setNewMaterialData(prev => ({ ...prev, price: e.target.value }))}
+                  placeholder="e.g. 450"
+                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                  style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
+                  required
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 rounded-xl font-semibold transition-all"
+                  style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 px-4 py-2 rounded-xl font-semibold text-white transition-all shadow-md"
+                  style={{ backgroundColor: '#64946e' }}
+                >
+                  {isSaving ? 'Adding...' : 'Add Material'}
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
+
 
 export default PriceFeedEditor;
 
