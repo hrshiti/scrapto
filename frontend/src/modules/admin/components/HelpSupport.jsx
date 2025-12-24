@@ -1,183 +1,288 @@
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { loadTickets, updateTicketStatus, TICKET_STATUS } from '../../shared/utils/helpSupportUtils';
+import {
+  FaTicketAlt, FaSearch, FaFilter, FaCheckCircle, FaExclamationCircle,
+  FaSpinner, FaUser, FaClock, FaComment
+} from 'react-icons/fa';
+import { supportAPI } from '../../shared/utils/api';
 
-const statusLabels = {
-  [TICKET_STATUS.OPEN]: 'Open',
-  [TICKET_STATUS.IN_PROGRESS]: 'In Progress',
-  [TICKET_STATUS.RESOLVED]: 'Resolved'
+const STATUS_CONFIG = {
+  open: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Open' },
+  in_progress: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'In Progress' },
+  resolved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Resolved' },
+  closed: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Closed' }
 };
 
-const statusColors = {
-  [TICKET_STATUS.OPEN]: '#f97316',
-  [TICKET_STATUS.IN_PROGRESS]: '#3b82f6',
-  [TICKET_STATUS.RESOLVED]: '#16a34a'
+const PRIORITY_CONFIG = {
+  low: { color: '#718096', icon: FaCheckCircle },
+  medium: { color: '#3182ce', icon: FaExclamationCircle },
+  high: { color: '#d69e2e', icon: FaExclamationCircle },
+  urgent: { color: '#e53e3e', icon: FaExclamationCircle }
 };
 
-const HelpSupportAdmin = () => {
+const HelpSupport = () => {
   const [tickets, setTickets] = useState([]);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterRole, setFilterRole] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [filters, setFilters] = useState({
+    status: 'all',
+    priority: 'all',
+    search: ''
+  });
+
+  const [selectedTicket, setSelectedTicket] = useState(null);
 
   useEffect(() => {
-    setTickets(loadTickets());
-  }, []);
+    loadTickets();
+  }, [filters.status, filters.priority]);
 
-  const handleStatusChange = (ticketId, newStatus) => {
-    const updated = updateTicketStatus(ticketId, newStatus);
-    setTickets(updated);
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      loadTickets();
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [filters.search]);
+
+  const loadTickets = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let query = '';
+      if (filters.status !== 'all') query += `&status=${filters.status}`;
+      if (filters.priority !== 'all') query += `&priority=${filters.priority}`;
+      if (filters.search) query += `&search=${encodeURIComponent(filters.search)}`;
+
+      const response = await supportAPI.getAllAdmin(query);
+      if (response.success) {
+        setTickets(response.data.tickets || []);
+      } else {
+        setTickets([]);
+      }
+    } catch (err) {
+      console.error('Error loading tickets:', err);
+      // setError('Failed to load tickets');
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredTickets = tickets.filter((t) => {
-    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-    if (filterRole !== 'all' && t.role !== filterRole) return false;
-    return true;
-  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const handleUpdateStatus = async (ticketId, newStatus) => {
+    try {
+      const response = await supportAPI.updateStatus(ticketId, newStatus);
+      if (response.success) {
+        setTickets(prev => prev.map(t =>
+          (t._id === ticketId ? { ...t, status: newStatus } : t)
+        ));
+        if (selectedTicket && selectedTicket._id === ticketId) {
+          setSelectedTicket(prev => ({ ...prev, status: newStatus }));
+        }
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status');
+    }
+  };
 
   return (
-    <div className="space-y-3 md:space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6"
+        className="bg-white rounded-2xl shadow-lg p-6"
       >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg md:text-2xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Help & Support Tickets
+            <h1 className="text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
+              Help & Support
             </h1>
-            <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-              View and manage support requests from users and scrappers.
+            <p className="text-gray-600">
+              Manage user inquiries and support tickets
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+            <FaTicketAlt className="text-2xl text-blue-500" />
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search subject, name..."
+              value={filters.search}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <FaFilter className="text-gray-400" />
             <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border text-xs md:text-sm"
-              style={{ borderColor: '#e2e8f0', color: '#2d3748' }}
+              value={filters.status}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
             >
-              <option value="all">All roles</option>
-              <option value="user">Users</option>
-              <option value="scrapper">Scrappers</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-1.5 rounded-lg border text-xs md:text-sm"
-              style={{ borderColor: '#e2e8f0', color: '#2d3748' }}
-            >
-              <option value="all">All statuses</option>
-              <option value={TICKET_STATUS.OPEN}>Open</option>
-              <option value={TICKET_STATUS.IN_PROGRESS}>In Progress</option>
-              <option value={TICKET_STATUS.RESOLVED}>Resolved</option>
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
             </select>
           </div>
+          <select
+            value={filters.priority}
+            onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
+            className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
+          >
+            <option value="all">All Priorities</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
         </div>
       </motion.div>
 
-      {/* Ticket List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden"
-      >
-        {filteredTickets.length === 0 ? (
-          <div className="p-6 md:p-10 text-center">
-            <p className="text-sm md:text-base font-semibold mb-1" style={{ color: '#2d3748' }}>
-              No support tickets found
-            </p>
-            <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-              New user or scrapper issues will appear here.
-            </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Ticket List */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-1 bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col h-[600px]"
+        >
+          <div className="p-4 border-b border-gray-100 bg-gray-50">
+            <h2 className="font-bold text-gray-700">Tickets ({tickets.length})</h2>
           </div>
-        ) : (
-          <div className="divide-y" style={{ borderColor: '#e2e8f0' }}>
-            {filteredTickets.map((ticket) => (
-              <div key={ticket.id} className="p-3 md:p-4 lg:p-5">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold uppercase"
-                        style={{
-                          backgroundColor: ticket.role === 'user' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                          color: ticket.role === 'user' ? '#1d4ed8' : '#6d28d9'
-                        }}
-                      >
-                        {ticket.role === 'user' ? 'User' : 'Scrapper'}
-                      </span>
-                      <span className="text-[10px] md:text-xs" style={{ color: '#718096' }}>
-                        {new Date(ticket.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-xs md:text-sm mb-1" style={{ color: '#2d3748' }}>
-                      <span className="font-semibold">{ticket.name}</span>
-                      {ticket.phone && (
-                        <span style={{ color: '#718096' }}> • {ticket.phone}</span>
-                      )}
-                    </p>
-                    <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                      Category: <span className="font-medium" style={{ color: '#2d3748' }}>{ticket.category}</span>
-                    </p>
-                    <p className="text-xs md:text-sm whitespace-pre-wrap" style={{ color: '#4a5568' }}>
-                      {ticket.message}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-start md:items-end gap-2">
-                    <span
-                      className="px-2 py-0.5 rounded-full text-[10px] md:text-xs font-semibold"
-                      style={{
-                        backgroundColor: `${statusColors[ticket.status]}20`,
-                        color: statusColors[ticket.status]
-                      }}
-                    >
-                      {statusLabels[ticket.status]}
+
+          <div className="overflow-y-auto flex-1 p-2 space-y-2">
+            {loading ? (
+              <div className="flex justify-center p-8">
+                <FaSpinner className="animate-spin text-2xl text-blue-500" />
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="text-center p-8 text-gray-500">
+                No tickets found
+              </div>
+            ) : (
+              tickets.map(ticket => (
+                <div
+                  key={ticket._id}
+                  onClick={() => setSelectedTicket(ticket)}
+                  className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${selectedTicket?._id === ticket._id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-transparent hover:bg-gray-50'
+                    }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_CONFIG[ticket.status]?.bg || 'bg-gray-100'} ${STATUS_CONFIG[ticket.status]?.text || 'text-gray-600'}`}>
+                      {STATUS_CONFIG[ticket.status]?.label || ticket.status}
                     </span>
-                    <div className="flex flex-wrap gap-1.5 md:gap-2">
-                      {ticket.status !== TICKET_STATUS.OPEN && (
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(ticket.id, TICKET_STATUS.OPEN)}
-                          className="px-2 py-1 rounded-lg text-[10px] md:text-xs font-semibold border"
-                          style={{ borderColor: '#e2e8f0', color: '#4a5568' }}
-                        >
-                          Mark Open
-                        </button>
-                      )}
-                      {ticket.status !== TICKET_STATUS.IN_PROGRESS && (
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(ticket.id, TICKET_STATUS.IN_PROGRESS)}
-                          className="px-2 py-1 rounded-lg text-[10px] md:text-xs font-semibold border"
-                          style={{ borderColor: '#bfdbfe', color: '#1d4ed8' }}
-                        >
-                          In Progress
-                        </button>
-                      )}
-                      {ticket.status !== TICKET_STATUS.RESOLVED && (
-                        <button
-                          type="button"
-                          onClick={() => handleStatusChange(ticket.id, TICKET_STATUS.RESOLVED)}
-                          className="px-2 py-1 rounded-lg text-[10px] md:text-xs font-semibold border"
-                          style={{ borderColor: '#bbf7d0', color: '#166534' }}
-                        >
-                          Resolve
-                        </button>
-                      )}
-                    </div>
+                    <span className="text-xs text-gray-400">
+                      {new Date(ticket.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-gray-800 text-sm mb-1 truncate">{ticket.subject}</h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <FaUser className="text-xs" />
+                    <span className="truncate max-w-[100px]">{ticket.name || 'Guest'}</span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+
+        {/* Ticket Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 bg-white rounded-2xl shadow-lg overflow-hidden h-[600px] flex flex-col"
+        >
+          {selectedTicket ? (
+            <>
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-800 mb-2">{selectedTicket.subject}</h2>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span className="flex items-center gap-1">
+                        <FaUser /> {selectedTicket.name} ({selectedTicket.role})
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <FaClock /> {new Date(selectedTicket.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {['open', 'in_progress', 'resolved', 'closed'].map(status => (
+                      status !== selectedTicket.status && (
+                        <button
+                          key={status}
+                          onClick={() => handleUpdateStatus(selectedTicket._id, status)}
+                          className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg capitalize transition-colors"
+                        >
+                          Mark {status.replace('_', ' ')}
+                        </button>
+                      )
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_CONFIG[selectedTicket.status]?.bg} ${STATUS_CONFIG[selectedTicket.status]?.text}`}>
+                    {STATUS_CONFIG[selectedTicket.status]?.label}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 uppercase">
+                    {selectedTicket.priority} Priority
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 uppercase">
+                    {selectedTicket.type}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+                <div className="bg-white p-6 rounded-xl shadow-sm mb-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedTicket.message}</p>
+                </div>
+
+                {/* Responses would go here */}
+                {selectedTicket.responses?.length > 0 && (
+                  <div className="space-y-4 mt-6">
+                    <h3 className="font-bold text-gray-700 mb-2"> responses</h3>
+                    {/* Map responses */}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-white border-t border-gray-100">
+                <textarea
+                  placeholder="Reply to this ticket... (Feature coming soon in backend)"
+                  disabled
+                  className="w-full p-3 rounded-lg border bg-gray-50 focus:outline-none text-sm resize-none h-24"
+                />
+                <div className="flex justify-end mt-2">
+                  <button disabled className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed">
+                    Send Reply
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <FaComment className="text-4xl mb-4" />
+              <p>Select a ticket to view details</p>
+            </div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 };
 
-export default HelpSupportAdmin;
-
-
+export default HelpSupport;

@@ -1,9 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getMilestoneRewards, 
-  updateMilestoneRewards 
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaGift,
   FaSave,
@@ -12,63 +9,105 @@ import {
   FaRupeeSign,
   FaUsers,
   FaTruck,
-  FaCheckCircle
+  FaCheckCircle,
+  FaSpinner
 } from 'react-icons/fa';
 
 const MilestoneRewards = () => {
-  const [milestones, setMilestones] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const currentMilestones = getMilestoneRewards();
-    setMilestones(currentMilestones);
+    loadSettings();
   }, []);
 
-  const handleSave = () => {
+  const loadSettings = async () => {
     setLoading(true);
-    updateMilestoneRewards(milestones);
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      const response = await referralAPI.getSettings();
+      if (response.success && response.data?.settings) {
+        setSettings(response.data.settings);
+      } else {
+        // Fallback default structure
+        setSettings({
+          lifecycleRewards: {
+            user: {
+              firstRequest: { enabled: true, referrer: 20, referee: 10 },
+              firstCompletion: { enabled: true, referrer: 30, referee: 15 }
+            },
+            scrapper: {
+              kycVerified: { enabled: true, referrer: 50, referee: 0 },
+              subscription: { enabled: true, referrer: 100, referee: 0 },
+              firstPickup: { enabled: true, referrer: 50, referee: 50 }
+            }
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load settings', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Send the entire settings object to update
+      await referralAPI.updateSettings(settings);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving milestones:', err);
+      // alert('Error saving milestones');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggle = (userType, milestoneType) => {
-    setMilestones(prev => ({
-      ...prev,
-      [userType]: {
-        ...prev[userType],
-        [milestoneType]: {
-          ...prev[userType][milestoneType],
-          enabled: !prev[userType][milestoneType].enabled
-        }
+    // We update settings.lifecycleRewards.[userType].[milestoneType].enabled
+    setSettings(prev => {
+      // Deep clone to avoid mutation issues
+      const newSettings = JSON.parse(JSON.stringify(prev));
+      if (!newSettings.lifecycleRewards) newSettings.lifecycleRewards = {};
+      if (!newSettings.lifecycleRewards[userType]) newSettings.lifecycleRewards[userType] = {};
+      if (!newSettings.lifecycleRewards[userType][milestoneType]) {
+        newSettings.lifecycleRewards[userType][milestoneType] = { enabled: false, referrer: 0, referee: 0 };
       }
-    }));
+
+      newSettings.lifecycleRewards[userType][milestoneType].enabled = !newSettings.lifecycleRewards[userType][milestoneType].enabled;
+      return newSettings;
+    });
   };
 
   const handleChange = (userType, milestoneType, field, value) => {
-    setMilestones(prev => ({
-      ...prev,
-      [userType]: {
-        ...prev[userType],
-        [milestoneType]: {
-          ...prev[userType][milestoneType],
-          [field]: parseFloat(value) || 0
-        }
+    setSettings(prev => {
+      const newSettings = JSON.parse(JSON.stringify(prev));
+      if (!newSettings.lifecycleRewards) newSettings.lifecycleRewards = {};
+      if (!newSettings.lifecycleRewards[userType]) newSettings.lifecycleRewards[userType] = {};
+      if (!newSettings.lifecycleRewards[userType][milestoneType]) {
+        newSettings.lifecycleRewards[userType][milestoneType] = { enabled: true, referrer: 0, referee: 0 };
       }
-    }));
+
+      newSettings.lifecycleRewards[userType][milestoneType][field] = parseFloat(value) || 0;
+      return newSettings;
+    });
   };
 
-  if (!milestones) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p style={{ color: '#718096' }}>Loading milestones...</p>
-        </div>
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
       </div>
     );
   }
+
+  if (!settings || !settings.lifecycleRewards) return <div className="text-center p-4">Milestones not configured</div>;
+
+  const milestones = settings.lifecycleRewards;
 
   const userMilestones = [
     { key: 'firstRequest', label: 'First Request', desc: 'When referred user creates first request' },
@@ -120,10 +159,10 @@ const MilestoneRewards = () => {
             User Milestone Rewards
           </h2>
         </div>
-        
+
         <div className="space-y-6">
           {userMilestones.map((milestone) => {
-            const config = milestones.user[milestone.key];
+            const config = milestones.user?.[milestone.key] || { enabled: false, referrer: 0, referee: 0 };
             return (
               <div key={milestone.key} className="p-4 rounded-xl border" style={{ borderColor: '#e2e8f0', backgroundColor: '#f7fafc' }}>
                 <div className="flex items-center justify-between mb-4">
@@ -147,7 +186,7 @@ const MilestoneRewards = () => {
                     )}
                   </motion.button>
                 </div>
-                
+
                 {config.enabled && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -213,10 +252,10 @@ const MilestoneRewards = () => {
             Scrapper Milestone Rewards
           </h2>
         </div>
-        
+
         <div className="space-y-6">
           {scrapperMilestones.map((milestone) => {
-            const config = milestones.scrapper[milestone.key];
+            const config = milestones.scrapper?.[milestone.key] || { enabled: false, referrer: 0, referee: 0 };
             return (
               <div key={milestone.key} className="p-4 rounded-xl border" style={{ borderColor: '#e2e8f0', backgroundColor: '#f7fafc' }}>
                 <div className="flex items-center justify-between mb-4">
@@ -240,7 +279,7 @@ const MilestoneRewards = () => {
                     )}
                   </motion.button>
                 </div>
-                
+
                 {config.enabled && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -304,16 +343,16 @@ const MilestoneRewards = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleSave}
-          disabled={loading}
+          disabled={saving}
           className="px-6 py-3 rounded-xl font-semibold text-base flex items-center gap-2 transition-all"
-          style={{ 
-            backgroundColor: saved ? '#10b981' : '#64946e', 
-            color: '#ffffff' 
+          style={{
+            backgroundColor: saved ? '#10b981' : '#64946e',
+            color: '#ffffff'
           }}
         >
-          {loading ? (
+          {saving ? (
             <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <FaSpinner className="animate-spin" />
               Saving...
             </>
           ) : saved ? (
@@ -334,4 +373,3 @@ const MilestoneRewards = () => {
 };
 
 export default MilestoneRewards;
-

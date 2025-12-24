@@ -1,62 +1,120 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getTierConfig, 
-  updateTierConfig 
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaTrophy,
   FaSave,
   FaRupeeSign,
-  FaPercent
+  FaPercent,
+  FaPlus,
+  FaTrash,
+  FaSpinner
 } from 'react-icons/fa';
 
+const DEFAULT_TIERS = [
+  { name: 'bronze', minReferrals: 0, bonusPercent: 5, monthlyBonus: 0, color: '#cd7f32' },
+  { name: 'silver', minReferrals: 10, bonusPercent: 10, monthlyBonus: 500, color: '#c0c0c0' },
+  { name: 'gold', minReferrals: 50, bonusPercent: 15, monthlyBonus: 2000, color: '#ffd700' },
+  { name: 'platinum', minReferrals: 100, bonusPercent: 20, monthlyBonus: 5000, color: '#e5e4e2' }
+];
+
 const TierManagement = () => {
-  const [tiers, setTiers] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [tiers, setTiers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const currentTiers = getTierConfig();
-    setTiers(currentTiers);
+    loadTiers();
   }, []);
 
-  const handleSave = () => {
+  const loadTiers = async () => {
     setLoading(true);
-    updateTierConfig(tiers);
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
-
-  const handleChange = (tierKey, field, value) => {
-    setTiers(prev => ({
-      ...prev,
-      [tierKey]: {
-        ...prev[tierKey],
-        [field]: field === 'name' || field === 'color' ? value : (parseFloat(value) || 0)
+    try {
+      const response = await referralAPI.getAllTiers();
+      if (response.success && response.data?.tiers && response.data.tiers.length > 0) {
+        setTiers(response.data.tiers);
+      } else {
+        // If no tiers exist in DB, start with defaults (but not saved yet)
+        setTiers(DEFAULT_TIERS);
       }
-    }));
+    } catch (err) {
+      console.error('Failed to load tiers', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!tiers) {
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // For simplicity in this bulk editor, we'll loop and update/create.
+      // In a real app, might want batch endpoint.
+      // We will check if explicit ID exists to update, else create.
+
+      const promises = tiers.map(tier => {
+        if (tier._id) {
+          return referralAPI.updateTier(tier._id, tier);
+        } else {
+          return referralAPI.createTier(tier);
+        }
+      });
+
+      await Promise.all(promises);
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      loadTiers(); // Reload to get IDs
+    } catch (err) {
+      console.error('Error saving tiers:', err);
+      alert('Error saving tiers');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChange = (index, field, value) => {
+    const newTiers = [...tiers];
+    if (field === 'name' || field === 'color') {
+      newTiers[index][field] = value;
+    } else {
+      newTiers[index][field] = parseFloat(value) || 0;
+    }
+    setTiers(newTiers);
+  };
+
+  const handleAddTier = () => {
+    setTiers([
+      ...tiers,
+      { name: 'New Tier', minReferrals: 0, bonusPercent: 0, monthlyBonus: 0, color: '#3b82f6' }
+    ]);
+  };
+
+  const handleDeleteTier = async (index) => {
+    const tier = tiers[index];
+    if (tier._id) {
+      if (!window.confirm(`Delete ${tier.name} tier?`)) return;
+      try {
+        await referralAPI.deleteTier(tier._id);
+        const newTiers = tiers.filter((_, i) => i !== index);
+        setTiers(newTiers);
+      } catch (err) {
+        alert('Failed to delete tier');
+      }
+    } else {
+      // Just remove from local state if not saved
+      const newTiers = tiers.filter((_, i) => i !== index);
+      setTiers(newTiers);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p style={{ color: '#718096' }}>Loading tiers...</p>
-        </div>
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
       </div>
     );
   }
-
-  const tierOrder = ['bronze', 'silver', 'gold', 'platinum'];
-  const tierColors = {
-    bronze: '#cd7f32',
-    silver: '#c0c0c0',
-    gold: '#ffd700',
-    platinum: '#e5e4e2'
-  };
 
   return (
     <div className="space-y-6">
@@ -66,156 +124,191 @@ const TierManagement = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
       >
-        <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+            >
+              <FaTrophy className="text-3xl" style={{ color: '#64946e' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
+                Tier Management
+              </h1>
+              <p className="text-sm md:text-base" style={{ color: '#718096' }}>
+                Configure referral tier thresholds and bonuses
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleAddTier}
+            className="px-4 py-2 bg-blue-500 text-white rounded-xl flex items-center gap-2 font-semibold hover:bg-blue-600 transition-colors"
           >
-            <FaTrophy className="text-3xl" style={{ color: '#64946e' }} />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-              Tier Management
-            </h1>
-            <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-              Configure referral tier thresholds and bonuses
-            </p>
-          </div>
+            <FaPlus /> Add Tier
+          </button>
         </div>
       </motion.div>
 
-      {/* Tiers */}
-      {tierOrder.map((tierKey, index) => {
-        const tier = tiers[tierKey];
-        return (
-          <motion.div
-            key={tierKey}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: `${tier.color}20`, border: `2px solid ${tier.color}` }}
+      {/* Tiers List */}
+      <div className="grid grid-cols-1 gap-6">
+        <AnimatePresence>
+          {tiers.map((tier, index) => (
+            <motion.div
+              key={tier._id || index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white rounded-2xl shadow-lg p-4 md:p-6 relative group"
+            >
+              <button
+                onClick={() => handleDeleteTier(index)}
+                className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete Tier"
               >
-                <FaTrophy style={{ color: tier.color }} />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                  {tier.name} Tier
-                </h2>
-                <p className="text-xs" style={{ color: '#718096' }}>
-                  Minimum {tier.minReferrals} referrals required
-                </p>
-              </div>
-            </div>
+                <FaTrash />
+              </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Tier Name
-                </label>
-                <input
-                  type="text"
-                  value={tier.name}
-                  onChange={(e) => handleChange(tierKey, 'name', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
-                  style={{
-                    borderColor: '#e2e8f0',
-                    backgroundColor: '#f7fafc',
-                    color: '#2d3748'
-                  }}
-                />
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
+                  style={{ backgroundColor: `${tier.color}20`, border: `2px solid ${tier.color}` }}
+                >
+                  <FaTrophy style={{ color: tier.color }} />
+                </div>
+                <div>
+                  <h2 className="text-lg md:text-xl font-bold capitalize" style={{ color: '#2d3748' }}>
+                    {tier.name} Tier
+                  </h2>
+                  <p className="text-xs" style={{ color: '#718096' }}>
+                    Minimum {tier.minReferrals} referrals required
+                  </p>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Min Referrals
-                </label>
-                <input
-                  type="number"
-                  value={tier.minReferrals}
-                  onChange={(e) => handleChange(tierKey, 'minReferrals', e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
-                  style={{
-                    borderColor: '#e2e8f0',
-                    backgroundColor: '#f7fafc',
-                    color: '#2d3748'
-                  }}
-                  min="0"
-                  step="1"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Bonus %
-                </label>
-                <div className="relative">
-                  <FaPercent className="absolute right-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Tier Name
+                  </label>
+                  <input
+                    type="text"
+                    value={tier.name}
+                    onChange={(e) => handleChange(index, 'name', e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+                    style={{
+                      borderColor: '#e2e8f0',
+                      backgroundColor: '#f7fafc',
+                      color: '#2d3748'
+                    }}
+                  />
+                </div>
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Color (Hex)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={tier.color}
+                      onChange={(e) => handleChange(index, 'color', e.target.value)}
+                      className="h-10 w-12 rounded border cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={tier.color}
+                      onChange={(e) => handleChange(index, 'color', e.target.value)}
+                      className="w-full px-2 py-2 rounded-xl border-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Min Referrals
+                  </label>
                   <input
                     type="number"
-                    value={tier.bonusPercent}
-                    onChange={(e) => handleChange(tierKey, 'bonusPercent', e.target.value)}
-                    className="w-full px-4 py-2 pr-8 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+                    value={tier.minReferrals}
+                    onChange={(e) => handleChange(index, 'minReferrals', e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
                     style={{
                       borderColor: '#e2e8f0',
                       backgroundColor: '#f7fafc',
                       color: '#2d3748'
                     }}
                     min="0"
-                    max="100"
-                    step="0.1"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Monthly Bonus (₹)
-                </label>
-                <div className="relative">
-                  <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
-                  <input
-                    type="number"
-                    value={tier.monthlyBonus}
-                    onChange={(e) => handleChange(tierKey, 'monthlyBonus', e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
-                    style={{
-                      borderColor: '#e2e8f0',
-                      backgroundColor: '#f7fafc',
-                      color: '#2d3748'
-                    }}
-                    min="0"
-                    step="1"
-                  />
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Bonus %
+                  </label>
+                  <div className="relative">
+                    <FaPercent className="absolute right-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={tier.bonusPercent}
+                      onChange={(e) => handleChange(index, 'bonusPercent', e.target.value)}
+                      className="w-full px-4 py-2 pr-8 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+                <div className="lg:col-span-1">
+                  <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    Monthly Bonus (₹)
+                  </label>
+                  <div className="relative">
+                    <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
+                    <input
+                      type="number"
+                      value={tier.monthlyBonus}
+                      onChange={(e) => handleChange(index, 'monthlyBonus', e.target.value)}
+                      className="w-full pl-8 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      min="0"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        );
-      })}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Save Button */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="flex justify-end"
+        className="flex justify-end pb-8"
       >
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleSave}
-          disabled={loading}
-          className="px-6 py-3 rounded-xl font-semibold text-base flex items-center gap-2 transition-all"
-          style={{ 
-            backgroundColor: saved ? '#10b981' : '#64946e', 
-            color: '#ffffff' 
+          disabled={saving}
+          className="px-8 py-3 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-lg hover:shadow-xl"
+          style={{
+            backgroundColor: saved ? '#10b981' : '#64946e',
+            color: '#ffffff'
           }}
         >
-          {loading ? (
+          {saving ? (
             <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <FaSpinner className="animate-spin" />
               Saving...
             </>
           ) : saved ? (
@@ -226,7 +319,7 @@ const TierManagement = () => {
           ) : (
             <>
               <FaSave />
-              Save Tiers
+              Save All Changes
             </>
           )}
         </motion.button>
@@ -236,4 +329,3 @@ const TierManagement = () => {
 };
 
 export default TierManagement;
-

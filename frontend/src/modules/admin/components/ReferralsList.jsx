@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { getAllReferrals } from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaGift,
   FaSearch,
@@ -10,37 +10,45 @@ import {
   FaCheckCircle,
   FaClock,
   FaRupeeSign,
-  FaEye
+  FaEye,
+  FaBan,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ReferralsList = () => {
   const [referrals, setReferrals] = useState([]);
-  const [filteredReferrals, setFilteredReferrals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all'); // all, user, scrapper
-  const [filterStatus, setFilterStatus] = useState('all'); // all, active, pending
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
 
   useEffect(() => {
     loadReferrals();
   }, []);
 
-  useEffect(() => {
-    filterReferrals();
-  }, [searchTerm, filterType, filterStatus, referrals]);
-
-  const loadReferrals = () => {
-    const allReferrals = getAllReferrals();
-    setReferrals(allReferrals);
-    setFilteredReferrals(allReferrals);
+  const loadReferrals = async () => {
+    setLoading(true);
+    try {
+      const response = await referralAPI.getAllReferrals();
+      if (response.success && response.data?.referrals) {
+        setReferrals(response.data.referrals);
+      } else {
+        setReferrals([]);
+      }
+    } catch (err) {
+      console.error('Failed to load referrals:', err);
+      // setReferrals([]); // Don't wipe if error, or maybe yes
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filterReferrals = () => {
+  const getFilteredReferrals = () => {
     let filtered = [...referrals];
 
-    // Filter by type
-    if (filterType !== 'all') {
-      filtered = filtered.filter(ref => ref.referrerType === filterType);
-    }
+    // Filter by type - (Assuming backend data might not distinguish user vs scrapper in 'type' field yet, 
+    // maybe infer from populated data if user vs scrapper model, but referral model just has referrer ID.
+    // For now we skip specific type filter unless we extend backend schema to store 'referrerRole')
 
     // Filter by status
     if (filterStatus !== 'all') {
@@ -51,23 +59,29 @@ const ReferralsList = () => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(ref =>
-        ref.referrerCode.toLowerCase().includes(term) ||
-        ref.referrerId.toLowerCase().includes(term) ||
-        ref.refereeId.toLowerCase().includes(term)
+        (ref.codeUsed && ref.codeUsed.toLowerCase().includes(term)) ||
+        (ref.referrer?.name && ref.referrer.name.toLowerCase().includes(term)) ||
+        (ref.referee?.name && ref.referee.name.toLowerCase().includes(term)) ||
+        (ref.referrer?.email && ref.referrer.email.toLowerCase().includes(term))
       );
     }
 
-    setFilteredReferrals(filtered);
+    return filtered;
   };
+
+  const filteredReferrals = getFilteredReferrals();
 
   const getStatusBadge = (status) => {
     const badges = {
-      active: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', icon: FaCheckCircle, text: 'Active' },
-      pending: { bg: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', icon: FaClock, text: 'Pending' }
+      registered: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', icon: FaCheckCircle, text: 'Registered' },
+      completed: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', icon: FaCheckCircle, text: 'Completed' },
+      pending: { bg: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', icon: FaClock, text: 'Pending' },
+      rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', icon: FaBan, text: 'Rejected' },
+      verified: { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', icon: FaCheckCircle, text: 'Verified' }
     };
     const badge = badges[status] || badges.pending;
     const Icon = badge.icon;
-    
+
     return (
       <span
         className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
@@ -77,34 +91,6 @@ const ReferralsList = () => {
         {badge.text}
       </span>
     );
-  };
-
-  const getTypeBadge = (type) => {
-    if (type === 'scrapper') {
-      return (
-        <span
-          className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
-          style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
-        >
-          <FaTruck />
-          Scrapper
-        </span>
-      );
-    }
-    return (
-      <span
-        className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
-        style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}
-      >
-        <FaUsers />
-        User
-      </span>
-    );
-  };
-
-  const getTotalRewards = (referral) => {
-    const referrerRewards = referral.rewards?.referrerRewards || [];
-    return referrerRewards.reduce((sum, r) => sum + (r.amount || 0), 0);
   };
 
   return (
@@ -143,12 +129,12 @@ const ReferralsList = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#718096' }} />
             <input
               type="text"
-              placeholder="Search by code, referrer, or referee..."
+              placeholder="Search by code, referrer, or referee name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
@@ -160,20 +146,6 @@ const ReferralsList = () => {
             />
           </div>
           <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
-            style={{
-              borderColor: '#e2e8f0',
-              backgroundColor: '#f7fafc',
-              color: '#2d3748'
-            }}
-          >
-            <option value="all">All Types</option>
-            <option value="user">User Referrals</option>
-            <option value="scrapper">Scrapper Referrals</option>
-          </select>
-          <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
@@ -184,8 +156,10 @@ const ReferralsList = () => {
             }}
           >
             <option value="all">All Status</option>
-            <option value="active">Active</option>
             <option value="pending">Pending</option>
+            <option value="registered">Registered</option>
+            <option value="verified">Verified</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
       </motion.div>
@@ -195,86 +169,85 @@ const ReferralsList = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl shadow-lg overflow-hidden"
+        className="bg-white rounded-2xl shadow-lg overflow-hidden min-h-[400px]"
       >
-        <AnimatePresence>
-          {filteredReferrals.length === 0 ? (
-            <div className="p-12 text-center">
-              <FaGift className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
-              <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-                No Referrals Found
-              </h3>
-              <p className="text-sm" style={{ color: '#718096' }}>
-                {searchTerm || filterType !== 'all' || filterStatus !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'No referrals have been created yet'}
-              </p>
-            </div>
-          ) : (
-            filteredReferrals.map((referral, index) => (
-              <motion.div
-                key={referral.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                  index !== filteredReferrals.length - 1 ? 'border-b' : ''
-                }`}
-                style={{ borderColor: '#e2e8f0' }}
-              >
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  {/* Referral Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                      <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
-                      >
-                        <FaGift style={{ color: '#64946e', fontSize: '20px' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                            {referral.referrerCode}
-                          </h3>
-                          {getTypeBadge(referral.referrerType)}
-                          {getStatusBadge(referral.status)}
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <FaSpinner className="animate-spin text-4xl text-green-600" />
+          </div>
+        ) : (
+          <AnimatePresence>
+            {filteredReferrals.length === 0 ? (
+              <div className="p-12 text-center">
+                <FaGift className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
+                  No Referrals Found
+                </h3>
+                <p className="text-sm" style={{ color: '#718096' }}>
+                  {searchTerm || filterStatus !== 'all'
+                    ? 'Try adjusting your filters'
+                    : 'No referrals have been created yet'}
+                </p>
+              </div>
+            ) : (
+              filteredReferrals.map((referral, index) => (
+                <motion.div
+                  key={referral._id || index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== filteredReferrals.length - 1 ? 'border-b' : ''
+                    }`}
+                  style={{ borderColor: '#e2e8f0' }}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    {/* Referral Info */}
+                    <div className="flex-1">
+                      <div className="flex items-start gap-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
+                        >
+                          <FaGift style={{ color: '#64946e', fontSize: '20px' }} />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
-                          <div>
-                            <span className="font-semibold">Referrer:</span> {referral.referrerId}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                              {referral.codeUsed || 'NO CODE'}
+                            </h3>
+                            {getStatusBadge(referral.status)}
                           </div>
-                          <div>
-                            <span className="font-semibold">Referee:</span> {referral.refereeId}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Type:</span> {referral.referrerType} → {referral.refereeType}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Date:</span> {new Date(referral.createdAt).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="mt-2 flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <FaRupeeSign style={{ color: '#64946e' }} />
-                            <span className="font-semibold" style={{ color: '#2d3748' }}>
-                              ₹{getTotalRewards(referral)}
-                            </span>
-                            <span style={{ color: '#718096' }}>earned</span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
+                            <div className="truncate">
+                              <span className="font-semibold block text-gray-800">Referrer</span>
+                              {referral.referrer?.name ? `${referral.referrer.name}` : (referral.referrer || 'Unknown')}
+                              {referral.referrer?.email && <span className="block text-xs text-gray-400">{referral.referrer.email}</span>}
+                            </div>
+                            <div className="truncate">
+                              <span className="font-semibold block text-gray-800">Referee</span>
+                              {referral.referee?.name ? `${referral.referee.name}` : (referral.refereeEmail || referral.refereePhone || 'Pending')}
+                            </div>
+                            <div>
+                              <span className="font-semibold block text-gray-800">Date</span>
+                              {new Date(referral.createdAt).toLocaleDateString()}
+                            </div>
+                            <div>
+                              <span className="font-semibold block text-gray-800">Reward</span>
+                              <span className="text-green-600 font-bold">₹{referral.rewardEarned || 0}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
+                </motion.div>
+              ))
+            )}
+          </AnimatePresence>
+        )}
       </motion.div>
     </div>
   );
 };
 
 export default ReferralsList;
-

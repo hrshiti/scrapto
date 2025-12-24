@@ -1,145 +1,119 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  FaArrowLeft, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaRupeeSign, 
-  FaFileInvoice, FaClock, FaCheckCircle, FaTimesCircle, FaUserCheck, FaUserTimes 
+import {
+  FaArrowLeft, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt,
+  FaShoppingBag, FaHistory, FaBan, FaCheckCircle, FaExclamationCircle
 } from 'react-icons/fa';
+import { adminAPI, adminOrdersAPI } from '../../shared/utils/api';
 
 const UserDetail = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [requests, setRequests] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     loadUserData();
   }, [userId]);
 
-  const loadUserData = () => {
-    // Load user data (mock for now)
-    const mockUser = {
-      id: userId,
-      name: 'Rahul Sharma',
-      phone: '+91 98765 43210',
-      email: 'rahul@example.com',
-      status: 'active',
-      walletBalance: 3450,
-      totalRequests: 12,
-      completedRequests: 10,
-      pendingRequests: 1,
-      cancelledRequests: 1,
-      joinedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-      lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      addresses: [
-        { id: 1, label: 'Home', address: '123 Main Street, Sector 5, New Delhi', isDefault: true },
-        { id: 2, label: 'Office', address: '456 Business Park, Gurgaon', isDefault: false }
-      ]
+  const loadUserData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Load user details
+      const userResponse = await adminAPI.getUserById(userId);
+      if (!userResponse.success || !userResponse.data?.user) {
+        throw new Error(userResponse.message || 'User not found');
+      }
+
+      setUser(userResponse.data.user);
+
+      // Load user's orders
+      try {
+        const ordersResponse = await adminOrdersAPI.getAll(`userId=${userId}`);
+        if (ordersResponse.success && ordersResponse.data?.orders) {
+          setOrders(ordersResponse.data.orders);
+        } else {
+          setOrders([]);
+        }
+      } catch (orderErr) {
+        console.warn('Failed to load user orders:', orderErr);
+        setOrders([]);
+      }
+
+    } catch (err) {
+      console.error('Error loading user data:', err);
+      setError(err.message || 'Failed to load user data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBlockUnblock = async () => {
+    const action = user.isActive ? 'block' : 'unblock';
+    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
+
+    setActionLoading(true);
+    try {
+      const response = await adminAPI.blockUser(userId);
+      if (response.success) {
+        // Update local state
+        setUser(prev => ({ ...prev, isActive: !prev.isActive }));
+        alert(`User ${action}ed successfully`);
+      } else {
+        throw new Error(response.message || `Failed to ${action} user`);
+      }
+    } catch (err) {
+      console.error(`Error ${action}ing user:`, err);
+      alert(err.message || `Failed to ${action} user`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const getOrderStatusBadge = (status) => {
+    const styles = {
+      pending: { bg: '#fff7ed', color: '#c2410c', label: 'Pending' },
+      accepted: { bg: '#eff6ff', color: '#1d4ed8', label: 'Accepted' },
+      in_progress: { bg: '#fefce8', color: '#a16207', label: 'In Progress' },
+      completed: { bg: '#f0fdf4', color: '#15803d', label: 'Completed' },
+      cancelled: { bg: '#fef2f2', color: '#b91c1c', label: 'Cancelled' }
     };
 
-    const mockRequests = [
-      {
-        id: 'req_001',
-        requestId: 'REQ-2024-001',
-        categories: ['Metal', 'Plastic'],
-        weight: 25.5,
-        estimatedPrice: 1250,
-        status: 'completed',
-        createdAt: '2024-01-15T10:30:00',
-        completedAt: '2024-01-15T14:20:00',
-        scrapperName: 'Rajesh Kumar',
-        address: '123 Main Street, Sector 5, New Delhi'
-      },
-      {
-        id: 'req_002',
-        requestId: 'REQ-2024-002',
-        categories: ['Electronics'],
-        weight: 8.2,
-        estimatedPrice: 680,
-        status: 'in_progress',
-        createdAt: '2024-01-18T09:15:00',
-        scrapperName: 'Amit Sharma',
-        address: '456 Business Park, Gurgaon'
-      },
-      {
-        id: 'req_003',
-        requestId: 'REQ-2024-003',
-        categories: ['Paper'],
-        weight: 15.0,
-        estimatedPrice: 180,
-        status: 'pending',
-        createdAt: '2024-01-20T11:00:00',
-        address: '123 Main Street, Sector 5, New Delhi'
-      }
-    ];
+    const style = styles[status] || styles.pending;
 
-    setUser(mockUser);
-    setRequests(mockRequests);
-    setLoading(false);
-  };
-
-  const handleToggleBlock = () => {
-    if (window.confirm(`Are you sure you want to ${user.status === 'blocked' ? 'unblock' : 'block'} this user?`)) {
-      setUser(prev => ({
-        ...prev,
-        status: prev.status === 'blocked' ? 'active' : 'blocked',
-        ...(prev.status === 'active' && { 
-          blockedAt: new Date().toISOString(),
-          blockReason: 'Admin action'
-        })
-      }));
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    if (status === 'completed') {
-      return (
-        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
-          <FaCheckCircle className="text-xs" />
-          Completed
-        </span>
-      );
-    }
-    if (status === 'in_progress') {
-      return (
-        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#fef3c7', color: '#f59e0b' }}>
-          <FaClock className="text-xs" />
-          In Progress
-        </span>
-      );
-    }
-    if (status === 'pending') {
-      return (
-        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#dbeafe', color: '#3b82f6' }}>
-          <FaClock className="text-xs" />
-          Pending
-        </span>
-      );
-    }
     return (
-      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
-        <FaTimesCircle className="text-xs" />
-        Cancelled
+      <span className="px-2 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: style.bg, color: style.color }}>
+        {style.label}
       </span>
     );
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <p style={{ color: '#718096' }}>Loading user details...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+          <p style={{ color: '#718096' }}>Loading user details...</p>
+        </div>
       </div>
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
       <div className="text-center py-12">
-        <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>User not found</p>
+        <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
+          {error || 'User not found'}
+        </p>
         <button
           onClick={() => navigate('/admin/users')}
-          className="text-sm" style={{ color: '#64946e' }}
+          className="text-sm px-4 py-2 rounded-lg font-semibold text-white"
+          style={{ backgroundColor: '#64946e' }}
         >
           Back to Users List
         </button>
@@ -168,147 +142,184 @@ const UserDetail = () => {
         className="bg-white rounded-2xl shadow-lg p-6"
       >
         <div className="flex flex-col md:flex-row md:items-start gap-6">
-          {/* Avatar */}
           <div
-            className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0 mx-auto md:mx-0"
-            style={{ backgroundColor: '#f7fafc' }}
+            className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0 mx-auto md:mx-0 text-3xl font-bold text-white uppercase"
+            style={{ backgroundColor: '#64946e' }}
           >
-            <span className="text-4xl font-bold" style={{ color: '#64946e' }}>
-              {user.name.charAt(0).toUpperCase()}
-            </span>
+            {user.name?.charAt(0) || 'U'}
           </div>
 
-          {/* User Info */}
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4 flex-wrap">
-              <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#2d3748' }}>
-                {user.name}
-              </h1>
-              {user.status === 'active' ? (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
-                  <FaUserCheck className="text-xs" />
-                  Active
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
-                  <FaUserTimes className="text-xs" />
-                  Blocked
-                </span>
-              )}
-            </div>
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#2d3748' }}>
+                  {user.name}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Member since {new Date(user.createdAt).toLocaleDateString()}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="flex items-center gap-3">
-                <FaPhone style={{ color: '#64946e' }} />
-                <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Phone</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{user.phone}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaEnvelope style={{ color: '#64946e' }} />
-                <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Email</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{user.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaRupeeSign style={{ color: '#64946e' }} />
-                <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Wallet Balance</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>₹{user.walletBalance}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaFileInvoice style={{ color: '#64946e' }} />
-                <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Total Requests</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{user.totalRequests}</p>
-                </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${user.isActive
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                  }`}>
+                  {user.isActive ? <FaCheckCircle /> : <FaExclamationCircle />}
+                  {user.isActive ? 'Active' : 'Blocked'}
+                </span>
+
+                <button
+                  onClick={handleBlockUnblock}
+                  disabled={actionLoading}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-colors ${user.isActive
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                      : 'bg-green-50 text-green-600 hover:bg-green-100'
+                    }`}
+                >
+                  <FaBan />
+                  {user.isActive ? 'Block User' : 'Unblock User'}
+                </button>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleToggleBlock}
-                className={`px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all ${
-                  user.status === 'blocked' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}
-              >
-                {user.status === 'blocked' ? <FaUserCheck /> : <FaUserTimes />}
-                {user.status === 'blocked' ? 'Unblock User' : 'Block User'}
-              </motion.button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                <FaPhone className="text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Phone</p>
+                  <p className="font-semibold text-gray-700">{user.phone}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                <FaEnvelope className="text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Email</p>
+                  <p className="font-semibold text-gray-700">{user.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                <FaMapMarkerAlt className="text-gray-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Address</p>
+                  <p className="font-semibold text-gray-700 truncate max-w-[200px]">
+                    {user.address
+                      ? `${user.address.street || ''}, ${user.address.city || ''}, ${user.address.state || ''} ${user.address.pincode || ''}`
+                      : 'Not provided'}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </motion.div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Completed', value: user.completedRequests, color: '#10b981', bg: '#d1fae5' },
-          { label: 'Pending', value: user.pendingRequests, color: '#f59e0b', bg: '#fef3c7' },
-          { label: 'Cancelled', value: user.cancelledRequests, color: '#ef4444', bg: '#fee2e2' },
-          { label: 'Total', value: user.totalRequests, color: '#3b82f6', bg: '#dbeafe' }
-        ].map((stat, index) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-            className="bg-white rounded-2xl shadow-lg p-4 text-center"
-          >
-            <p className="text-2xl font-bold mb-1" style={{ color: stat.color }}>
-              {stat.value}
-            </p>
-            <p className="text-sm" style={{ color: '#718096' }}>{stat.label}</p>
-          </motion.div>
-        ))}
+          { label: 'Total Orders', value: orders.length, icon: FaShoppingBag, color: '#64946e' },
+          {
+            label: 'Completed',
+            value: orders.filter(o => o.status === 'completed').length,
+            icon: FaCheckCircle,
+            color: '#10b981'
+          },
+          {
+            label: 'Total Spent',
+            value: `₹${orders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalAmount || 0), 0).toLocaleString()}`,
+            icon: FaHistory,
+            color: '#8b5cf6'
+          },
+          {
+            label: 'Cancelled',
+            value: orders.filter(o => o.status === 'cancelled').length,
+            icon: FaBan,
+            color: '#ef4444'
+          }
+        ].map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.05 }}
+              className="bg-white rounded-xl p-4 shadow-md"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${stat.color}20` }}>
+                  <Icon style={{ color: stat.color, fontSize: '20px' }} />
+                </div>
+                <div>
+                  <p className="text-xl font-bold" style={{ color: '#2d3748' }}>{stat.value}</p>
+                  <p className="text-xs text-gray-500">{stat.label}</p>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
-      {/* Request History */}
+      {/* Recent Activity / Orders */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="bg-white rounded-2xl shadow-lg p-6"
       >
-        <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Request History
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{ color: '#2d3748' }}>
+          <FaHistory />
+          Order History
         </h2>
-        <div className="space-y-4">
-          {requests.map((request, index) => (
-            <motion.div
-              key={request.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.05 }}
-              className="p-4 rounded-xl border-2" style={{ borderColor: '#e2e8f0' }}
-            >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold" style={{ color: '#2d3748' }}>{request.requestId}</span>
-                    {getStatusBadge(request.status)}
-                  </div>
-                  <div className="space-y-1 text-sm" style={{ color: '#718096' }}>
-                    <p>Categories: {request.categories.join(', ')}</p>
-                    <p>Weight: {request.weight} kg • Price: ₹{request.estimatedPrice}</p>
-                    <p className="flex items-center gap-1">
-                      <FaMapMarkerAlt className="text-xs" />
-                      {request.address}
-                    </p>
-                    {request.scrapperName && (
-                      <p>Scrapper: {request.scrapperName}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500 font-semibold">
+              <tr>
+                <th className="px-4 py-3 rounded-l-lg">Order ID</th>
+                <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Scrap Items</th>
+                <th className="px-4 py-3">Amount</th>
+                <th className="px-4 py-3">Scrapper</th>
+                <th className="px-4 py-3 rounded-r-lg">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-4 py-8 text-center text-gray-500 text-sm">
+                    No orders found for this user
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-sm font-mono font-medium text-gray-700">
+                      #{order._id.substring(order._id.length - 6).toUpperCase()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <FaCalendarAlt className="text-gray-400" />
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {order.scrapItems?.map(item => item.category).join(', ') || 'Mixed Scrap'}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-gray-800">
+                      ₹{order.totalAmount || 0}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {order.scrapper ? order.scrapper.name || 'Unknown' : 'Unassigned'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {getOrderStatusBadge(order.status)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </motion.div>
     </div>
@@ -316,4 +327,3 @@ const UserDetail = () => {
 };
 
 export default UserDetail;
-

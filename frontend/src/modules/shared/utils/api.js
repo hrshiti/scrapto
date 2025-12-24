@@ -516,6 +516,7 @@ export const chatAPI = {
   markAsRead: async (chatId) => {
     return apiRequest(`/chats/${chatId}/read`, {
       method: 'POST',
+      body: JSON.stringify({}),
     });
   },
   // Archive chat
@@ -667,6 +668,30 @@ export const adminAPI = {
       method: 'DELETE',
     });
   },
+  // Lead Management
+  getAllLeads: async (query = '') => {
+    const suffix = query ? `?${query}` : '';
+    return apiRequest(`/admin/leads${suffix}`, {
+      method: 'GET',
+    });
+  },
+  createLead: async (leadData) => {
+    return apiRequest('/admin/leads', {
+      method: 'POST',
+      body: JSON.stringify(leadData),
+    });
+  },
+  updateLead: async (id, leadData) => {
+    return apiRequest(`/admin/leads/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(leadData),
+    });
+  },
+  deleteLead: async (id) => {
+    return apiRequest(`/admin/leads/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Scrapper Profile API
@@ -725,6 +750,107 @@ export const bannerAPI = {
   }
 };
 
+// Support API
+export const supportAPI = {
+  create: async (ticketData) => {
+    return apiRequest('/support', {
+      method: 'POST',
+      body: JSON.stringify(ticketData),
+    });
+  },
+  getMyTickets: async () => {
+    return apiRequest('/support/my-tickets', {
+      method: 'GET',
+    });
+  },
+  getAllAdmin: async (query = '') => {
+    const suffix = query ? `?${query}` : '';
+    return apiRequest(`/support/admin/all${suffix}`, {
+      method: 'GET',
+    });
+  },
+  updateStatus: async (id, status) => {
+    return apiRequest(`/support/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  },
+};
+
+// Referral API
+export const referralAPI = {
+  // Settings
+  getSettings: async () => {
+    return apiRequest('/admin/referral-system/settings', {
+      method: 'GET',
+    });
+  },
+  updateSettings: async (settings) => {
+    return apiRequest('/admin/referral-system/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  },
+  // Tiers
+  getAllTiers: async () => {
+    return apiRequest('/admin/referral-system/tiers', {
+      method: 'GET',
+    });
+  },
+  createTier: async (tierData) => {
+    return apiRequest('/admin/referral-system/tiers', {
+      method: 'POST',
+      body: JSON.stringify(tierData),
+    });
+  },
+  updateTier: async (id, tierData) => {
+    return apiRequest(`/admin/referral-system/tiers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(tierData),
+    });
+  },
+  deleteTier: async (id) => {
+    return apiRequest(`/admin/referral-system/tiers/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  // Campaigns
+  getAllCampaigns: async () => {
+    return apiRequest('/admin/referral-system/campaigns', {
+      method: 'GET',
+    });
+  },
+  createCampaign: async (data) => {
+    return apiRequest('/admin/referral-system/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  updateCampaign: async (id, data) => {
+    return apiRequest(`/admin/referral-system/campaigns/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  deleteCampaign: async (id) => {
+    return apiRequest(`/admin/referral-system/campaigns/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  // Referrals List
+  getAllReferrals: async () => {
+    return apiRequest('/admin/referral-system/all', {
+      method: 'GET',
+    });
+  },
+  updateReferral: async (id, data) => {
+    return apiRequest(`/admin/referral-system/referrals/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
 // Public API (Unprotected)
 export const publicAPI = {
   getPrices: async (regionCode = 'IN-DL') => {
@@ -736,4 +862,3 @@ export const publicAPI = {
 
 export { API_BASE_URL, API_ENDPOINTS };
 export default apiRequest;
-

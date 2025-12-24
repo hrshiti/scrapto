@@ -6,9 +6,12 @@ import {
   FaEye, FaCalendarAlt, FaRupeeSign, FaUser
 } from 'react-icons/fa';
 
+import { adminAPI } from '../../shared/utils/api';
+
 const SubscriptionsList = () => {
   const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, active, expired, cancelled
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -16,85 +19,38 @@ const SubscriptionsList = () => {
     loadSubscriptions();
   }, []);
 
-  const loadSubscriptions = () => {
-    // Load subscriptions from localStorage
-    const scrapperSubscription = localStorage.getItem('scrapperSubscription');
-    const scrapperSubscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
-    const scrapperUser = localStorage.getItem('scrapperUser');
+  const loadSubscriptions = async () => {
+    setLoading(true);
+    try {
+      const response = await adminAPI.getAllSubscriptions();
+      if (response.success && response.data?.subscriptions) {
+        const mappedSubscriptions = response.data.subscriptions.map((item, index) => {
+          const sub = item.subscription;
+          const user = item.scrapper;
+          const plan = sub.planId || {}; // populated plan details
 
-    const subscriptionList = [];
-
-    if (scrapperSubscription && scrapperUser) {
-      const sub = JSON.parse(scrapperSubscription);
-      const user = JSON.parse(scrapperUser);
-      subscriptionList.push({
-        id: 'sub_001',
-        scrapperId: 'scrapper_001',
-        scrapperName: user.name || 'Scrapper',
-        scrapperPhone: user.phone || 'N/A',
-        planId: sub.planId || 'basic',
-        planName: sub.planName || 'Basic Plan',
-        price: sub.price || 99,
-        status: scrapperSubscriptionStatus || 'active',
-        subscribedAt: sub.subscribedAt || new Date().toISOString(),
-        expiryDate: sub.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      });
-    }
-
-    // Add mock data
-    const mockSubscriptions = [
-      {
-        id: 'sub_002',
-        scrapperId: 'scrapper_002',
-        scrapperName: 'Rajesh Kumar',
-        scrapperPhone: '+91 98765 43210',
-        planId: 'pro',
-        planName: 'Pro Plan',
-        price: 199,
-        status: 'active',
-        subscribedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-        expiryDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'sub_003',
-        scrapperId: 'scrapper_003',
-        scrapperName: 'Amit Sharma',
-        scrapperPhone: '+91 98765 43211',
-        planId: 'basic',
-        planName: 'Basic Plan',
-        price: 99,
-        status: 'expired',
-        subscribedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-        expiryDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'sub_004',
-        scrapperId: 'scrapper_004',
-        scrapperName: 'Priya Patel',
-        scrapperPhone: '+91 98765 43212',
-        planId: 'pro',
-        planName: 'Pro Plan',
-        price: 199,
-        status: 'active',
-        subscribedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-        expiryDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'sub_005',
-        scrapperId: 'scrapper_005',
-        scrapperName: 'Suresh Reddy',
-        scrapperPhone: '+91 98765 43213',
-        planId: 'basic',
-        planName: 'Basic Plan',
-        price: 99,
-        status: 'cancelled',
-        subscribedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-        expiryDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-        cancelledAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
+          return {
+            id: sub._id || `sub_${index}`,
+            scrapperId: user.id || user._id,
+            scrapperName: user.name || 'Unknown Scrapper',
+            scrapperPhone: user.phone || 'N/A',
+            planId: plan._id || plan.id || 'unknown',
+            planName: plan.name || 'Unknown Plan',
+            price: plan.price || 0,
+            status: sub.status || 'inactive',
+            subscribedAt: sub.startDate || sub.createdAt,
+            expiryDate: sub.expiryDate,
+            cancelledAt: sub.cancelledAt
+          };
+        });
+        setSubscriptions(mappedSubscriptions);
       }
-    ];
-
-    setSubscriptions([...subscriptionList, ...mockSubscriptions]);
+    } catch (error) {
+      console.error('Failed to load subscriptions:', error);
+      // Fallback to empty list or handle error UI
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredSubscriptions = subscriptions.filter(sub => {
@@ -245,7 +201,19 @@ const SubscriptionsList = () => {
         className="bg-white rounded-2xl shadow-lg overflow-hidden"
       >
         <AnimatePresence>
-          {filteredSubscriptions.length === 0 ? (
+          {loading ? (
+            <div className="p-12 text-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-8 h-8 rounded-full border-2 border-t-transparent mx-auto mb-4"
+                style={{ borderColor: '#64946e' }}
+              />
+              <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
+                Loading subscriptions...
+              </p>
+            </div>
+          ) : filteredSubscriptions.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

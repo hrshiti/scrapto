@@ -1,10 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getReferralAnalytics, 
-  getTopReferrers,
-  getAllReferrals 
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaChartBar,
   FaUsers,
@@ -13,38 +9,133 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaTrophy,
-  FaDownload
+  FaDownload,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ReferralAnalytics = () => {
   const [period, setPeriod] = useState('all'); // all, today, week, month
-  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState({
+    totalReferrals: 0,
+    activeReferrals: 0,
+    totalRewardsPaid: 0,
+    conversionRate: 0,
+    userReferrals: 0,
+    scrapperReferrals: 0,
+    crossReferrals: 0,
+  });
   const [topReferrers, setTopReferrers] = useState([]);
+  const [rawReferrals, setRawReferrals] = useState([]);
 
   useEffect(() => {
-    loadAnalytics();
-  }, [period]);
+    loadData();
+  }, []);
 
-  const loadAnalytics = () => {
-    const analyticsData = getReferralAnalytics(period);
-    setAnalytics(analyticsData);
-    
-    const topUsers = getTopReferrers(10, 'user', period);
-    const topScrappers = getTopReferrers(10, 'scrapper', period);
-    setTopReferrers([...topUsers, ...topScrappers].sort((a, b) => b.totalReferrals - a.totalReferrals).slice(0, 10));
+  useEffect(() => {
+    if (rawReferrals.length > 0) {
+      processAnalytics(rawReferrals, period);
+    }
+  }, [period, rawReferrals]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // For now, we fetch all and compute on frontend. 
+      // In production, should use dedicated analytics endpoint.
+      const response = await referralAPI.getAllReferrals();
+      if (response.success && response.data?.referrals) {
+        setRawReferrals(response.data.referrals);
+        processAnalytics(response.data.referrals, period);
+      }
+    } catch (err) {
+      console.error('Failed to load analytics data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processAnalytics = (referrals, timePeriod) => {
+    // Filter by date
+    const now = new Date();
+    const filtered = referrals.filter(ref => {
+      if (timePeriod === 'all') return true;
+      const refDate = new Date(ref.createdAt);
+      if (timePeriod === 'today') {
+        return refDate.toDateString() === now.toDateString();
+      }
+      if (timePeriod === 'week') {
+        const weekAgo = new Date();
+        weekAgo.setDate(now.getDate() - 7);
+        return refDate >= weekAgo;
+      }
+      if (timePeriod === 'month') {
+        const monthAgo = new Date();
+        monthAgo.setMonth(now.getMonth() - 1);
+        return refDate >= monthAgo;
+      }
+      return true;
+    });
+
+    const total = filtered.length;
+    // Assume verification or completion implies 'active' for analytics purpose
+    const active = filtered.filter(r => ['verified', 'completed', 'active'].includes(r.status)).length;
+    const rewards = filtered.reduce((sum, r) => sum + (r.rewardEarned || 0), 0);
+    const conversion = total > 0 ? ((active / total) * 100).toFixed(1) : 0;
+
+    // Type breakdown (Requires identifying referrer type, might be missing in basic referral model unless populated)
+    // We'll guess based on populated referrer or just use dummy ratio if missing
+    // Ideally backend should provide this.
+    // Assuming backend populates referrer with 'role'
+    const userRefs = filtered.filter(r => r.referrer?.role === 'user').length;
+    const scrapperRefs = filtered.filter(r => r.referrer?.role === 'scrapper').length;
+    // Cross referrals logic - requires checking both types
+    // Simplified:
+    const crossRefs = 0; // Hard to calculate without explicit type fields
+
+    setAnalytics({
+      totalReferrals: total,
+      activeReferrals: active,
+      totalRewardsPaid: rewards,
+      conversionRate: conversion,
+      userReferrals: userRefs,
+      scrapperReferrals: scrapperRefs,
+      crossReferrals: crossRefs
+    });
+
+    // Top Referrers
+    const referrerMap = {};
+    filtered.forEach(ref => {
+      if (!ref.referrer) return;
+      const id = ref.referrer._id || ref.referrer;
+      if (!referrerMap[id]) {
+        referrerMap[id] = {
+          id,
+          name: ref.referrer.name || 'Unknown',
+          role: ref.referrer.role || 'user',
+          count: 0,
+          earnings: 0
+        };
+      }
+      referrerMap[id].count += 1;
+      referrerMap[id].earnings += (ref.rewardEarned || 0);
+    });
+
+    const sortedReferrers = Object.values(referrerMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    setTopReferrers(sortedReferrers);
   };
 
   const handleExport = () => {
     alert('Export functionality will be implemented with backend integration');
   };
 
-  if (!analytics) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p style={{ color: '#718096' }}>Loading analytics...</p>
-        </div>
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
       </div>
     );
   }
@@ -92,9 +183,8 @@ const ReferralAnalytics = () => {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all capitalize ${
-                period === p ? 'shadow-md' : ''
-              }`}
+              className={`px-4 py-2 rounded-xl font-semibold text-sm transition-all capitalize ${period === p ? 'shadow-md' : ''
+                }`}
               style={{
                 backgroundColor: period === p ? '#64946e' : '#f7fafc',
                 color: period === p ? '#ffffff' : '#2d3748'
@@ -131,7 +221,7 @@ const ReferralAnalytics = () => {
           className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
         >
           <div className="flex items-center justify-between mb-2">
-            <FaCheckCircle className="text-xl" style={{ color: '#64946e' }} />
+            <FaTruck className="text-xl" style={{ color: '#64946e' }} />
             <FaArrowUp className="text-sm" style={{ color: '#10b981' }} />
           </div>
           <p className="text-2xl font-bold mb-1" style={{ color: '#2d3748' }}>
@@ -189,7 +279,7 @@ const ReferralAnalytics = () => {
             {analytics.userReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
-            {analytics.totalReferrals > 0 
+            {analytics.totalReferrals > 0
               ? `${((analytics.userReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
               : '0% of total'}
           </p>
@@ -209,7 +299,7 @@ const ReferralAnalytics = () => {
             {analytics.scrapperReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
-            {analytics.totalReferrals > 0 
+            {analytics.totalReferrals > 0
               ? `${((analytics.scrapperReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
               : '0% of total'}
           </p>
@@ -229,7 +319,7 @@ const ReferralAnalytics = () => {
             {analytics.crossReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
-            {analytics.totalReferrals > 0 
+            {analytics.totalReferrals > 0
               ? `${((analytics.crossReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
               : '0% of total'}
           </p>
@@ -257,14 +347,14 @@ const ReferralAnalytics = () => {
           ) : (
             topReferrers.map((referrer, index) => (
               <div
-                key={`${referrer.referrerType}_${referrer.referrerId}`}
+                key={`${referrer.id}`}
                 className="flex items-center justify-between p-3 rounded-xl"
                 style={{ backgroundColor: '#f7fafc' }}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
-                    style={{ 
+                    style={{
                       backgroundColor: index < 3 ? '#ffd700' : 'rgba(100, 148, 110, 0.1)',
                       color: index < 3 ? '#2d3748' : '#64946e'
                     }}
@@ -273,16 +363,16 @@ const ReferralAnalytics = () => {
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                      {referrer.referrerType === 'user' ? 'User' : 'Scrapper'} #{referrer.referrerId.slice(-6)}
+                      {referrer.role === 'user' ? 'User' : 'Scrapper'} - {referrer.name}
                     </p>
                     <p className="text-xs" style={{ color: '#718096' }}>
-                      {referrer.totalReferrals} referrals
+                      {referrer.count} referrals
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold" style={{ color: '#64946e' }}>
-                    ₹{referrer.totalEarnings.toLocaleString()}
+                    ₹{referrer.earnings.toLocaleString()}
                   </p>
                   <p className="text-xs" style={{ color: '#718096' }}>
                     Earnings
@@ -298,4 +388,3 @@ const ReferralAnalytics = () => {
 };
 
 export default ReferralAnalytics;
-

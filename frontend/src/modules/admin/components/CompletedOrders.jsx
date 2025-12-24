@@ -2,105 +2,72 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaSearch, FaDownload, FaCalendarAlt, FaUser, FaTruck, FaRupeeSign, FaEye } from 'react-icons/fa';
+import { adminOrdersAPI } from '../../shared/utils/api';
 
 const CompletedOrders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, today, week, month
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [filter]);
 
-  const loadOrders = () => {
-    // Load completed orders from localStorage
-    const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-    
-    // Add mock data
-    const mockOrders = [
-      {
-        id: 'order_001',
-        orderId: 'ORD-2024-001',
-        userId: 'user_001',
-        userName: 'Rahul Sharma',
-        scrapperId: 'scrapper_001',
-        scrapperName: 'Rajesh Kumar',
-        categories: ['Metal', 'Plastic'],
-        weight: 25.5,
-        paidAmount: 4500,
-        completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        location: '123 Main Street, Mumbai'
-      },
-      {
-        id: 'order_002',
-        orderId: 'ORD-2024-002',
-        userId: 'user_002',
-        userName: 'Priya Patel',
-        scrapperId: 'scrapper_002',
-        scrapperName: 'Amit Sharma',
-        categories: ['Electronics'],
-        weight: 8.2,
-        paidAmount: 2800,
-        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        location: '456 Business Park, Delhi'
-      },
-      {
-        id: 'order_003',
-        orderId: 'ORD-2024-003',
-        userId: 'user_003',
-        userName: 'Amit Kumar',
-        scrapperId: 'scrapper_003',
-        scrapperName: 'Suresh Reddy',
-        categories: ['Paper'],
-        weight: 15.0,
-        paidAmount: 1800,
-        completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        location: '789 Residential Area, Gurgaon'
+  const loadOrders = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let query = 'status=completed';
+
+      // Apply date filters
+      const now = new Date();
+      if (filter === 'today') {
+        const today = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+        query += `&dateFrom=${today}`;
+      } else if (filter === 'week') {
+        const lastWeek = new Date(now.setDate(now.getDate() - 7)).toISOString();
+        query += `&dateFrom=${lastWeek}`;
+      } else if (filter === 'month') {
+        const lastMonth = new Date(now.setMonth(now.getMonth() - 1)).toISOString();
+        query += `&dateFrom=${lastMonth}`;
       }
-    ];
 
-    // Merge localStorage orders with mock data
-    const allOrders = [...completedOrders.map(order => ({
-      ...order,
-      orderId: order.orderId || order.id,
-      userName: order.userName || 'User',
-      scrapperName: order.scrapperName || 'Scrapper',
-      location: order.location || 'N/A'
-    })), ...mockOrders];
-
-    setOrders(allOrders);
+      const response = await adminOrdersAPI.getAll(query);
+      if (response.success && response.data?.orders) {
+        setOrders(response.data.orders);
+      } else {
+        setOrders([]);
+      }
+    } catch (err) {
+      console.error('Error loading completed orders:', err);
+      setError('Failed to load completed orders');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Filter orders locally for search query as backend search might be limited or for immediate UI feedback
+  // Backend supports search on name/email/phone, but if we want to search ID/Categories client-side on fetched data:
   const filteredOrders = orders.filter(order => {
-    const orderDate = new Date(order.completedAt || order.pickedUpAt);
-    const now = new Date();
-    const diffDays = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24));
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    const orderId = (order.orderId || order._id || '').toLowerCase();
+    const userName = (order.user?.name || '').toLowerCase();
+    const scrapperName = (order.scrapper?.name || '').toLowerCase();
 
-    let matchesFilter = true;
-    if (filter === 'today') {
-      matchesFilter = diffDays === 0;
-    } else if (filter === 'week') {
-      matchesFilter = diffDays <= 7;
-    } else if (filter === 'month') {
-      matchesFilter = diffDays <= 30;
-    }
-
-    const matchesSearch = 
-      order.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.scrapperName?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    return matchesFilter && matchesSearch;
+    return orderId.includes(q) || userName.includes(q) || scrapperName.includes(q);
   });
 
   const handleViewDetails = (order) => {
     // Navigate to user detail page to see order details
-    if (order.userId) {
-      navigate(`/admin/users/${order.userId}`);
+    if (order.user?._id || order.user) {
+      const userId = order.user?._id || order.user;
+      navigate(`/admin/users/${userId}`);
     } else {
-      // Show alert with order details if no userId
-      alert(`Order Details:\n\nOrder ID: ${order.orderId || order.id}\nUser: ${order.userName}\nScrapper: ${order.scrapperName}\nAmount: ₹${order.paidAmount}\nWeight: ${order.weight} kg`);
+      console.warn('No user ID found for order:', order);
     }
   };
 
@@ -108,14 +75,14 @@ const CompletedOrders = () => {
     const csvContent = [
       ['Order ID', 'User', 'Scrapper', 'Categories', 'Weight (kg)', 'Amount Paid (₹)', 'Location', 'Completed Date'],
       ...filteredOrders.map(order => [
-        order.orderId || order.id,
-        order.userName || 'N/A',
-        order.scrapperName || 'N/A',
-        order.categories?.join(', ') || 'N/A',
-        order.weight || 'N/A',
-        order.paidAmount || 0,
-        order.location || 'N/A',
-        new Date(order.completedAt || order.pickedUpAt).toLocaleString()
+        order.orderId || order._id,
+        order.user?.name || 'N/A',
+        order.scrapper?.name || 'N/A',
+        order.scrapItems?.map(i => i.category).join(', ') || 'N/A',
+        order.totalWeight || 'N/A',
+        order.totalAmount || 0,
+        order.address?.street || 'N/A',
+        new Date(order.updatedAt || order.createdAt).toLocaleString()
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -128,7 +95,8 @@ const CompletedOrders = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (parseFloat(order.paidAmount) || 0), 0);
+  // Calculate total revenue from fetched orders
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0);
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -199,9 +167,8 @@ const CompletedOrders = () => {
               <button
                 key={period}
                 onClick={() => setFilter(period)}
-                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${
-                  filter === period ? 'shadow-md' : ''
-                }`}
+                className={`px-2.5 py-1.5 md:px-4 md:py-3 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all ${filter === period ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: filter === period ? '#64946e' : '#f7fafc',
                   color: filter === period ? '#ffffff' : '#2d3748'
@@ -222,7 +189,12 @@ const CompletedOrders = () => {
         className="bg-white rounded-2xl shadow-lg overflow-hidden"
       >
         <AnimatePresence>
-          {filteredOrders.length === 0 ? (
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+              <p style={{ color: '#718096' }}>Loading orders...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -233,19 +205,18 @@ const CompletedOrders = () => {
                 No completed orders found
               </p>
               <p className="text-sm" style={{ color: '#718096' }}>
-                {searchQuery ? 'Try a different search term' : 'No orders have been completed yet'}
+                {searchQuery || filter !== 'all' ? 'Try adjusting your filters' : 'No orders have been completed yet'}
               </p>
             </motion.div>
           ) : (
             filteredOrders.map((order, index) => (
               <motion.div
-                key={order.id}
+                key={order._id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                  index !== filteredOrders.length - 1 ? 'border-b' : ''
-                }`}
+                className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== filteredOrders.length - 1 ? 'border-b' : ''
+                  }`}
                 style={{ borderColor: '#e2e8f0' }}
               >
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
@@ -253,7 +224,7 @@ const CompletedOrders = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3 flex-wrap">
                       <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                        {order.orderId || order.id}
+                        #{String(order.orderId || order._id).substring(0, 8).toUpperCase()}
                       </h3>
                       <span className="flex items-center gap-1 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
                         <FaCheckCircle className="text-xs" />
@@ -264,28 +235,28 @@ const CompletedOrders = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-3 text-xs md:text-sm" style={{ color: '#718096' }}>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaUser className="text-xs" />
-                        <span className="truncate">User: {order.userName || 'N/A'}</span>
+                        <span className="truncate">User: {order.user?.name || 'N/A'}</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaTruck className="text-xs" />
-                        <span className="truncate">Scrapper: {order.scrapperName || 'N/A'}</span>
+                        <span className="truncate">Scrapper: {order.scrapper?.name || 'N/A'}</span>
                       </div>
                       <div>
-                        Categories: {order.categories?.join(', ') || 'N/A'}
+                        Items: {order.scrapItems?.map(i => i.category).join(', ') || 'Mixed'}
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaRupeeSign className="text-xs" />
                         <span className="font-semibold" style={{ color: '#2d3748' }}>
-                          ₹{order.paidAmount || 0}
+                          ₹{order.totalAmount || 0}
                         </span>
                       </div>
                       <div>
-                        Weight: {order.weight || 'N/A'} kg
+                        Weight: {order.totalWeight || order.scrapItems?.reduce((sum, i) => sum + i.weight, 0) || 0} kg
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaCalendarAlt className="text-xs" />
                         <span className="text-xs">
-                          {new Date(order.completedAt || order.pickedUpAt).toLocaleString()}
+                          {new Date(order.updatedAt || order.createdAt).toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -301,7 +272,7 @@ const CompletedOrders = () => {
                       style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                     >
                       <FaEye className="text-xs md:text-sm" />
-                      <span className="hidden sm:inline">View</span>
+                      <span className="hidden sm:inline">View User</span>
                     </motion.button>
                   </div>
                 </div>
@@ -315,4 +286,3 @@ const CompletedOrders = () => {
 };
 
 export default CompletedOrders;
-

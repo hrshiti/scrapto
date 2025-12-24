@@ -1,118 +1,212 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  FaChartBar, FaDownload, FaCalendarAlt, FaRupeeSign, FaUsers, 
-  FaTruck, FaFileInvoice, FaCheckCircle, FaCreditCard
+import {
+  FaChartBar, FaDownload, FaCalendarAlt, FaRupeeSign, FaUsers,
+  FaTruck, FaFileInvoice, FaCheckCircle, FaCreditCard,
+  FaSpinner
 } from 'react-icons/fa';
+import { adminAPI, adminOrdersAPI } from '../../shared/utils/api';
 
 const Reports = () => {
-  const [reportData, setReportData] = useState({
-    totalUsers: 0,
-    totalScrappers: 0,
-    totalRequests: 0,
-    completedOrders: 0,
-    totalRevenue: 0,
-    subscriptionRevenue: 0
-  });
+  const [stats, setStats] = useState(null);
+  const [revenueStats, setRevenueStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const [dateRange, setDateRange] = useState('month'); // today, week, month, year
 
   useEffect(() => {
-    loadReportData();
+    loadData();
   }, [dateRange]);
 
-  const loadReportData = () => {
-    // Aggregate data from localStorage
-    const completedOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-    const subscriptions = JSON.parse(localStorage.getItem('scrapperSubscription') || '{}');
-    
-    // Mock data
-    const mockData = {
-      totalUsers: 156,
-      totalScrappers: 48,
-      totalRequests: 234,
-      completedOrders: completedOrders.length + 180,
-      totalRevenue: completedOrders.reduce((sum, order) => sum + (parseFloat(order.paidAmount) || 0), 0) + 125000,
-      subscriptionRevenue: subscriptions.price ? subscriptions.price * 45 : 4455
-    };
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Calculate start/end dates based on range
+      const end = new Date();
+      const start = new Date();
 
-    setReportData(mockData);
+      switch (dateRange) {
+        case 'today':
+          start.setHours(0, 0, 0, 0);
+          break;
+        case 'week':
+          start.setDate(end.getDate() - 7);
+          break;
+        case 'month':
+          start.setMonth(end.getMonth() - 1);
+          break;
+        case 'year':
+          start.setFullYear(end.getFullYear() - 1);
+          break;
+        default:
+          start.setMonth(end.getMonth() - 1);
+      }
+
+      const [dashboardRes, revenueRes] = await Promise.all([
+        adminAPI.getDashboardStats(),
+        adminAPI.getPaymentAnalytics(
+          `startDate=${start.toISOString()}&endDate=${end.toISOString()}`
+        )
+      ]);
+
+      if (dashboardRes.success && dashboardRes.data?.stats) {
+        setStats(dashboardRes.data.stats);
+      }
+
+      if (revenueRes.success && revenueRes.data) {
+        setRevenueStats(revenueRes.data);
+      }
+
+    } catch (err) {
+      console.error('Error loading report data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleExportReport = (type) => {
-    // Generate CSV report
-    const csvContent = generateCSVReport(type);
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${type}-report-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  const handleExportReport = async (type) => {
+    if (exportLoading) return;
+    setExportLoading(true);
 
-  const generateCSVReport = (type) => {
-    // Mock CSV generation
-    const headers = {
-      users: ['User ID', 'Name', 'Phone', 'Total Requests', 'Wallet Balance', 'Joined Date'],
-      scrappers: ['Scrapper ID', 'Name', 'Phone', 'KYC Status', 'Subscription', 'Total Pickups', 'Earnings'],
-      orders: ['Order ID', 'User', 'Scrapper', 'Amount', 'Date', 'Status'],
-      revenue: ['Date', 'Revenue Type', 'Amount', 'Description']
-    };
+    try {
+      let csvContent = '';
+      let filename = `${type}-report-${new Date().toISOString().split('T')[0]}.csv`;
 
-    const data = {
-      users: [['user_001', 'Rahul Sharma', '+91 98765 43210', '12', '₹3450', '2024-01-01']],
-      scrappers: [['scrapper_001', 'Rajesh Kumar', '+91 98765 43210', 'Verified', 'Active', '45', '₹125000']],
-      orders: [['ORD-001', 'Rahul Sharma', 'Rajesh Kumar', '₹4500', '2024-01-15', 'Completed']],
-      revenue: [['2024-01-15', 'Order Payment', '₹4500', 'Completed pickup order']]
-    };
+      if (type === 'users') {
+        const res = await adminAPI.getAllUsers('limit=1000'); // Fetch reasonably large batch
+        const users = res.data?.users || [];
 
-    return [headers[type].join(','), ...data[type].map(row => row.join(','))].join('\n');
+        const headers = ['User ID', 'Name', 'Phone', 'Email', 'Active', 'Joined Date', 'Total Orders'];
+        const rows = users.map(u => [
+          u._id,
+          `"${u.name}"`,
+          u.phone,
+          u.email,
+          u.isActive ? 'Yes' : 'No',
+          new Date(u.createdAt).toLocaleDateString(),
+          u.totalOrders || 0
+        ]);
+
+        csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      }
+      else if (type === 'scrappers') {
+        const res = await adminAPI.getAllScrappers('limit=1000');
+        const scrappers = res.data?.scrappers || [];
+
+        const headers = ['Scrapper ID', 'Name', 'Phone', 'Status', 'KYC Status', 'Total Pickups', 'Rating'];
+        const rows = scrappers.map(s => [
+          s._id,
+          `"${s.name}"`,
+          s.phone,
+          s.status,
+          s.kyc?.status || 'N/A',
+          s.totalPickups || 0,
+          s.rating || 0
+        ]);
+
+        csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      }
+      else if (type === 'orders') {
+        const res = await adminOrdersAPI.getAll('limit=1000');
+        const orders = res.data?.orders || [];
+
+        const headers = ['Order ID', 'User', 'Scrapper', 'Status', 'Amount', 'Weight', 'Date'];
+        const rows = orders.map(o => [
+          o.orderId || o._id,
+          `"${o.user?.name || 'N/A'}"`,
+          `"${o.scrapper?.name || 'N/A'}"`,
+          o.status,
+          o.totalAmount || 0,
+          o.totalWeight || 0,
+          new Date(o.createdAt).toLocaleDateString()
+        ]);
+
+        csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      }
+      else if (type === 'revenue') {
+        // Use revenue stats or fetch payments
+        // We'll use the dailyRevenue from revenueStats if available, essentially exporting the chart data
+        if (revenueStats?.dailyRevenue) {
+          const headers = ['Date', 'Total Revenue', 'Transaction Count'];
+          const rows = revenueStats.dailyRevenue.map(d => [
+            d._id,
+            d.total,
+            d.count
+          ]);
+          csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        } else {
+          csvContent = 'Date,Total Revenue,Count\nNo Data';
+        }
+      }
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export report');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   const statsCards = [
     {
       title: 'Total Users',
-      value: reportData.totalUsers,
+      value: stats?.users?.total || 0,
       icon: FaUsers,
       color: '#3b82f6',
       bg: '#dbeafe'
     },
     {
       title: 'Total Scrappers',
-      value: reportData.totalScrappers,
+      value: stats?.scrappers?.total || 0,
       icon: FaTruck,
       color: '#10b981',
       bg: '#d1fae5'
     },
     {
-      title: 'Total Requests',
-      value: reportData.totalRequests,
+      title: 'Total Orders',
+      value: stats?.orders?.total || 0,
       icon: FaFileInvoice,
       color: '#f59e0b',
       bg: '#fef3c7'
     },
     {
       title: 'Completed Orders',
-      value: reportData.completedOrders,
+      value: stats?.orders?.completed || 0,
       icon: FaCheckCircle,
       color: '#8b5cf6',
       bg: '#ede9fe'
     },
     {
       title: 'Total Revenue',
-      value: `₹${(reportData.totalRevenue / 1000).toFixed(1)}k`,
+      value: `₹${((revenueStats?.totalRevenue || 0) / 1000).toFixed(1)}k`,
       icon: FaRupeeSign,
       color: '#06b6d4',
       bg: '#cffafe'
     },
     {
-      title: 'Subscription Revenue',
-      value: `₹${reportData.subscriptionRevenue}`,
+      title: 'Daily Revenue', // Using dashboard specific stat or derived
+      value: `₹${stats?.payments?.todayRevenue || 0}`,
       icon: FaCreditCard,
       color: '#ef4444',
       bg: '#fee2e2'
     }
   ];
+
+  if (loading && !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <FaSpinner className="animate-spin text-3xl" style={{ color: '#64946e' }} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 md:space-y-6">
@@ -208,10 +302,15 @@ const Reports = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleExportReport(report.type)}
-                className="p-4 rounded-xl flex flex-col items-center gap-2 transition-all"
+                disabled={exportLoading}
+                className="p-4 rounded-xl flex flex-col items-center gap-2 transition-all disabled:opacity-50"
                 style={{ backgroundColor: '#f7fafc' }}
               >
-                <Icon style={{ color: '#64946e', fontSize: '24px' }} />
+                {exportLoading ? (
+                  <FaSpinner className="animate-spin text-2xl" style={{ color: '#64946e' }} />
+                ) : (
+                  <Icon style={{ color: '#64946e', fontSize: '24px' }} />
+                )}
                 <span className="text-sm font-medium" style={{ color: '#2d3748' }}>
                   {report.label}
                 </span>
@@ -222,7 +321,7 @@ const Reports = () => {
         </div>
       </motion.div>
 
-      {/* Chart Placeholder */}
+      {/* Revenue Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -230,12 +329,30 @@ const Reports = () => {
         className="bg-white rounded-2xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Revenue Trends
+          Revenue Trends ({dateRange})
         </h2>
-        <div className="h-64 flex items-center justify-center" style={{ backgroundColor: '#f7fafc', borderRadius: '12px' }}>
-          <p className="text-sm" style={{ color: '#718096' }}>
-            Chart visualization will be added here (Chart.js / Recharts)
-          </p>
+        <div className="h-64 flex items-end justify-center gap-2 md:gap-4 p-4" style={{ backgroundColor: '#f7fafc', borderRadius: '12px' }}>
+          {/* Simple CSS Bar Chart for visualization */}
+          {revenueStats?.dailyRevenue?.length > 0 ? (
+            revenueStats.dailyRevenue.slice(-10).map((day, idx) => {
+              const maxVal = Math.max(...revenueStats.dailyRevenue.map(d => d.total));
+              const heightPct = maxVal > 0 ? (day.total / maxVal) * 100 : 0;
+              return (
+                <div key={day._id} className="flex flex-col items-center gap-1 group w-12 cursor-pointer">
+                  <div className="relative w-full bg-blue-100 rounded-t-lg transition-all group-hover:bg-blue-200" style={{ height: `${Math.max(heightPct, 5)}%` }}>
+                    <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded pointer-events-none whitespace-nowrap">
+                      ₹{day.total}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-gray-500 whitespace-nowrap rotate-45 origin-left md:rotate-0 translate-y-2 md:translate-y-0">
+                    {new Date(day._id).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-gray-400">No revenue data for this period</p>
+          )}
         </div>
       </motion.div>
     </div>
@@ -243,4 +360,3 @@ const Reports = () => {
 };
 
 export default Reports;
-

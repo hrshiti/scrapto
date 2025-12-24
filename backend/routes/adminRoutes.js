@@ -5,34 +5,34 @@ import {
   // Dashboard & Analytics
   getDashboardStats,
   getPaymentAnalytics,
-  
+
   // User Management
   getAllUsers,
   getUserById,
   updateUser,
   blockUser,
   deleteUser,
-  
+
   // Scrapper Management
   getAllScrappers,
   getScrapperById,
   updateScrapper,
   updateScrapperStatus,
   deleteScrapper,
-  
+
   // Order Management
   getAllOrders,
   getOrderById,
   updateOrder,
   assignOrder,
   cancelOrder,
-  
+
   // Price Feed Management
   getAllPrices,
   createPrice,
   updatePrice,
   deletePrice,
-  
+
   // Subscription Plan Management
   createPlan,
   updatePlan,
@@ -48,6 +48,14 @@ import {
   deleteAdminReview,
   getReviewAnalytics
 } from '../controllers/reviewController.js';
+
+// Lead Management
+import {
+  getAllLeads,
+  createLead,
+  updateLead,
+  deleteLead
+} from '../controllers/leadController.js';
 
 const router = express.Router();
 
@@ -121,5 +129,12 @@ router.put('/reviews/:reviewId/approve', approveReview);
 router.put('/reviews/:reviewId/reject', rejectReview);
 router.delete('/reviews/:reviewId', deleteAdminReview);
 
-export default router;
+// ============================================
+// LEAD MANAGEMENT
+// ============================================
+router.get('/leads', getAllLeads);
+router.post('/leads', createLead);
+router.put('/leads/:id', updateLead);
+router.delete('/leads/:id', deleteLead);
 
+export default router;

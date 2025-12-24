@@ -1,9 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getReferralSettings, 
-  updateReferralSettings 
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaGift,
   FaSave,
@@ -11,25 +8,64 @@ import {
   FaToggleOff,
   FaRupeeSign,
   FaUsers,
-  FaTruck
+  FaTruck,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ReferralSettings = () => {
   const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const currentSettings = getReferralSettings();
-    setSettings(currentSettings);
+    loadSettings();
   }, []);
 
-  const handleSave = () => {
+  const loadSettings = async () => {
     setLoading(true);
-    updateReferralSettings(settings);
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      const response = await referralAPI.getSettings();
+      if (response.success && response.data?.settings) {
+        setSettings(response.data.settings);
+      } else {
+        // Fallback default structure if API returns empty
+        setSettings({
+          enabled: true,
+          allowCrossReferrals: true,
+          userRewards: { signupBonus: 50, refereeWelcomeBonus: 25 },
+          scrapperRewards: { signupBonus: 100, refereeWelcomeBonus: 50 },
+          crossReferralRewards: {
+            userToScrapper: { referrerBonus: 75, refereeWelcomeBonus: 100 },
+            scrapperToUser: { referrerBonus: 75, refereeWelcomeBonus: 50 }
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load settings', err);
+      setError('Failed to load referral settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const response = await referralAPI.updateSettings(settings);
+      if (response.success) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else {
+        alert('Failed to save settings');
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      alert('Error saving settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleToggle = () => {
@@ -44,29 +80,28 @@ const ReferralSettings = () => {
       const newSettings = { ...prev };
       const keys = path.split('.');
       let current = newSettings;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) {
           current[keys[i]] = {};
         }
         current = current[keys[i]];
       }
-      
+
       current[keys[keys.length - 1]] = parseFloat(value) || 0;
       return newSettings;
     });
   };
 
-  if (!settings) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p style={{ color: '#718096' }}>Loading settings...</p>
-        </div>
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
       </div>
     );
   }
+
+  if (!settings) return <div className="p-4 text-center text-red-500">Failed to load settings</div>;
 
   return (
     <div className="space-y-6">
@@ -126,9 +161,8 @@ const ReferralSettings = () => {
           </motion.button>
         </div>
         <div
-          className={`p-3 rounded-lg ${
-            settings.enabled ? 'bg-green-50' : 'bg-gray-50'
-          }`}
+          className={`p-3 rounded-lg ${settings.enabled ? 'bg-green-50' : 'bg-gray-50'
+            }`}
         >
           <p className="text-sm font-medium" style={{ color: settings.enabled ? '#10b981' : '#718096' }}>
             {settings.enabled ? '✓ Referral system is active' : '✗ Referral system is disabled'}
@@ -171,9 +205,8 @@ const ReferralSettings = () => {
           </motion.button>
         </div>
         <div
-          className={`p-3 rounded-lg ${
-            settings.allowCrossReferrals ? 'bg-green-50' : 'bg-gray-50'
-          }`}
+          className={`p-3 rounded-lg ${settings.allowCrossReferrals ? 'bg-green-50' : 'bg-gray-50'
+            }`}
         >
           <p className="text-sm font-medium" style={{ color: settings.allowCrossReferrals ? '#10b981' : '#718096' }}>
             {settings.allowCrossReferrals ? '✓ Cross-referrals are enabled' : '✗ Cross-referrals are disabled'}
@@ -194,7 +227,7 @@ const ReferralSettings = () => {
             User Referral Rewards
           </h2>
         </div>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
@@ -207,7 +240,7 @@ const ReferralSettings = () => {
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
               <input
                 type="number"
-                value={settings.userRewards.signupBonus}
+                value={settings.userRewards?.signupBonus || 0}
                 onChange={(e) => handleChange('userRewards.signupBonus', e.target.value)}
                 className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
                 style={{
@@ -232,7 +265,7 @@ const ReferralSettings = () => {
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
               <input
                 type="number"
-                value={settings.userRewards.refereeWelcomeBonus}
+                value={settings.userRewards?.refereeWelcomeBonus || 0}
                 onChange={(e) => handleChange('userRewards.refereeWelcomeBonus', e.target.value)}
                 className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
                 style={{
@@ -261,7 +294,7 @@ const ReferralSettings = () => {
             Scrapper Referral Rewards
           </h2>
         </div>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
@@ -274,7 +307,7 @@ const ReferralSettings = () => {
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
               <input
                 type="number"
-                value={settings.scrapperRewards.signupBonus}
+                value={settings.scrapperRewards?.signupBonus || 0}
                 onChange={(e) => handleChange('scrapperRewards.signupBonus', e.target.value)}
                 className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
                 style={{
@@ -299,7 +332,7 @@ const ReferralSettings = () => {
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
               <input
                 type="number"
-                value={settings.scrapperRewards.refereeWelcomeBonus}
+                value={settings.scrapperRewards?.refereeWelcomeBonus || 0}
                 onChange={(e) => handleChange('scrapperRewards.refereeWelcomeBonus', e.target.value)}
                 className="w-full pl-8 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
                 style={{
@@ -329,7 +362,7 @@ const ReferralSettings = () => {
               Cross-Referral Rewards
             </h2>
           </div>
-          
+
           <div className="space-y-6">
             {/* User to Scrapper */}
             <div>
@@ -447,16 +480,16 @@ const ReferralSettings = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleSave}
-          disabled={loading}
+          disabled={saving}
           className="px-6 py-3 rounded-xl font-semibold text-base flex items-center gap-2 transition-all"
-          style={{ 
-            backgroundColor: saved ? '#10b981' : '#64946e', 
-            color: '#ffffff' 
+          style={{
+            backgroundColor: saved ? '#10b981' : '#64946e',
+            color: '#ffffff'
           }}
         >
-          {loading ? (
+          {saving ? (
             <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <FaSpinner className="animate-spin" />
               Saving...
             </>
           ) : saved ? (
@@ -477,4 +510,3 @@ const ReferralSettings = () => {
 };
 
 export default ReferralSettings;
-

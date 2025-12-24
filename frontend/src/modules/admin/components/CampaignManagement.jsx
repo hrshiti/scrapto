@@ -1,11 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getCampaigns, 
-  createCampaign, 
-  updateCampaign, 
-  deleteCampaign 
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaGift,
   FaPlus,
@@ -17,15 +12,20 @@ import {
   FaUsers,
   FaRupeeSign,
   FaSave,
-  FaTimes
+  FaTimes,
+  FaSpinner
 } from 'react-icons/fa';
 
 const CampaignManagement = () => {
   const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
     description: '',
     startDate: '',
     endDate: '',
@@ -41,56 +41,99 @@ const CampaignManagement = () => {
     loadCampaigns();
   }, []);
 
-  const loadCampaigns = () => {
-    const allCampaigns = getCampaigns();
-    setCampaigns(allCampaigns);
-  };
-
-  const handleCreate = () => {
-    const result = createCampaign(formData);
-    if (result.success) {
-      loadCampaigns();
-      setShowCreateModal(false);
-      resetForm();
-      alert('Campaign created successfully');
-    } else {
-      alert(result.error || 'Failed to create campaign');
-    }
-  };
-
-  const handleUpdate = () => {
-    const result = updateCampaign(editingCampaign.id, formData);
-    if (result.success) {
-      loadCampaigns();
-      setEditingCampaign(null);
-      resetForm();
-      alert('Campaign updated successfully');
-    } else {
-      alert(result.error || 'Failed to update campaign');
-    }
-  };
-
-  const handleDelete = (campaignId) => {
-    if (confirm('Are you sure you want to delete this campaign?')) {
-      const result = deleteCampaign(campaignId);
-      if (result.success) {
-        loadCampaigns();
-        alert('Campaign deleted successfully');
+  const loadCampaigns = async () => {
+    setLoading(true);
+    try {
+      const response = await referralAPI.getAllCampaigns();
+      if (response.success && response.data?.campaigns) {
+        setCampaigns(response.data.campaigns);
       } else {
-        alert(result.error || 'Failed to delete campaign');
+        setCampaigns([]);
+      }
+    } catch (err) {
+      console.error('Failed to load campaigns', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    setFormLoading(true);
+    try {
+      if (!formData.code) {
+        // Auto-generate code if missing
+        formData.code = formData.name.substring(0, 3).toUpperCase() + Math.floor(Math.random() * 1000);
+      }
+      const response = await referralAPI.createCampaign(formData);
+      if (response.success) {
+        loadCampaigns();
+        setShowCreateModal(false);
+        resetForm();
+        alert('Campaign created successfully');
+      } else {
+        alert(response.message || 'Failed to create campaign');
+      }
+    } catch (err) {
+      console.error('Error creating campaign:', err);
+      alert('Failed to create campaign');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setFormLoading(true);
+    try {
+      const response = await referralAPI.updateCampaign(editingCampaign._id, formData);
+      if (response.success) {
+        loadCampaigns();
+        setEditingCampaign(null);
+        setShowCreateModal(false);
+        resetForm();
+        alert('Campaign updated successfully');
+      } else {
+        alert(response.message || 'Failed to update campaign');
+      }
+    } catch (err) {
+      console.error('Error updating campaign:', err);
+      alert('Failed to update campaign');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const handleDelete = async (campaignId) => {
+    if (window.confirm('Are you sure you want to delete this campaign?')) {
+      try {
+        const response = await referralAPI.deleteCampaign(campaignId);
+        if (response.success) {
+          loadCampaigns();
+        } else {
+          alert('Failed to delete campaign');
+        }
+      } catch (err) {
+        console.error('Error deleting campaign:', err);
       }
     }
   };
 
-  const handleToggleStatus = (campaignId, currentStatus) => {
+  const handleToggleStatus = async (campaignId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    updateCampaign(campaignId, { status: newStatus });
-    loadCampaigns();
+    try {
+      const response = await referralAPI.updateCampaign(campaignId, { status: newStatus });
+      if (response.success) {
+        // Optimistic update or reload
+        loadCampaigns();
+      }
+    } catch (err) {
+      console.error('Error toggling status:', err);
+    }
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
+      code: '',
       description: '',
       startDate: '',
       endDate: '',
@@ -107,9 +150,10 @@ const CampaignManagement = () => {
     setEditingCampaign(campaign);
     setFormData({
       name: campaign.name || '',
+      code: campaign.code || '',
       description: campaign.description || '',
-      startDate: campaign.startDate || '',
-      endDate: campaign.endDate || '',
+      startDate: campaign.startDate ? new Date(campaign.startDate).toISOString().split('T')[0] : '',
+      endDate: campaign.endDate ? new Date(campaign.endDate).toISOString().split('T')[0] : '',
       targetAudience: campaign.targetAudience || 'both',
       customRewards: campaign.customRewards || {
         signupBonus: 0,
@@ -188,9 +232,13 @@ const CampaignManagement = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl shadow-lg overflow-hidden"
+        className="bg-white rounded-2xl shadow-lg overflow-hidden min-h-[400px]"
       >
-        {campaigns.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <FaSpinner className="animate-spin text-4xl text-green-600" />
+          </div>
+        ) : campaigns.length === 0 ? (
           <div className="p-12 text-center">
             <FaGift className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
             <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
@@ -217,13 +265,12 @@ const CampaignManagement = () => {
         ) : (
           campaigns.map((campaign, index) => (
             <motion.div
-              key={campaign.id}
+              key={campaign._id || index}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                index !== campaigns.length - 1 ? 'border-b' : ''
-              }`}
+              className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== campaigns.length - 1 ? 'border-b' : ''
+                }`}
               style={{ borderColor: '#e2e8f0' }}
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -232,6 +279,11 @@ const CampaignManagement = () => {
                     <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
                       {campaign.name}
                     </h3>
+                    {campaign.code && (
+                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded font-mono">
+                        {campaign.code}
+                      </span>
+                    )}
                     {getStatusBadge(campaign.status)}
                   </div>
                   <p className="text-sm mb-2" style={{ color: '#718096' }}>
@@ -258,7 +310,7 @@ const CampaignManagement = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleToggleStatus(campaign.id, campaign.status)}
+                    onClick={() => handleToggleStatus(campaign._id, campaign.status)}
                     className="p-2 rounded-lg transition-all"
                     style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                   >
@@ -281,7 +333,7 @@ const CampaignManagement = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDelete(campaign.id)}
+                    onClick={() => handleDelete(campaign._id)}
                     className="px-3 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-all"
                     style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}
                   >
@@ -349,6 +401,24 @@ const CampaignManagement = () => {
                         color: '#2d3748'
                       }}
                       placeholder="e.g., Summer Referral Boost"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                      Campaign Code (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.code}
+                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm uppercase"
+                      style={{
+                        borderColor: '#e2e8f0',
+                        backgroundColor: '#f7fafc',
+                        color: '#2d3748'
+                      }}
+                      placeholder="e.g., SUMMER2024 (Auto-generated if empty)"
                     />
                   </div>
 
@@ -488,9 +558,11 @@ const CampaignManagement = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={editingCampaign ? handleUpdate : handleCreate}
-                    className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                    disabled={formLoading}
+                    className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                     style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
+                    {formLoading && <FaSpinner className="animate-spin" />}
                     <FaSave />
                     {editingCampaign ? 'Update' : 'Create'} Campaign
                   </motion.button>
@@ -518,4 +590,3 @@ const CampaignManagement = () => {
 };
 
 export default CampaignManagement;
-

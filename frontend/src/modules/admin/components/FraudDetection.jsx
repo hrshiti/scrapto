@@ -1,11 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { 
-  getFlaggedReferrals, 
-  approveFlaggedReferral, 
-  rejectFlaggedReferral,
-  checkFraudPatterns
-} from '../../shared/utils/referralUtils';
+import { referralAPI } from '../../shared/utils/api';
 import {
   FaShieldAlt,
   FaCheckCircle,
@@ -13,12 +8,14 @@ import {
   FaExclamationTriangle,
   FaEye,
   FaSearch,
-  FaFilter
+  FaFilter,
+  FaSpinner
 } from 'react-icons/fa';
 
 const FraudDetection = () => {
   const [flaggedReferrals, setFlaggedReferrals] = useState([]);
   const [filteredReferrals, setFilteredReferrals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedReferral, setSelectedReferral] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,10 +29,23 @@ const FraudDetection = () => {
     filterReferrals();
   }, [searchTerm, filterSeverity, flaggedReferrals]);
 
-  const loadFlaggedReferrals = () => {
-    const flagged = getFlaggedReferrals();
-    setFlaggedReferrals(flagged);
-    setFilteredReferrals(flagged);
+  const loadFlaggedReferrals = async () => {
+    setLoading(true);
+    try {
+      const response = await referralAPI.getAllReferrals();
+      if (response.success && response.data?.referrals) {
+        // Filter only those with fraudFlags or status='fraud'
+        const flagged = response.data.referrals.filter(ref =>
+          (ref.fraudFlags && ref.fraudFlags.length > 0) || ref.status === 'fraud'
+        );
+        setFlaggedReferrals(flagged);
+        setFilteredReferrals(flagged);
+      }
+    } catch (err) {
+      console.error('Failed to load flagged referrals', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filterReferrals = () => {
@@ -53,36 +63,55 @@ const FraudDetection = () => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(ref =>
-        ref.referrerCode.toLowerCase().includes(term) ||
-        ref.referrerId.toLowerCase().includes(term) ||
-        ref.refereeId.toLowerCase().includes(term)
+        (ref.codeUsed && ref.codeUsed.toLowerCase().includes(term)) ||
+        (ref.referrer?.name && ref.referrer.name.toLowerCase().includes(term)) ||
+        (ref.referee?.name && ref.referee.name.toLowerCase().includes(term))
       );
     }
 
     setFilteredReferrals(filtered);
   };
 
-  const handleApprove = (referralId) => {
-    const result = approveFlaggedReferral(referralId);
-    if (result.success) {
-      loadFlaggedReferrals();
-      setShowDetailModal(false);
-      alert('Referral approved successfully');
-    } else {
-      alert(result.error || 'Failed to approve referral');
+  const handleApprove = async (referralId) => {
+    if (!window.confirm('Approve this referral? This will mark it as verified.')) return;
+    try {
+      const response = await referralAPI.updateReferral(referralId, {
+        status: 'verified',
+        // Maybe clear flags or mark resolved? 
+        // For now just status change.
+        notes: 'Manually approved by admin from fraud detection.'
+      });
+      if (response.success) {
+        setShowDetailModal(false);
+        loadFlaggedReferrals(); // Refresh list
+        alert('Referral approved successfully');
+      } else {
+        alert('Failed to approve referral');
+      }
+    } catch (err) {
+      console.error('Error approving referral:', err);
+      alert('Error approving referral');
     }
   };
 
-  const handleReject = (referralId, reason) => {
+  const handleReject = async (referralId, reason) => {
     const reasonText = reason || prompt('Enter rejection reason:');
     if (reasonText) {
-      const result = rejectFlaggedReferral(referralId, reasonText);
-      if (result.success) {
-        loadFlaggedReferrals();
-        setShowDetailModal(false);
-        alert('Referral rejected successfully');
-      } else {
-        alert(result.error || 'Failed to reject referral');
+      try {
+        const response = await referralAPI.updateReferral(referralId, {
+          status: 'rejected', // or 'fraud'
+          notes: `Rejected by admin: ${reasonText}`
+        });
+        if (response.success) {
+          setShowDetailModal(false);
+          loadFlaggedReferrals();
+          alert('Referral rejected successfully');
+        } else {
+          alert('Failed to reject referral');
+        }
+      } catch (err) {
+        console.error('Error rejecting referral:', err);
+        alert('Error rejecting referral');
       }
     }
   };
@@ -95,7 +124,7 @@ const FraudDetection = () => {
     };
     const badge = badges[severity] || badges.medium;
     const Icon = badge.icon;
-    
+
     return (
       <span
         className="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
@@ -106,6 +135,14 @@ const FraudDetection = () => {
       </span>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -182,7 +219,7 @@ const FraudDetection = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl shadow-lg overflow-hidden"
+        className="bg-white rounded-2xl shadow-lg overflow-hidden min-h-[400px]"
       >
         <AnimatePresence>
           {filteredReferrals.length === 0 ? (
@@ -201,8 +238,8 @@ const FraudDetection = () => {
             filteredReferrals.map((referral, index) => {
               const highestSeverity = referral.fraudFlags?.reduce((highest, flag) => {
                 const severityOrder = { high: 3, medium: 2, low: 1 };
-                return severityOrder[flag.severity] > (severityOrder[highest?.severity] || 0) 
-                  ? flag 
+                return severityOrder[flag.severity] > (severityOrder[highest?.severity] || 0)
+                  ? flag
                   : highest;
               }, null);
 
@@ -212,9 +249,8 @@ const FraudDetection = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all cursor-pointer ${
-                    index !== filteredReferrals.length - 1 ? 'border-b' : ''
-                  }`}
+                  className={`p-3 md:p-6 hover:bg-gray-50 transition-all cursor-pointer ${index !== filteredReferrals.length - 1 ? 'border-b' : ''
+                    }`}
                   style={{ borderColor: '#e2e8f0' }}
                   onClick={() => {
                     setSelectedReferral(referral);
@@ -233,27 +269,17 @@ const FraudDetection = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                              {referral.referrerCode}
+                              {referral.codeUsed || 'No Code'}
                             </h3>
                             {highestSeverity && getSeverityBadge(highestSeverity.severity)}
-                            {referral.isCrossReferral && (
-                              <span
-                                className="px-2 py-1 rounded-full text-xs font-semibold"
-                                style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}
-                              >
-                                Cross-Referral
-                              </span>
-                            )}
+
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
                             <div>
-                              <span className="font-semibold">Referrer:</span> {referral.referrerId}
+                              <span className="font-semibold">Referrer:</span> {referral.referrer?.name || referral.referrerId}
                             </div>
                             <div>
-                              <span className="font-semibold">Referee:</span> {referral.refereeId}
-                            </div>
-                            <div>
-                              <span className="font-semibold">Type:</span> {referral.referrerType} → {referral.refereeType}
+                              <span className="font-semibold">Referee:</span> {referral.referee?.name || referral.refereeId}
                             </div>
                             <div>
                               <span className="font-semibold">Date:</span> {new Date(referral.createdAt).toLocaleDateString()}
@@ -268,17 +294,17 @@ const FraudDetection = () => {
                                 <span
                                   key={flagIndex}
                                   className="px-2 py-1 rounded text-xs"
-                                  style={{ 
-                                    backgroundColor: flag.severity === 'high' 
-                                      ? 'rgba(239, 68, 68, 0.1)' 
+                                  style={{
+                                    backgroundColor: flag.severity === 'high'
+                                      ? 'rgba(239, 68, 68, 0.1)'
                                       : flag.severity === 'medium'
-                                      ? 'rgba(251, 191, 36, 0.1)'
-                                      : 'rgba(59, 130, 246, 0.1)',
+                                        ? 'rgba(251, 191, 36, 0.1)'
+                                        : 'rgba(59, 130, 246, 0.1)',
                                     color: flag.severity === 'high'
                                       ? '#ef4444'
                                       : flag.severity === 'medium'
-                                      ? '#fbbf24'
-                                      : '#3b82f6'
+                                        ? '#fbbf24'
+                                        : '#3b82f6'
                                   }}
                                 >
                                   {flag.type}
@@ -347,16 +373,16 @@ const FraudDetection = () => {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referral Code</p>
-                    <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrerCode}</p>
+                    <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.codeUsed || 'None'}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referrer</p>
-                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrerId} ({selectedReferral.referrerType})</p>
+                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrer?.name} ({selectedReferral.referrer?.email})</p>
                     </div>
                     <div>
                       <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referee</p>
-                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.refereeId} ({selectedReferral.refereeType})</p>
+                      <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referee?.name} ({selectedReferral.referee?.email})</p>
                     </div>
                   </div>
                   <div>
@@ -370,7 +396,7 @@ const FraudDetection = () => {
                         <div
                           key={index}
                           className="p-3 rounded-lg border"
-                          style={{ 
+                          style={{
                             borderColor: flag.severity === 'high' ? '#ef4444' : flag.severity === 'medium' ? '#fbbf24' : '#3b82f6',
                             backgroundColor: flag.severity === 'high' ? 'rgba(239, 68, 68, 0.05)' : flag.severity === 'medium' ? 'rgba(251, 191, 36, 0.05)' : 'rgba(59, 130, 246, 0.05)'
                           }}
@@ -392,13 +418,19 @@ const FraudDetection = () => {
                       <p className="text-xs" style={{ color: '#2d3748' }}>{selectedReferral.deviceInfo}</p>
                     </div>
                   )}
+                  {selectedReferral.ipAddress && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>IP Address</p>
+                      <p className="text-xs" style={{ color: '#2d3748' }}>{selectedReferral.ipAddress}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 mt-6">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleApprove(selectedReferral.id)}
+                    onClick={() => handleApprove(selectedReferral._id)}
                     className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                     style={{ backgroundColor: '#10b981', color: '#ffffff' }}
                   >
@@ -408,7 +440,7 @@ const FraudDetection = () => {
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleReject(selectedReferral.id)}
+                    onClick={() => handleReject(selectedReferral._id)}
                     className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                     style={{ backgroundColor: '#ef4444', color: '#ffffff' }}
                   >
@@ -426,4 +458,3 @@ const FraudDetection = () => {
 };
 
 export default FraudDetection;
-

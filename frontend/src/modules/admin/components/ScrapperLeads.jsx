@@ -1,12 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  getScrapperLeads,
-  createScrapperLead,
-  updateScrapperLead,
-  deleteScrapperLead,
-  updateScrapperLeadStatus
-} from '../../shared/utils/leadUtils';
+import { useEffect, useState, useCallback } from 'react';
+import { adminAPI } from '../../shared/utils/api';
 import {
   FaUserPlus,
   FaSearch,
@@ -16,8 +10,21 @@ import {
   FaPhone,
   FaEdit,
   FaTrash,
-  FaInbox
+  FaInbox,
+  FaExclamationCircle
 } from 'react-icons/fa';
+
+// Debounce helper
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
 
 const STATUS_LABELS = {
   new: 'New',
@@ -36,9 +43,13 @@ const STATUS_COLORS = {
 const ScrapperLeads = () => {
   const [leads, setLeads] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState('all'); // all | new | invited | converted | rejected
   const [showForm, setShowForm] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -48,9 +59,36 @@ const ScrapperLeads = () => {
     status: 'new'
   });
 
+  const loadLeads = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      let query = '';
+      if (statusFilter !== 'all') {
+        query += `status=${statusFilter}&`;
+      }
+      if (debouncedSearch) {
+        query += `search=${encodeURIComponent(debouncedSearch)}`;
+      }
+
+      const response = await adminAPI.getAllLeads(query);
+      if (response.success && response.data?.leads) {
+        setLeads(response.data.leads);
+      } else {
+        setLeads([]);
+      }
+    } catch (err) {
+      console.error('Failed to load leads:', err);
+      setError('Failed to load leads');
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, debouncedSearch]);
+
   useEffect(() => {
-    setLeads(getScrapperLeads());
-  }, []);
+    loadLeads();
+  }, [loadLeads]);
 
   const handleOpenCreate = () => {
     setEditingLead(null);
@@ -78,7 +116,7 @@ const ScrapperLeads = () => {
     setShowForm(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = {
       ...formData,
@@ -90,54 +128,58 @@ const ScrapperLeads = () => {
       return;
     }
 
-    if (editingLead) {
-      const updated = updateScrapperLead(editingLead.id, payload);
-      if (updated) {
-        setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+    try {
+      let response;
+      if (editingLead) {
+        response = await adminAPI.updateLead(editingLead._id || editingLead.id, payload);
+      } else {
+        response = await adminAPI.createLead(payload);
       }
-    } else {
-      const created = createScrapperLead(payload);
-      setLeads((prev) => [created, ...prev]);
-    }
 
-    setShowForm(false);
-    setEditingLead(null);
-  };
-
-  const handleDelete = (leadId) => {
-    // eslint-disable-next-line no-alert
-    const confirmed = window.confirm('Delete this lead? This cannot be undone.');
-    if (!confirmed) return;
-    deleteScrapperLead(leadId);
-    setLeads((prev) => prev.filter((l) => l.id !== leadId));
-  };
-
-  const handleQuickStatus = (leadId, status) => {
-    const updated = updateScrapperLeadStatus(leadId, status);
-    if (updated) {
-      setLeads((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+      if (response.success) {
+        setShowForm(false);
+        setEditingLead(null);
+        loadLeads(); // Reload list
+        alert(editingLead ? 'Lead updated successfully' : 'Lead created successfully');
+      } else {
+        throw new Error(response.message || 'Operation failed');
+      }
+    } catch (err) {
+      console.error('Error saving lead:', err);
+      alert(err.message || 'Failed to save lead');
     }
   };
 
-  const filteredLeads = useMemo(() => {
-    let list = [...leads];
-
-    if (statusFilter !== 'all') {
-      list = list.filter((lead) => lead.status === statusFilter);
+  const handleDelete = async (leadId) => {
+    if (!window.confirm('Delete this lead? This cannot be undone.')) return;
+    try {
+      const response = await adminAPI.deleteLead(leadId);
+      if (response.success) {
+        setLeads((prev) => prev.filter((l) => (l._id || l.id) !== leadId));
+        alert('Lead deleted successfully');
+      } else {
+        throw new Error(response.message || 'Failed to delete lead');
+      }
+    } catch (err) {
+      console.error('Error deleting lead:', err);
+      alert(err.message || 'Failed to delete lead');
     }
+  };
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      list = list.filter(
-        (lead) =>
-          lead.name?.toLowerCase().includes(term) ||
-          lead.phone?.toLowerCase().includes(term) ||
-          lead.area?.toLowerCase().includes(term)
-      );
+  const handleQuickStatus = async (leadId, status) => {
+    try {
+      const response = await adminAPI.updateLead(leadId, { status });
+      if (response.success) {
+        // Optimistic update or reload
+        setLeads((prev) => prev.map((l) => (l._id === leadId || l.id === leadId ? { ...l, status } : l)));
+      } else {
+        alert('Failed to update status');
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert('Failed to update status');
     }
-
-    return list;
-  }, [leads, searchTerm, statusFilter]);
+  };
 
   const getStatusBadge = (status) => {
     const cfg = STATUS_COLORS[status] || STATUS_COLORS.new;
@@ -234,25 +276,33 @@ const ScrapperLeads = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-lg overflow-hidden"
+        className="bg-white rounded-2xl shadow-lg overflow-hidden min-h-[300px]"
       >
-        {filteredLeads.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }}></div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-64 flex-col text-red-500">
+            <FaExclamationCircle className="text-3xl mb-2" />
+            <p>{error}</p>
+          </div>
+        ) : leads.length === 0 ? (
           <div className="p-12 text-center">
             <FaInbox className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
             <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
               No Leads Found
             </h3>
             <p className="text-sm mb-4" style={{ color: '#718096' }}>
-              Try adjusting filters or create a new scrapper lead.
+              {debouncedSearch || statusFilter !== 'all' ? 'Try adjusting filters' : 'Create a new scrapper lead'}
             </p>
           </div>
         ) : (
-          filteredLeads.map((lead, index) => (
+          leads.map((lead, index) => (
             <div
-              key={lead.id}
-              className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${
-                index !== filteredLeads.length - 1 ? 'border-b' : ''
-              }`}
+              key={lead._id || lead.id}
+              className={`p-3 md:p-6 hover:bg-gray-50 transition-all ${index !== leads.length - 1 ? 'border-b' : ''
+                }`}
               style={{ borderColor: '#e2e8f0' }}
             >
               <div className="flex flex-col md:flex-row md:items-center gap-4">
@@ -328,7 +378,7 @@ const ScrapperLeads = () => {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDelete(lead.id)}
+                      onClick={() => handleDelete(lead._id || lead.id)}
                       className="px-3 py-2 rounded-lg font-semibold text-xs md:text-sm flex items-center justify-center gap-1.5 transition-all"
                       style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}
                     >
@@ -339,7 +389,7 @@ const ScrapperLeads = () => {
                   <div className="flex flex-wrap gap-2">
                     {lead.status !== 'invited' && (
                       <button
-                        onClick={() => handleQuickStatus(lead.id, 'invited')}
+                        onClick={() => handleQuickStatus(lead._id || lead.id, 'invited')}
                         className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
                         style={{
                           backgroundColor: 'rgba(234, 179, 8, 0.1)',
@@ -351,7 +401,7 @@ const ScrapperLeads = () => {
                     )}
                     {lead.status !== 'converted' && (
                       <button
-                        onClick={() => handleQuickStatus(lead.id, 'converted')}
+                        onClick={() => handleQuickStatus(lead._id || lead.id, 'converted')}
                         className="flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
                         style={{
                           backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -481,7 +531,7 @@ const ScrapperLeads = () => {
                           backgroundColor: '#f7fafc',
                           color: '#2d3748'
                         }}
-                        placeholder="e.g., Truck - MH-01-AB-1234"
+                        placeholder="e.g., Truck"
                       />
                     </div>
                   </div>
@@ -563,5 +613,3 @@ const ScrapperLeads = () => {
 };
 
 export default ScrapperLeads;
-
-

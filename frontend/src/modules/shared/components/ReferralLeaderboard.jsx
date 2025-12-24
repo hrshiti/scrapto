@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { getAllReferrals, getUserReferralStats } from '../utils/referralUtils';
+import { referralAPI } from '../utils/api';
 import {
   FaTrophy,
   FaMedal,
   FaAward,
   FaUsers,
   FaRupeeSign,
-  FaCrown
+  FaCrown,
+  FaSpinner
 } from 'react-icons/fa';
 
 const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
@@ -18,62 +19,71 @@ const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
     loadLeaderboard();
   }, [userType, period]);
 
-  const loadLeaderboard = () => {
+  const loadLeaderboard = async () => {
     setLoading(true);
-    const allReferrals = getAllReferrals();
-    
-    // Filter by user type
-    const filteredReferrals = allReferrals.filter(
-      ref => ref.referrerType === userType && ref.status === 'active'
-    );
-    
-    // Group by referrer
-    const referrerMap = {};
-    filteredReferrals.forEach(ref => {
-      const referrerId = ref.referrerId;
-      if (!referrerMap[referrerId]) {
-        referrerMap[referrerId] = {
-          referrerId,
-          totalReferrals: 0,
-          totalEarnings: 0,
-          referrals: []
-        };
+    try {
+      const response = await referralAPI.getAllReferrals();
+      if (!response.success || !response.data?.referrals) {
+        setLeaderboard([]);
+        return;
       }
-      referrerMap[referrerId].totalReferrals++;
-      const rewards = ref.rewards?.referrerRewards || [];
-      const earnings = rewards.reduce((sum, r) => sum + (r.amount || 0), 0);
-      referrerMap[referrerId].totalEarnings += earnings;
-      referrerMap[referrerId].referrals.push(ref);
-    });
-    
-    // Convert to array and sort
-    let leaderboardData = Object.values(referrerMap);
-    
-    // Filter by period
-    if (period === 'monthly') {
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      leaderboardData = leaderboardData.map(item => {
-        const monthlyReferrals = item.referrals.filter(ref => 
-          new Date(ref.createdAt) >= startOfMonth
-        );
-        return {
-          ...item,
-          totalReferrals: monthlyReferrals.length,
-          totalEarnings: monthlyReferrals.reduce((sum, ref) => {
-            const rewards = ref.rewards?.referrerRewards || [];
-            return sum + rewards.reduce((s, r) => s + (r.amount || 0), 0);
-          }, 0)
-        };
+
+      const allReferrals = response.data.referrals;
+
+      // Filter by user type (if backend supported it perfectly, but we will guess or accept all for now if missing)
+      // Assuming we can check referrer.role if populated
+      const filteredReferrals = allReferrals.filter(ref => {
+        // Filter by status active/completed/verified
+        if (!['active', 'completed', 'verified'].includes(ref.status)) return false;
+
+        // Filter by role if available
+        if (ref.referrer && ref.referrer.role && ref.referrer.role !== userType) return false;
+
+        return true;
       });
+
+      // Filter by period
+      const now = new Date();
+      const timeFiltered = filteredReferrals.filter(ref => {
+        if (period === 'all') return true;
+        const refDate = new Date(ref.createdAt);
+        if (period === 'monthly') {
+          return refDate.getMonth() === now.getMonth() && refDate.getFullYear() === now.getFullYear();
+        }
+        return true;
+      });
+
+      // Group by referrer
+      const referrerMap = {};
+      timeFiltered.forEach(ref => {
+        if (!ref.referrer) return;
+        const referrerId = ref.referrer._id || ref.referrer;
+
+        if (!referrerMap[referrerId]) {
+          referrerMap[referrerId] = {
+            referrerId,
+            name: ref.referrer.name || 'Unknown',
+            email: ref.referrer.email || '',
+            totalReferrals: 0,
+            totalEarnings: 0
+          };
+        }
+        referrerMap[referrerId].totalReferrals++;
+        referrerMap[referrerId].totalEarnings += (ref.rewardEarned || 0);
+      });
+
+      // Convert to array and sort
+      let leaderboardData = Object.values(referrerMap);
+      leaderboardData.sort((a, b) => b.totalReferrals - a.totalReferrals);
+
+      // Take top 50
+      setLeaderboard(leaderboardData.slice(0, 50));
+
+    } catch (err) {
+      console.error('Failed to load leaderboard', err);
+    } finally {
+      setLoading(false);
     }
-    
-    // Sort by total referrals (descending)
-    leaderboardData.sort((a, b) => b.totalReferrals - a.totalReferrals);
-    
-    // Take top 50
-    setLeaderboard(leaderboardData.slice(0, 50));
-    setLoading(false);
   };
 
   const getRankIcon = (rank) => {
@@ -97,10 +107,7 @@ const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p style={{ color: '#718096' }}>Loading leaderboard...</p>
-        </div>
+        <FaSpinner className="animate-spin text-4xl text-green-600" />
       </div>
     );
   }
@@ -126,9 +133,8 @@ const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className={`p-4 rounded-xl border flex items-center gap-4 ${
-                rank <= 3 ? 'shadow-lg' : 'shadow'
-              }`}
+              className={`p-4 rounded-xl border flex items-center gap-4 ${rank <= 3 ? 'shadow-lg' : 'shadow'
+                }`}
               style={{
                 backgroundColor: rank <= 3 ? '#fef3c7' : '#ffffff',
                 borderColor: '#e2e8f0'
@@ -150,8 +156,11 @@ const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate" style={{ color: '#2d3748' }}>
-                      {userType === 'scrapper' ? 'Scrapper' : 'User'} #{item.referrerId.slice(-6)}
+                      {item.name}
                     </p>
+                    {item.email && (
+                      <p className="text-xs truncate text-gray-500">{item.email}</p>
+                    )}
                     <p className="text-xs" style={{ color: '#718096' }}>
                       {item.totalReferrals} {item.totalReferrals === 1 ? 'referral' : 'referrals'}
                     </p>
@@ -180,4 +189,3 @@ const ReferralLeaderboard = ({ userType = 'user', period = 'all' }) => {
 };
 
 export default ReferralLeaderboard;
-

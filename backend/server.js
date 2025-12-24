@@ -24,6 +24,8 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import scrapperRoutes from './routes/scrapperRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
+import referralRoutes from './routes/referralRoutes.js';
 import { initializeSocket } from './services/socketService.js';
 
 // Validate environment variables
@@ -128,6 +130,8 @@ v1Router.use('/reviews', reviewRoutes);
 v1Router.use('/scrappers', scrapperRoutes);
 v1Router.use('/banners', bannerRoutes);
 v1Router.use('/public', publicRoutes);
+v1Router.use('/support', supportRoutes);
+v1Router.use('/admin/referral-system', referralRoutes);
 
 // Mount versioned routes
 app.use('/api/v1', v1Router);
@@ -146,6 +150,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/scrappers', scrapperRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/support', supportRoutes);
+app.use('/api/admin/referral-system', referralRoutes);
 
 // Add more routes here as you create them
 
@@ -189,4 +195,3 @@ const startServer = async () => {
 startServer();
 
 export default app;
-
