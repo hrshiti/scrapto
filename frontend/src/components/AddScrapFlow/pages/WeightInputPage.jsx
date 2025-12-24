@@ -17,7 +17,7 @@ const WeightInputPage = () => {
   useEffect(() => {
     const storedImages = sessionStorage.getItem('uploadedImages');
     const storedCategories = sessionStorage.getItem('selectedCategories');
-    
+
     if (storedImages) {
       setUploadedImages(JSON.parse(storedImages));
     }
@@ -28,18 +28,50 @@ const WeightInputPage = () => {
     }
   }, [navigate]);
 
-  // Mock market prices
+  // Fetch market prices from backend
   useEffect(() => {
-    setMarketPrices({
-      'Plastic': 45,
-      'Metal': 180,
-      'Paper': 12,
-      'Electronics': 85,
-      'Copper': 650,
-      'Aluminium': 180,
-      'Steel': 35,
-      'Brass': 420,
-    });
+    const fetchMarketPrices = async () => {
+      try {
+        const { publicAPI } = await import('../../modules/shared/utils/api');
+        const response = await publicAPI.getPrices();
+
+        if (response.success && response.data?.prices) {
+          // Convert prices array to object for easy lookup
+          const pricesMap = {};
+          response.data.prices.forEach(price => {
+            pricesMap[price.category] = price.pricePerKg;
+          });
+          setMarketPrices(pricesMap);
+        } else {
+          // Fallback to default prices if API fails
+          setMarketPrices({
+            'Plastic': 45,
+            'Metal': 180,
+            'Paper': 12,
+            'Electronics': 85,
+            'Copper': 650,
+            'Aluminium': 180,
+            'Steel': 35,
+            'Brass': 420,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch market prices:', error);
+        // Fallback to default prices
+        setMarketPrices({
+          'Plastic': 45,
+          'Metal': 180,
+          'Paper': 12,
+          'Electronics': 85,
+          'Copper': 650,
+          'Aluminium': 180,
+          'Steel': 35,
+          'Brass': 420,
+        });
+      }
+    };
+
+    fetchMarketPrices();
   }, []);
 
   // Auto-detect weight from images (mock API call) - HIDDEN FOR NOW
@@ -59,8 +91,8 @@ const WeightInputPage = () => {
   // Calculate estimated payout
   useEffect(() => {
     if (selectedCategories.length > 0) {
-      const currentWeight = weightMode === 'auto' && autoDetectedWeight 
-        ? autoDetectedWeight 
+      const currentWeight = weightMode === 'auto' && autoDetectedWeight
+        ? autoDetectedWeight
         : parseFloat(manualWeight) || 0;
 
       if (currentWeight > 0) {
@@ -91,8 +123,8 @@ const WeightInputPage = () => {
   };
 
   const handleContinue = () => {
-    const finalWeight = weightMode === 'auto' && autoDetectedWeight 
-      ? autoDetectedWeight 
+    const finalWeight = weightMode === 'auto' && autoDetectedWeight
+      ? autoDetectedWeight
       : parseFloat(manualWeight);
 
     if (finalWeight > 0) {
@@ -107,8 +139,8 @@ const WeightInputPage = () => {
     }
   };
 
-  const currentWeight = weightMode === 'auto' && autoDetectedWeight 
-    ? autoDetectedWeight 
+  const currentWeight = weightMode === 'auto' && autoDetectedWeight
+    ? autoDetectedWeight
     : parseFloat(manualWeight) || 0;
 
   const quickWeights = [5, 10, 15, 20, 25, 30];
@@ -133,7 +165,7 @@ const WeightInputPage = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
@@ -382,9 +414,9 @@ const WeightInputPage = () => {
       </div>
 
       {/* Footer with Continue Button - Fixed on Mobile */}
-      <div 
+      <div
         className="fixed md:relative bottom-0 left-0 right-0 p-3 md:p-6 border-t z-50"
-        style={{ 
+        style={{
           borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#f4ebe2'
         }}
@@ -403,7 +435,7 @@ const WeightInputPage = () => {
             Continue with {currentWeight} kg
           </motion.button>
         ) : (
-          <p 
+          <p
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >

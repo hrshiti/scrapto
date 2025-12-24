@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 import { DEFAULT_PRICE_FEED } from '../../shared/utils/priceFeedUtils';
 import { adminAPI } from '../../shared/utils/api';
 
@@ -143,6 +143,38 @@ const PriceFeedEditor = () => {
   const handleCancel = () => {
     setEditingId(null);
     setEditValue('');
+  };
+
+  const handleDelete = async (id) => {
+    // Confirm before deleting
+    if (!window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Check if it's a backend price or local-only
+      if (id && !id.startsWith('price_')) {
+        // Backend price, delete via API
+        const response = await adminAPI.deletePrice(id);
+
+        if (response.success) {
+          await loadPrices();
+          alert('Category deleted successfully!');
+        } else {
+          throw new Error(response.message || 'Failed to delete category');
+        }
+      } else {
+        // Local-only price, just remove from state
+        setPrices(prevPrices => prevPrices.filter(p => p.id !== id));
+        alert('Category removed!');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      alert(error.message || 'Failed to delete category. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleAddSubmit = async (e) => {
@@ -507,15 +539,29 @@ const PriceFeedEditor = () => {
                     </td>
                     <td className="px-2 py-2 md:px-6 md:py-4 text-center">
                       {editingId !== price.id && (
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => handleEdit(price)}
-                          className="p-1.5 md:p-2 rounded-lg transition-all"
-                          style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
-                        >
-                          <FaEdit className="text-xs md:text-sm" />
-                        </motion.button>
+                        <div className="flex items-center justify-center gap-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleEdit(price)}
+                            className="p-1.5 md:p-2 rounded-lg transition-all"
+                            style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
+                            title="Edit price"
+                          >
+                            <FaEdit className="text-xs md:text-sm" />
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDelete(price.id)}
+                            className="p-1.5 md:p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                            title="Delete category"
+                            disabled={isSaving}
+                          >
+                            <FaTrash className="text-xs md:text-sm" />
+                          </motion.button>
+                        </div>
                       )}
                     </td>
                   </motion.tr>

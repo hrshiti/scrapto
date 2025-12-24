@@ -43,18 +43,50 @@ const PriceConfirmationPage = () => {
     }
   }, [navigate]);
 
-  // Mock market prices
+  // Fetch market prices from backend
   useEffect(() => {
-    setMarketPrices({
-      'Plastic': 45,
-      'Metal': 180,
-      'Paper': 12,
-      'Electronics': 85,
-      'Copper': 650,
-      'Aluminium': 180,
-      'Steel': 35,
-      'Brass': 420,
-    });
+    const fetchMarketPrices = async () => {
+      try {
+        const { publicAPI } = await import('../../../modules/shared/utils/api');
+        const response = await publicAPI.getPrices();
+
+        if (response.success && response.data?.prices) {
+          // Convert prices array to object for easy lookup
+          const pricesMap = {};
+          response.data.prices.forEach(price => {
+            pricesMap[price.category] = price.pricePerKg;
+          });
+          setMarketPrices(pricesMap);
+        } else {
+          // Fallback to default prices if API fails
+          setMarketPrices({
+            'Plastic': 45,
+            'Metal': 180,
+            'Paper': 12,
+            'Electronics': 85,
+            'Copper': 650,
+            'Aluminium': 180,
+            'Steel': 35,
+            'Brass': 420,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch market prices:', error);
+        // Fallback to default prices
+        setMarketPrices({
+          'Plastic': 45,
+          'Metal': 180,
+          'Paper': 12,
+          'Electronics': 85,
+          'Copper': 650,
+          'Aluminium': 180,
+          'Steel': 35,
+          'Brass': 420,
+        });
+      }
+    };
+
+    fetchMarketPrices();
   }, []);
 
   // Helper: generate next 7 days (including today)
@@ -88,15 +120,15 @@ const PriceConfirmationPage = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     if (isSubmitting) {
       console.log('Already submitting, ignoring click');
       return;
     }
-    
+
     console.log('handleSubmit called');
     setIsSubmitting(true);
-    
+
     if (!selectedDate || !selectedSlot) {
       alert('Please select a pickup date and time slot before applying.');
       setIsSubmitting(false);
@@ -159,9 +191,9 @@ const PriceConfirmationPage = () => {
         }
       }
 
-      navigate('/request-status', { 
+      navigate('/request-status', {
         state: { requestData: createdOrder || payload },
-        replace: true 
+        replace: true
       });
     } catch (error) {
       console.error('Error submitting request:', error);
@@ -201,7 +233,7 @@ const PriceConfirmationPage = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
@@ -388,9 +420,8 @@ const PriceConfirmationPage = () => {
                         setPreferredTime(`${day.dayName}, ${day.iso} • ${selectedSlot}`);
                       }
                     }}
-                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${
-                      selectedDate === day.iso ? 'shadow-md' : ''
-                    }`}
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${selectedDate === day.iso ? 'shadow-md' : ''
+                      }`}
                     style={{
                       borderColor: selectedDate === day.iso ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                       backgroundColor: selectedDate === day.iso ? '#64946e' : 'transparent',
@@ -461,9 +492,8 @@ const PriceConfirmationPage = () => {
                         setPreferredTime('');
                       }
                     }}
-                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${
-                      selectedSlot === slot ? 'shadow-md' : ''
-                    }`}
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${selectedSlot === slot ? 'shadow-md' : ''
+                      }`}
                     style={{
                       borderColor: selectedSlot === slot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
                       backgroundColor: selectedSlot === slot ? '#64946e' : 'transparent',
@@ -531,9 +561,9 @@ const PriceConfirmationPage = () => {
       </div>
 
       {/* Footer with Apply Button - Fixed on Mobile */}
-      <div 
+      <div
         className="fixed md:relative bottom-0 left-0 right-0 p-3 md:p-6 border-t"
-        style={{ 
+        style={{
           borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#f4ebe2',
           pointerEvents: 'auto',
@@ -572,8 +602,8 @@ const PriceConfirmationPage = () => {
             type="button"
             disabled={isSubmitting}
             className="w-full py-4 md:py-5 rounded-full text-white font-bold text-base md:text-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ 
-              backgroundColor: '#64946e', 
+            style={{
+              backgroundColor: '#64946e',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               WebkitTapHighlightColor: 'transparent',
               touchAction: 'manipulation',

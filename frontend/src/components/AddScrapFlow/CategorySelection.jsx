@@ -9,18 +9,50 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
   const [marketPrices, setMarketPrices] = useState({});
   const [selectedCategory, setSelectedCategory] = useState(propSelectedCategory);
 
-  // Mock market prices - in real app, fetch from PriceTicker or API
+  // Fetch market prices from backend
   useEffect(() => {
-    setMarketPrices({
-      'Plastic': 45,
-      'Metal': 180,
-      'Paper': 12,
-      'Electronics': 85,
-      'Copper': 650,
-      'Aluminium': 180,
-      'Steel': 35,
-      'Brass': 420,
-    });
+    const fetchMarketPrices = async () => {
+      try {
+        const { publicAPI } = await import('../../modules/shared/utils/api');
+        const response = await publicAPI.getPrices();
+
+        if (response.success && response.data?.prices) {
+          // Convert prices array to object for easy lookup
+          const pricesMap = {};
+          response.data.prices.forEach(price => {
+            pricesMap[price.category] = price.pricePerKg;
+          });
+          setMarketPrices(pricesMap);
+        } else {
+          // Fallback to default prices if API fails
+          setMarketPrices({
+            'Plastic': 45,
+            'Metal': 180,
+            'Paper': 12,
+            'Electronics': 85,
+            'Copper': 650,
+            'Aluminium': 180,
+            'Steel': 35,
+            'Brass': 420,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch market prices:', error);
+        // Fallback to default prices
+        setMarketPrices({
+          'Plastic': 45,
+          'Metal': 180,
+          'Paper': 12,
+          'Electronics': 85,
+          'Copper': 650,
+          'Aluminium': 180,
+          'Steel': 35,
+          'Brass': 420,
+        });
+      }
+    };
+
+    fetchMarketPrices();
   }, []);
 
   const handleCategoryClick = (category) => {
@@ -34,39 +66,39 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
   };
 
   const categories = [
-    { 
+    {
       id: 'plastic',
-      name: 'Plastic', 
+      name: 'Plastic',
       image: plasticImage,
       price: marketPrices['Plastic'] || 45
     },
-    { 
+    {
       id: 'metal',
-      name: 'Metal', 
+      name: 'Metal',
       image: metalImage,
       price: marketPrices['Metal'] || 180
     },
-    { 
+    {
       id: 'paper',
-      name: 'Paper', 
+      name: 'Paper',
       image: scrapImage2,
       price: marketPrices['Paper'] || 12
     },
-    { 
+    {
       id: 'electronics',
-      name: 'Electronics', 
+      name: 'Electronics',
       image: electronicImage,
       price: marketPrices['Electronics'] || 85
     },
-    { 
+    {
       id: 'copper',
-      name: 'Copper', 
+      name: 'Copper',
       image: metalImage, // Using metal image as placeholder
       price: marketPrices['Copper'] || 650
     },
-    { 
+    {
       id: 'aluminium',
-      name: 'Aluminium', 
+      name: 'Aluminium',
       image: metalImage, // Using metal image as placeholder
       price: marketPrices['Aluminium'] || 180
     },
@@ -92,7 +124,7 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-xl md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
@@ -131,9 +163,9 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
               onClick={() => handleCategoryClick(category)}
               className="cursor-pointer"
             >
-              <div 
+              <div
                 className="rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
-                style={{ 
+                style={{
                   backgroundColor: '#ffffff',
                   border: selectedCategory?.id === category.id ? '2px solid #64946e' : '2px solid transparent'
                 }}
@@ -167,16 +199,16 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
                     </motion.div>
                   )}
                 </div>
-                
+
                 {/* Category Info */}
                 <div className="p-3 md:p-4">
-                  <p 
+                  <p
                     className="text-sm md:text-base font-semibold mb-1"
                     style={{ color: '#2d3748' }}
                   >
                     {category.name}
                   </p>
-                  <p 
+                  <p
                     className="text-xs md:text-sm font-medium"
                     style={{ color: '#64946e' }}
                   >
@@ -205,7 +237,7 @@ const CategorySelection = ({ onSelect, onClose, selectedCategory: propSelectedCa
             Continue with {selectedCategory.name}
           </motion.button>
         ) : (
-          <p 
+          <p
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >
