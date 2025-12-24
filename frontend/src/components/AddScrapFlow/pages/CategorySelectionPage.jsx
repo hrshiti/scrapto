@@ -6,69 +6,68 @@ import metalImage from '../../../assets/metal.jpg';
 import scrapImage2 from '../../../modules/user/assets/scrab.png';
 import electronicImage from '../../../modules/user/assets/electronicbg.png';
 
+import { publicAPI } from '../../../modules/shared/utils/api';
+import { getEffectivePriceFeed } from '../../../modules/shared/utils/priceFeedUtils';
+
 const CategorySelectionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [marketPrices, setMarketPrices] = useState({});
+  const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock market prices - in real app, fetch from PriceTicker or API
+  // Helper to get image based on category name
+  const getCategoryImage = (name) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('plastic')) return plasticImage;
+    if (lowerName.includes('metal') || lowerName.includes('iron') || lowerName.includes('steel') || lowerName.includes('copper') || lowerName.includes('brass') || lowerName.includes('aluminium') || lowerName.includes('gold') || lowerName.includes('silver')) return metalImage;
+    if (lowerName.includes('paper') || lowerName.includes('book') || lowerName.includes('cardboard') || lowerName.includes('newspaper')) return scrapImage2;
+    if (lowerName.includes('electron') || lowerName.includes('device') || lowerName.includes('computer') || lowerName.includes('phone') || lowerName.includes('wire')) return electronicImage;
+    if (lowerName.includes('glass')) return scrapImage2; // Use a default or specific if available
+    return scrapImage2; // Default fallback
+  };
+
   useEffect(() => {
-    setMarketPrices({
-      'Plastic': 45,
-      'Metal': 180,
-      'Paper': 12,
-      'Electronics': 85,
-      'Copper': 650,
-      'Aluminium': 180,
-      'Steel': 35,
-      'Brass': 420,
-    });
-  }, []);
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        // Try to fetch from API first
+        const response = await publicAPI.getPrices();
 
-  const categories = [
-    { 
-      id: 'plastic',
-      name: 'Plastic', 
-      image: plasticImage,
-      price: marketPrices['Plastic'] || 45
-    },
-    { 
-      id: 'metal',
-      name: 'Metal', 
-      image: metalImage,
-      price: marketPrices['Metal'] || 180
-    },
-    { 
-      id: 'paper',
-      name: 'Paper', 
-      image: scrapImage2,
-      price: marketPrices['Paper'] || 12
-    },
-    { 
-      id: 'electronics',
-      name: 'Electronics', 
-      image: electronicImage,
-      price: marketPrices['Electronics'] || 85
-    },
-    { 
-      id: 'copper',
-      name: 'Copper', 
-      image: metalImage, // Using metal image as placeholder
-      price: marketPrices['Copper'] || 650
-    },
-    { 
-      id: 'aluminium',
-      name: 'Aluminium', 
-      image: metalImage, // Using metal image as placeholder
-      price: marketPrices['Aluminium'] || 180
-    },
-  ];
+        if (response.success && response.data?.prices && response.data.prices.length > 0) {
+          const mappedCategories = response.data.prices.map(price => ({
+            id: price.category.toLowerCase().replace(/\s+/g, '-'),
+            name: price.category,
+            image: getCategoryImage(price.category),
+            price: price.pricePerKg
+          }));
+          setCategories(mappedCategories);
+        } else {
+          throw new Error('No prices from API');
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories from API, using default:', error);
+        // Fallback to local default feed
+        const defaultFeed = getEffectivePriceFeed();
+        const mappedCategories = defaultFeed.map(item => ({
+          id: item.category.toLowerCase().replace(/\s+/g, '-'),
+          name: item.category,
+          image: getCategoryImage(item.category),
+          price: item.pricePerKg
+        }));
+        setCategories(mappedCategories);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Auto-select category if coming from AllCategoriesPage
   useEffect(() => {
     const preSelectedCategoryName = location.state?.preSelectedCategory;
-    if (preSelectedCategoryName && Object.keys(marketPrices).length > 0) {
+    if (preSelectedCategoryName && categories.length > 0) {
       const categoryToSelect = categories.find(
         cat => cat.name.toLowerCase() === preSelectedCategoryName.toLowerCase()
       );
@@ -77,7 +76,7 @@ const CategorySelectionPage = () => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, marketPrices]);
+  }, [location.state, categories]);
 
   const handleCategoryClick = (category) => {
     setSelectedCategories(prev => {
@@ -124,7 +123,7 @@ const CategorySelectionPage = () => {
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-xl md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
@@ -164,9 +163,9 @@ const CategorySelectionPage = () => {
               className="cursor-pointer flex flex-col items-center"
             >
               {/* Circular Image Container */}
-              <div 
+              <div
                 className="relative w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
-                style={{ 
+                style={{
                   border: isCategorySelected(category.id) ? '3px solid #64946e' : '3px solid transparent'
                 }}
               >
@@ -197,16 +196,16 @@ const CategorySelectionPage = () => {
                   </motion.div>
                 )}
               </div>
-              
+
               {/* Category Info Below Circle */}
               <div className="mt-2 md:mt-3 text-center">
-                <p 
+                <p
                   className="text-xs md:text-sm font-semibold mb-0.5 md:mb-1"
                   style={{ color: '#2d3748' }}
                 >
                   {category.name}
                 </p>
-                <p 
+                <p
                   className="text-[10px] md:text-xs font-medium"
                   style={{ color: '#64946e' }}
                 >
@@ -219,9 +218,9 @@ const CategorySelectionPage = () => {
       </div>
 
       {/* Footer with Continue Button - Fixed on Mobile */}
-      <div 
+      <div
         className="fixed md:relative bottom-0 left-0 right-0 p-4 md:p-6 border-t z-50"
-        style={{ 
+        style={{
           borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#f4ebe2'
         }}
@@ -240,7 +239,7 @@ const CategorySelectionPage = () => {
             >
               Continue with {selectedCategories.length} {selectedCategories.length === 1 ? 'Category' : 'Categories'}
             </motion.button>
-            <p 
+            <p
               className="text-xs md:text-sm text-center mt-2"
               style={{ color: '#718096' }}
             >
@@ -248,7 +247,7 @@ const CategorySelectionPage = () => {
             </p>
           </div>
         ) : (
-          <p 
+          <p
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >

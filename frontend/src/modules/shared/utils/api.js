@@ -725,6 +725,15 @@ export const bannerAPI = {
   }
 };
 
+// Public API (Unprotected)
+export const publicAPI = {
+  getPrices: async (regionCode = 'IN-DL') => {
+    return apiRequest(`/public/prices?regionCode=${regionCode}`, {
+      method: 'GET',
+    });
+  },
+};
+
 export { API_BASE_URL, API_ENDPOINTS };
 export default apiRequest;
 

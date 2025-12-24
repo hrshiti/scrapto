@@ -6,81 +6,65 @@ import metalImage from '../assets/metal.jpg';
 import scrapImage2 from '../assets/scrab.png';
 import electronicImage from '../assets/electronicbg.png';
 
+import { useState, useEffect } from 'react';
+import { publicAPI } from '../../shared/utils/api';
+import { getEffectivePriceFeed } from '../../shared/utils/priceFeedUtils';
+
 const AllCategoriesPage = () => {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const allCategories = [
-    { 
-      name: 'Plastic', 
-      image: plasticImage,
-      description: 'All types of plastic materials'
-    },
-    { 
-      name: 'Metal', 
-      image: metalImage,
-      description: 'Iron, steel, and other metals'
-    },
-    { 
-      name: 'Paper', 
-      image: scrapImage2,
-      description: 'Newspapers, cardboard, books'
-    },
-    { 
-      name: 'Electronics', 
-      image: electronicImage,
-      description: 'E-waste and electronic items'
-    },
-    { 
-      name: 'Copper', 
-      image: metalImage,
-      description: 'Copper wires and pipes'
-    },
-    { 
-      name: 'Aluminium', 
-      image: metalImage,
-      description: 'Aluminium cans and sheets'
-    },
-    { 
-      name: 'Brass', 
-      image: metalImage,
-      description: 'Brass items and fittings'
-    },
-    { 
-      name: 'Steel', 
-      image: metalImage,
-      description: 'Steel rods and sheets'
-    },
-    { 
-      name: 'Glass', 
-      image: scrapImage2,
-      description: 'Glass bottles and containers'
-    },
-    { 
-      name: 'Textile', 
-      image: scrapImage2,
-      description: 'Old clothes and fabrics'
-    },
-    { 
-      name: 'Wood', 
-      image: scrapImage2,
-      description: 'Wooden furniture and items'
-    },
-    { 
-      name: 'Rubber', 
-      image: plasticImage,
-      description: 'Tires and rubber products'
-    },
-  ];
+  // Helper to get image based on category name
+  const getCategoryImage = (name) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('plastic')) return plasticImage;
+    if (lowerName.includes('metal') || lowerName.includes('iron') || lowerName.includes('steel') || lowerName.includes('copper') || lowerName.includes('brass') || lowerName.includes('aluminium')) return metalImage;
+    if (lowerName.includes('paper') || lowerName.includes('book') || lowerName.includes('cardboard')) return scrapImage2;
+    if (lowerName.includes('electron') || lowerName.includes('device') || lowerName.includes('computer') || lowerName.includes('phone')) return electronicImage;
+    return scrapImage2; // Default fallback
+  };
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const response = await publicAPI.getPrices();
+        if (response.success && response.data?.prices && response.data.prices.length > 0) {
+          const mapped = response.data.prices.map(price => ({
+            name: price.category,
+            image: getCategoryImage(price.category),
+            description: `Sell your ${price.category} scrap`
+          }));
+          setCategories(mapped);
+        } else {
+          throw new Error('No prices from API');
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        const defaultFeed = getEffectivePriceFeed();
+        const mapped = defaultFeed.map(item => ({
+          name: item.category,
+          image: getCategoryImage(item.category),
+          description: `Sell your ${item.category} scrap`
+        }));
+        setCategories(mapped);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleCategoryClick = (category) => {
     // Navigate to category selection page
-    navigate('/add-scrap/category', { 
-      state: { preSelectedCategory: category.name } 
+    navigate('/add-scrap/category', {
+      state: { preSelectedCategory: category.name }
     });
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen w-full relative z-0 pb-20 md:pb-0 overflow-x-hidden"
       style={{ backgroundColor: '#f4ebe2' }}
     >
@@ -96,13 +80,13 @@ const AllCategoriesPage = () => {
             <FaArrowLeft size={18} />
           </button>
           <div>
-            <h1 
+            <h1
               className="text-xl md:text-2xl font-bold"
               style={{ color: '#2d3748' }}
             >
               All Categories
             </h1>
-            <p 
+            <p
               className="text-sm md:text-base mt-0.5"
               style={{ color: '#718096' }}
             >
@@ -115,7 +99,7 @@ const AllCategoriesPage = () => {
       {/* Categories Grid */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto pb-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
-          {allCategories.map((category, index) => (
+          {categories.map((category, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
@@ -126,7 +110,7 @@ const AllCategoriesPage = () => {
               onClick={() => handleCategoryClick(category)}
               className="cursor-pointer"
             >
-              <div 
+              <div
                 className="rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
                 style={{ backgroundColor: '#ffffff' }}
               >
@@ -140,13 +124,13 @@ const AllCategoriesPage = () => {
                   />
                 </div>
                 <div className="p-4">
-                  <p 
+                  <p
                     className="text-base md:text-lg font-semibold text-center mb-1"
                     style={{ color: '#2d3748' }}
                   >
                     {category.name}
                   </p>
-                  <p 
+                  <p
                     className="text-xs md:text-sm text-center"
                     style={{ color: '#718096' }}
                   >

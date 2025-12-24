@@ -1,21 +1,41 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { publicAPI } from '../modules/shared/utils/api';
 import { getEffectivePriceFeed } from '../modules/shared/utils/priceFeedUtils';
 
 const PriceTicker = () => {
   const [prices, setPrices] = useState([]);
 
   useEffect(() => {
-    // Load prices from shared admin feed
-    const feed = getEffectivePriceFeed();
-    const mapped = feed.map((item) => ({
-      type: item.category,
-      price: item.pricePerKg,
-      unit: 'kg',
-      // No fake percentage change – this is the admin-defined price
-      change: null
-    }));
-    setPrices(mapped);
+    const fetchPrices = async () => {
+      try {
+        const response = await publicAPI.getPrices();
+        if (response.success && response.data?.prices?.length > 0) {
+          const mapped = response.data.prices.map((item) => ({
+            type: item.category,
+            price: item.pricePerKg,
+            unit: 'kg',
+            change: null
+          }));
+          setPrices(mapped);
+        } else {
+          throw new Error('No prices found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch live prices, using default:', error);
+        // Fallback to default
+        const feed = getEffectivePriceFeed();
+        const mapped = feed.map((item) => ({
+          type: item.category,
+          price: item.pricePerKg,
+          unit: 'kg',
+          change: null
+        }));
+        setPrices(mapped);
+      }
+    };
+
+    fetchPrices();
   }, []);
 
   return (
@@ -25,18 +45,18 @@ const PriceTicker = () => {
       transition={{ duration: 0.6, delay: 0.7 }}
       className="mb-8 md:mb-12"
     >
-      <div 
+      <div
         className="rounded-xl shadow-md p-4 md:p-6 overflow-hidden"
         style={{ backgroundColor: '#ffffff' }}
       >
         <div className="flex items-center justify-between mb-3 md:mb-4">
-          <h3 
+          <h3
             className="text-lg md:text-xl font-bold"
             style={{ color: '#2d3748' }}
           >
             Live Market Prices
           </h3>
-          <span 
+          <span
             className="text-xs md:text-sm"
             style={{ color: '#718096' }}
           >
@@ -53,20 +73,20 @@ const PriceTicker = () => {
               className="flex-shrink-0 rounded-lg p-3 md:p-4 min-w-[120px] md:min-w-[140px]"
               style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
             >
-              <p 
+              <p
                 className="text-xs md:text-sm mb-1"
                 style={{ color: '#718096' }}
               >
                 {item.type}
               </p>
-              <p 
+              <p
                 className="text-base md:text-lg font-bold"
                 style={{ color: '#64946e' }}
               >
                 ₹{item.price.toFixed(0)}/{item.unit}
               </p>
               {item.change !== undefined && item.change !== null && (
-                <p 
+                <p
                   className="text-xs"
                   style={{ color: item.change.startsWith('+') ? '#64946e' : '#e53e3e' }}
                 >
