@@ -32,7 +32,7 @@ const WeightInputPage = () => {
   useEffect(() => {
     const fetchMarketPrices = async () => {
       try {
-        const { publicAPI } = await import('../../modules/shared/utils/api');
+        const { publicAPI } = await import('../../../modules/shared/utils/api');
         const response = await publicAPI.getPrices();
 
         if (response.success && response.data?.prices) {
