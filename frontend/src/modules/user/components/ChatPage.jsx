@@ -75,7 +75,11 @@ const ChatPage = () => {
           throw new Error('Failed to load messages');
         }
       } else {
-        throw new Error('Order ID or Chat ID is required');
+        // If neither orderId nor chatId is present, we cannot initialize chat
+        console.warn('Missing Order ID or Chat ID');
+        setLoading(false);
+        // Don't throw error immediately, let UI handle empty state if needed
+        return;
       }
 
       // Connect to Socket.io
@@ -361,10 +365,12 @@ const ChatPage = () => {
     return (
       <div className="fixed inset-0 flex items-center justify-center p-4" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center max-w-md">
-          <p className="mb-4" style={{ color: '#ef4444' }}>{error}</p>
+          <p className="mb-4 text-lg font-medium" style={{ color: '#2d3748' }}>
+            {error === 'Order ID or Chat ID is required' ? 'Chat not found' : error}
+          </p>
           <button
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-xl font-semibold text-white"
+            className="px-6 py-2 rounded-xl font-semibold text-white shadow-md transition-transform active:scale-95"
             style={{ backgroundColor: '#64946e' }}
           >
             Go Back
@@ -372,6 +378,17 @@ const ChatPage = () => {
         </div>
       </div>
     );
+  }
+
+  // If chat is missing but no error (e.g. initialization phase), show loading or empty state
+  if (!chat && !loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-4" style={{ backgroundColor: '#f4ebe2' }}>
+        <div className="text-center">
+          <p className="text-lg text-gray-600">Initializing Chat...</p>
+        </div>
+      </div>
+    )
   }
 
   // Handle window resize for mobile browsers
