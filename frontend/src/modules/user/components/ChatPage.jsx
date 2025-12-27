@@ -11,7 +11,7 @@ const ChatPage = () => {
   const location = useLocation();
   const { chatId: chatIdParam } = useParams();
   const { user, isAuthenticated } = useAuth();
-  
+
   const [chat, setChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -22,7 +22,7 @@ const ChatPage = () => {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const messagesContainerRef = useRef(null);
@@ -49,7 +49,7 @@ const ChatPage = () => {
           currentChatId = createResponse.data.chat._id;
           chatIdRef.current = currentChatId;
           setChat(createResponse.data.chat);
-          
+
           // Load messages for the chat
           const messagesResponse = await chatAPI.getMessages(currentChatId);
           if (messagesResponse.success && messagesResponse.data?.messages) {
@@ -82,7 +82,7 @@ const ChatPage = () => {
       const token = localStorage.getItem('token');
       if (token && currentChatId) {
         socketClient.connect(token);
-        
+
         // Join chat room
         socketClient.joinChat(currentChatId);
 
@@ -98,7 +98,7 @@ const ChatPage = () => {
               }
               return prev;
             });
-            
+
             // Mark as read if user is viewing
             if (document.visibilityState === 'visible') {
               chatAPI.markAsRead(currentChatId).catch(console.error);
@@ -120,7 +120,7 @@ const ChatPage = () => {
         socketClient.onMessagesRead((data) => {
           if (data.chatId === currentChatId) {
             // Update read status of messages
-            setMessages(prev => prev.map(msg => 
+            setMessages(prev => prev.map(msg =>
               msg.senderId._id === data.userId ? { ...msg, read: true } : msg
             ));
           }
@@ -145,30 +145,30 @@ const ChatPage = () => {
     }
   }, [chatId, orderId, user]);
 
-      // Load more messages (pagination)
-      const loadMoreMessages = useCallback(async () => {
-        if (!chatIdRef.current || loadingMore || !hasMoreMessages) return;
+  // Load more messages (pagination)
+  const loadMoreMessages = useCallback(async () => {
+    if (!chatIdRef.current || loadingMore || !hasMoreMessages) return;
 
-        try {
-          setLoadingMore(true);
-          const nextPage = currentPageRef.current + 1;
-          const response = await chatAPI.getMessages(chatIdRef.current, nextPage);
-          
-          if (response.success && response.data?.messages) {
-            const newMessages = response.data.messages;
-            setMessages(prev => [...newMessages, ...prev]);
-            setHasMoreMessages(newMessages.length > 0);
-            currentPageRef.current = nextPage;
-          } else {
-            setHasMoreMessages(false);
-          }
-        } catch (err) {
-          console.error('Error loading more messages:', err);
-          setHasMoreMessages(false);
-        } finally {
-          setLoadingMore(false);
-        }
-      }, [loadingMore, hasMoreMessages]);
+    try {
+      setLoadingMore(true);
+      const nextPage = currentPageRef.current + 1;
+      const response = await chatAPI.getMessages(chatIdRef.current, nextPage);
+
+      if (response.success && response.data?.messages) {
+        const newMessages = response.data.messages;
+        setMessages(prev => [...newMessages, ...prev]);
+        setHasMoreMessages(newMessages.length > 0);
+        currentPageRef.current = nextPage;
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch (err) {
+      console.error('Error loading more messages:', err);
+      setHasMoreMessages(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMoreMessages]);
 
   // Initialize on mount
   useEffect(() => {
@@ -181,7 +181,7 @@ const ChatPage = () => {
     const originalOverflow = document.body.style.overflow;
     const originalPosition = document.body.style.position;
     const originalHeight = document.body.style.height;
-    
+
     document.body.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.height = '100%';
@@ -291,7 +291,7 @@ const ChatPage = () => {
 
       if (response.success && response.data?.message) {
         // Replace temp message with real message
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg._id === tempMessage._id ? response.data.message : msg
         ));
 
@@ -330,7 +330,7 @@ const ChatPage = () => {
     const messageDate = new Date(date);
     const diff = now - messageDate;
     const minutes = Math.floor(diff / 60000);
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
@@ -381,9 +381,9 @@ const ChatPage = () => {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
       className="fixed inset-0 w-full h-full flex flex-col"
-      style={{ 
+      style={{
         backgroundColor: '#f4ebe2',
-        height: '100vh',
+        height: '100dvh',
         width: '100vw',
         overflow: 'hidden',
         position: 'fixed',
@@ -395,10 +395,10 @@ const ChatPage = () => {
       }}
     >
       {/* Fixed Header */}
-      <div 
+      <div
         className="flex items-center justify-between px-4 py-3 border-b z-10 flex-shrink-0"
-        style={{ 
-          borderColor: 'rgba(100, 148, 110, 0.2)', 
+        style={{
+          borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#ffffff',
           boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
         }}
@@ -412,18 +412,18 @@ const ChatPage = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        
+
         {otherUser && (
           <div className="flex items-center gap-3 flex-1 px-3">
-            <div 
+            <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold relative"
               style={{ backgroundColor: 'rgba(100, 148, 110, 0.15)', color: '#64946e' }}
             >
               {otherUser.name?.split(' ').map(n => n[0]).join('') || 'U'}
               {/* Online indicator - TODO: Implement real online status */}
-              <div 
+              <div
                 className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
-                style={{ 
+                style={{
                   backgroundColor: '#10b981',
                   borderColor: '#ffffff'
                 }}
@@ -448,7 +448,7 @@ const ChatPage = () => {
             </div>
           </div>
         )}
-        
+
         <button
           onClick={() => {
             if (otherUser?.phone) {
@@ -459,17 +459,17 @@ const ChatPage = () => {
           style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </div>
 
       {/* Scrollable Messages Area */}
-      <div 
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-4 py-4"
-        style={{ 
+        style={{
           backgroundColor: '#f4ebe2',
           WebkitOverflowScrolling: 'touch',
           touchAction: 'pan-y',
@@ -481,7 +481,7 @@ const ChatPage = () => {
             <FaSpinner className="animate-spin mx-auto" style={{ color: '#64946e' }} />
           </div>
         )}
-        
+
         <div className="space-y-3 pb-2">
           {messages.map((message) => {
             const isUserMessage = message.senderId?._id === user._id || message.senderType === 'user';
@@ -498,32 +498,31 @@ const ChatPage = () => {
               >
                 <div className={`flex items-end gap-2 max-w-[85%] ${isUserMessage ? 'flex-row-reverse' : 'flex-row'}`}>
                   {/* Avatar */}
-                  <div 
+                  <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{ 
-                      backgroundColor: isUserMessage 
-                        ? 'rgba(100, 148, 110, 0.2)' 
-                        : 'rgba(100, 148, 110, 0.15)', 
-                      color: '#64946e' 
+                    style={{
+                      backgroundColor: isUserMessage
+                        ? 'rgba(100, 148, 110, 0.2)'
+                        : 'rgba(100, 148, 110, 0.15)',
+                      color: '#64946e'
                     }}
                   >
                     {senderInitials}
                   </div>
-                  
+
                   {/* Message Bubble */}
                   <div className="flex flex-col">
                     <div
-                      className={`rounded-2xl px-4 py-2.5 shadow-sm ${
-                        isUserMessage 
-                          ? 'rounded-tr-md' 
-                          : 'rounded-tl-md'
-                      }`}
+                      className={`rounded-2xl px-4 py-2.5 shadow-sm ${isUserMessage
+                        ? 'rounded-tr-md'
+                        : 'rounded-tl-md'
+                        }`}
                       style={{
-                        backgroundColor: isUserMessage 
-                          ? '#64946e' 
+                        backgroundColor: isUserMessage
+                          ? '#64946e'
                           : '#ffffff',
-                        color: isUserMessage 
-                          ? '#ffffff' 
+                        color: isUserMessage
+                          ? '#ffffff'
                           : '#2d3748',
                         boxShadow: isUserMessage
                           ? '0 2px 8px rgba(100, 148, 110, 0.2)'
@@ -534,7 +533,7 @@ const ChatPage = () => {
                         {message.content || message.message}
                       </p>
                     </div>
-                    <span 
+                    <span
                       className={`text-[10px] mt-1 px-1 ${isUserMessage ? 'text-right' : 'text-left'}`}
                       style={{ color: '#9ca3af' }}
                     >
@@ -553,12 +552,14 @@ const ChatPage = () => {
       </div>
 
       {/* Fixed Input Area */}
-      <div 
-        className="px-4 py-3 border-t flex-shrink-0 z-10"
-        style={{ 
-          borderColor: 'rgba(100, 148, 110, 0.2)', 
+      <div
+        className="px-4 border-t flex-shrink-0 z-10"
+        style={{
+          borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#ffffff',
-          boxShadow: '0 -2px 8px rgba(0,0,0,0.05)'
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.05)',
+          paddingTop: '12px',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))'
         }}
       >
         {error && (
@@ -604,7 +605,7 @@ const ChatPage = () => {
               backgroundColor: inputMessage.trim() && !sending ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
               color: '#ffffff',
               boxShadow: inputMessage.trim() && !sending
-                ? '0 4px 12px rgba(100, 148, 110, 0.3)' 
+                ? '0 4px 12px rgba(100, 148, 110, 0.3)'
                 : 'none'
             }}
           >
