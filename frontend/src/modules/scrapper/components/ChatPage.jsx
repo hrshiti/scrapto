@@ -348,6 +348,24 @@ const ChatPage = () => {
 
   const otherUser = getOtherUser();
 
+  // Handle window resize for mobile browsers
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      document.documentElement.style.removeProperty('--vh');
+    };
+  }, []);
+
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
@@ -388,24 +406,6 @@ const ChatPage = () => {
       </div>
     )
   }
-
-  // Handle window resize for mobile browsers
-  useEffect(() => {
-    const handleResize = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-      document.documentElement.style.removeProperty('--vh');
-    };
-  }, []);
 
   return (
     <motion.div

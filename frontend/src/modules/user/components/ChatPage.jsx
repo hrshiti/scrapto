@@ -341,6 +341,24 @@ const ChatPage = () => {
     return messageDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Handle window resize for mobile browsers
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      document.documentElement.style.removeProperty('--vh');
+    };
+  }, []);
+
   // Get other user info (scrapper or user)
   const getOtherUser = () => {
     if (!chat) return null;
@@ -390,24 +408,6 @@ const ChatPage = () => {
       </div>
     )
   }
-
-  // Handle window resize for mobile browsers
-  useEffect(() => {
-    const handleResize = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-      document.documentElement.style.removeProperty('--vh');
-    };
-  }, []);
 
   return (
     <motion.div
