@@ -180,9 +180,6 @@ const PriceConfirmationPage = () => {
     // Prepare pickup address from addressData
     const pickupAddress = {
       street: addressData?.address || 'Address not provided',
-      city: '', // Can be extracted from address if needed
-      state: '',
-      pincode: '',
       coordinates: {
         lat: addressData?.coordinates?.lat || 0,
         lng: addressData?.coordinates?.lng || 0
