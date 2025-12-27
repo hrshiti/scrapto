@@ -373,16 +373,34 @@ const ChatPage = () => {
     );
   }
 
+  // Handle window resize for mobile browsers
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      document.documentElement.style.removeProperty('--vh');
+    };
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 w-full h-full flex flex-col"
+      className="fixed inset-0 w-full flex flex-col"
       style={{
         backgroundColor: '#f4ebe2',
-        height: '100dvh',
+        height: 'calc(var(--vh, 1vh) * 100)',
         width: '100vw',
         overflow: 'hidden',
         position: 'fixed',
