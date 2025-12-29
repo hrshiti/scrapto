@@ -15,12 +15,14 @@ import ScrapperProfile from './components/ScrapperProfile';
 import ChatPage from './components/ChatPage';
 import ChatListPage from './components/ChatListPage';
 import { authAPI } from '../shared/utils/api';
+import { FaHome, FaList, FaRegComments, FaUser } from 'react-icons/fa';
+import WebViewHeader from '../shared/components/WebViewHeader';
 
 // Helper function to check KYC status
 const getKYCStatus = () => {
   const kycStatus = localStorage.getItem('scrapperKYCStatus');
   const kycData = localStorage.getItem('scrapperKYC');
-  
+
   if (!kycData) return 'not_submitted';
   if (kycStatus === 'verified') return 'verified';
   if (kycStatus === 'pending') return 'pending';
@@ -32,7 +34,7 @@ const getKYCStatus = () => {
 const getSubscriptionStatus = () => {
   const subscriptionStatus = localStorage.getItem('scrapperSubscriptionStatus');
   const subscriptionData = localStorage.getItem('scrapperSubscription');
-  
+
   if (!subscriptionData || !subscriptionStatus) return 'not_subscribed';
   if (subscriptionStatus === 'active') {
     const sub = JSON.parse(subscriptionData);
@@ -51,17 +53,17 @@ const ScrapperModule = () => {
   const { isAuthenticated, user, login, logout } = useAuth();
   const [isVerifying, setIsVerifying] = useState(true);
   const [scrapperIsAuthenticated, setScrapperIsAuthenticated] = useState(false);
-  
+
   // Verify authentication - re-check when isAuthenticated or user changes
   useEffect(() => {
     let isMounted = true;
     let timeoutId = null;
-    
+
     const verifyScrapperAuth = async () => {
       const token = localStorage.getItem('token');
       const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
       const scrapperUser = localStorage.getItem('scrapperUser');
-      
+
       // If no token or scrapper flags, not authenticated
       if (!token || scrapperAuth !== 'true' || !scrapperUser) {
         if (isMounted) {
@@ -70,7 +72,7 @@ const ScrapperModule = () => {
         }
         return;
       }
-      
+
       // If we already have authenticated user from context and it's a scrapper, use it
       if (isAuthenticated && user && user.role === 'scrapper') {
         if (isMounted) {
@@ -79,29 +81,29 @@ const ScrapperModule = () => {
         }
         return;
       }
-      
+
       setIsVerifying(true);
-      
+
       try {
         // Verify token with backend
         const response = await authAPI.getMe();
-        
+
         if (!isMounted) return;
-        
+
         if (response.success && response.data?.user) {
           const userData = response.data.user;
-          
+
           // Check if user has scrapper role
           if (userData.role === 'scrapper') {
             // Update auth context if needed
             if (!isAuthenticated || !user) {
               login(userData, token);
             }
-            
+
             // Update scrapper-specific localStorage
             localStorage.setItem('scrapperAuthenticated', 'true');
             localStorage.setItem('scrapperUser', JSON.stringify(userData));
-            
+
             // Check if scrapper is blocked
             const scrapperStatus = localStorage.getItem('scrapperStatus') || 'active';
             if (scrapperStatus === 'blocked') {
@@ -129,7 +131,7 @@ const ScrapperModule = () => {
         }
       } catch (error) {
         if (!isMounted) return;
-        
+
         console.error('Auth verification failed:', error);
         // On 401, clear everything
         if (error.status === 401) {
@@ -143,8 +145,8 @@ const ScrapperModule = () => {
           const scrapperUser = localStorage.getItem('scrapperUser');
           const scrapperStatus = localStorage.getItem('scrapperStatus') || 'active';
           setScrapperIsAuthenticated(
-            scrapperAuth === 'true' && 
-            scrapperUser !== null && 
+            scrapperAuth === 'true' &&
+            scrapperUser !== null &&
             scrapperStatus !== 'blocked'
           );
         }
@@ -154,25 +156,25 @@ const ScrapperModule = () => {
         }
       }
     };
-    
+
     // Add a small delay to allow login to complete
     timeoutId = setTimeout(() => {
       verifyScrapperAuth();
     }, 100);
-    
+
     return () => {
       isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [isAuthenticated, user, login, logout]); // Re-check when auth state changes
-  
+
   const kycStatus = scrapperIsAuthenticated ? getKYCStatus() : 'not_submitted';
   const subscriptionStatus = scrapperIsAuthenticated && kycStatus === 'verified' ? getSubscriptionStatus() : 'not_subscribed';
-  
+
   // Show loading while verifying (but allow navigation if we have token and user)
   const hasToken = !!localStorage.getItem('token');
   const hasScrapperAuth = localStorage.getItem('scrapperAuthenticated') === 'true';
-  
+
   if (isVerifying && !hasToken && !hasScrapperAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -192,7 +194,7 @@ const ScrapperModule = () => {
         {/* Public routes (no scrapper auth required) */}
         <Route path="/login" element={<ScrapperLogin />} />
         <Route path="/kyc" element={<KYCUploadPage />} />
-        
+
         {/* Default redirect to login */}
         <Route path="/" element={<Navigate to="/scrapper/login" replace />} />
         {/* Catch all other routes and redirect to login */}
@@ -203,61 +205,72 @@ const ScrapperModule = () => {
 
   // If authenticated, check KYC status and route accordingly
   // Always register all routes, but use Navigate for redirects
+
+  const navItems = [
+    { label: 'Dashboard', path: '/scrapper/dashboard', icon: FaHome },
+    { label: 'Active Requests', path: '/scrapper/active-requests', icon: FaList },
+    { label: 'Chats', path: '/scrapper/chats', icon: FaRegComments },
+    { label: 'Profile', path: '/scrapper/profile', icon: FaUser },
+  ];
+
   return (
-    <Routes>
-      {/* KYC Upload Route */}
-      <Route path="/kyc" element={<KYCUploadPage />} />
-      
-      {/* KYC Status Route */}
-      <Route path="/kyc-status" element={<KYCStatusPage />} />
-      
-      {/* Subscription Plan Route */}
-      <Route path="/subscription" element={<SubscriptionPlanPage />} />
-      
-      {/* Dashboard Route */}
-      <Route path="/" element={<ScrapperDashboard />} />
-      <Route path="/dashboard" element={<ScrapperDashboard />} />
-      
-      {/* Active Requests Route - for when scrapper is online */}
-      <Route path="/active-requests" element={<ActiveRequestsPage />} />
-      
-      {/* My Active Requests List Route - shows all active requests */}
-      <Route path="/my-active-requests" element={<MyActiveRequestsPage />} />
-      
-      {/* Active Request Details Route - after accepting a request */}
-      <Route path="/active-request/:requestId" element={<ActiveRequestDetailsPage />} />
-      
-      {/* Help & Support */}
-      <Route path="/help" element={<ScrapperHelpSupport />} />
-      
-      {/* Profile */}
-      <Route path="/profile" element={<ScrapperProfile />} />
-      
-      {/* Refer & Earn Route */}
-      <Route path="/refer" element={<ReferAndEarn />} />
-      
-      {/* Chat Routes */}
-      <Route path="/chats" element={<ChatListPage />} />
-      <Route path="/chat/:chatId" element={<ChatPage />} />
-      <Route path="/chat" element={<ChatPage />} />
-      
-      {/* Redirect logic based on KYC and Subscription status */}
-      <Route path="*" element={
-        kycStatus === 'not_submitted' ? (
-          <Navigate to="/scrapper/kyc" replace />
-        ) : kycStatus === 'rejected' ? (
-          <Navigate to="/scrapper/kyc" replace />
-        ) : kycStatus === 'pending' ? (
-          <Navigate to="/scrapper/kyc-status" replace />
-        ) : kycStatus === 'verified' && subscriptionStatus !== 'active' ? (
-          <Navigate to="/scrapper/subscription" replace />
-        ) : kycStatus === 'verified' && subscriptionStatus === 'active' ? (
-          <Navigate to="/scrapper" replace />
-        ) : (
-          <Navigate to="/scrapper/kyc" replace />
-        )
-      } />
-    </Routes>
+    <div className="min-h-screen bg-[#f4ebe2]">
+      <WebViewHeader navItems={navItems} userRole="scrapper" />
+      <Routes>
+        {/* KYC Upload Route */}
+        <Route path="/kyc" element={<KYCUploadPage />} />
+
+        {/* KYC Status Route */}
+        <Route path="/kyc-status" element={<KYCStatusPage />} />
+
+        {/* Subscription Plan Route */}
+        <Route path="/subscription" element={<SubscriptionPlanPage />} />
+
+        {/* Dashboard Route */}
+        <Route path="/" element={<ScrapperDashboard />} />
+        <Route path="/dashboard" element={<ScrapperDashboard />} />
+
+        {/* Active Requests Route - for when scrapper is online */}
+        <Route path="/active-requests" element={<ActiveRequestsPage />} />
+
+        {/* My Active Requests List Route - shows all active requests */}
+        <Route path="/my-active-requests" element={<MyActiveRequestsPage />} />
+
+        {/* Active Request Details Route - after accepting a request */}
+        <Route path="/active-request/:requestId" element={<ActiveRequestDetailsPage />} />
+
+        {/* Help & Support */}
+        <Route path="/help" element={<ScrapperHelpSupport />} />
+
+        {/* Profile */}
+        <Route path="/profile" element={<ScrapperProfile />} />
+
+        {/* Refer & Earn Route */}
+        <Route path="/refer" element={<ReferAndEarn />} />
+
+        {/* Chat Routes */}
+        <Route path="/chats" element={<ChatListPage />} />
+        <Route path="/chat/:chatId" element={<ChatPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+
+        {/* Redirect logic based on KYC and Subscription status */}
+        <Route path="*" element={
+          kycStatus === 'not_submitted' ? (
+            <Navigate to="/scrapper/kyc" replace />
+          ) : kycStatus === 'rejected' ? (
+            <Navigate to="/scrapper/kyc" replace />
+          ) : kycStatus === 'pending' ? (
+            <Navigate to="/scrapper/kyc-status" replace />
+          ) : kycStatus === 'verified' && subscriptionStatus !== 'active' ? (
+            <Navigate to="/scrapper/subscription" replace />
+          ) : kycStatus === 'verified' && subscriptionStatus === 'active' ? (
+            <Navigate to="/scrapper" replace />
+          ) : (
+            <Navigate to="/scrapper/kyc" replace />
+          )
+        } />
+      </Routes>
+    </div>
   );
 };
 

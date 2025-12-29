@@ -173,35 +173,35 @@ const RequestStatusPage = () => {
     const icons = {
       pending: (
         <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" opacity="0.2"/>
-          <path d="M12 6v6l4 2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" opacity="0.2" />
+          <path d="M12 6v6l4 2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
       accepted: (
         <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
-          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1" />
+          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
       on_way: (
         <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 17h14l-1-7H6l-1 7z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity="0.1"/>
-          <circle cx="7" cy="19" r="1.5" fill={color}/>
-          <circle cx="17" cy="19" r="1.5" fill={color}/>
-          <path d="M3 12h18" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+          <path d="M5 17h14l-1-7H6l-1 7z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill={color} fillOpacity="0.1" />
+          <circle cx="7" cy="19" r="1.5" fill={color} />
+          <circle cx="17" cy="19" r="1.5" fill={color} />
+          <path d="M3 12h18" stroke={color} strokeWidth="2" strokeLinecap="round" />
         </svg>
       ),
       arrived: (
         <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
-          <circle cx="12" cy="10" r="3" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.2"/>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1" />
+          <circle cx="12" cy="10" r="3" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.2" />
         </svg>
       ),
       completed: (
         <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1"/>
-          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M12 2v4M12 18v4M22 12h-4M6 12H2" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill={color} fillOpacity="0.1" />
+          <path d="M9 12l2 2 4-4" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 2v4M12 18v4M22 12h-4M6 12H2" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
         </svg>
       )
     };
@@ -271,7 +271,7 @@ const RequestStatusPage = () => {
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
@@ -291,11 +291,11 @@ const RequestStatusPage = () => {
           style={{ backgroundColor: '#ffffff' }}
         >
           {/* Background Pattern */}
-          <div 
+          <div
             className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 -mr-16 -mt-16"
             style={{ backgroundColor: currentStatus.color }}
           />
-          
+
           <div className="relative z-10">
             {/* Status Icon & Label */}
             <div className="flex items-center gap-3 mb-4">
@@ -309,7 +309,7 @@ const RequestStatusPage = () => {
                 <StatusIcon status={status} color={currentStatus.color} />
               </motion.div>
               <div className="flex-1">
-                <h3 
+                <h3
                   className="text-xl md:text-2xl font-bold mb-1"
                   style={{ color: currentStatus.color }}
                 >
@@ -410,9 +410,8 @@ const RequestStatusPage = () => {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2 + index * 0.1 }}
-                    className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${
-                      step.completed ? 'shadow-md' : ''
-                    }`}
+                    className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${step.completed ? 'shadow-md' : ''
+                      }`}
                     style={{
                       backgroundColor: step.completed ? '#64946e' : 'rgba(100, 148, 110, 0.2)',
                       border: step.completed ? '2px solid #ffffff' : '2px solid transparent'
@@ -420,9 +419,8 @@ const RequestStatusPage = () => {
                   />
                   {index < timelineSteps.length - 1 && (
                     <div
-                      className={`w-0.5 flex-1 mt-1 ${
-                        step.completed ? '' : 'opacity-30'
-                      }`}
+                      className={`w-0.5 flex-1 mt-1 ${step.completed ? '' : 'opacity-30'
+                        }`}
                       style={{
                         backgroundColor: step.completed ? '#64946e' : 'rgba(100, 148, 110, 0.2)',
                         minHeight: '40px'
@@ -430,13 +428,12 @@ const RequestStatusPage = () => {
                     />
                   )}
                 </div>
-                
+
                 {/* Step Content */}
                 <div className="flex-1 pb-4">
-                  <p 
-                    className={`text-sm md:text-base font-semibold mb-1 ${
-                      step.completed ? '' : 'opacity-50'
-                    }`}
+                  <p
+                    className={`text-sm md:text-base font-semibold mb-1 ${step.completed ? '' : 'opacity-50'
+                      }`}
                     style={{ color: step.completed ? '#2d3748' : '#718096' }}
                   >
                     {step.label}
@@ -482,7 +479,7 @@ const RequestStatusPage = () => {
                   </h4>
                   <div className="flex items-center gap-1">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1"/>
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fbbf24" stroke="#fbbf24" strokeWidth="1" />
                     </svg>
                     <span className="text-xs md:text-sm font-semibold" style={{ color: '#64946e' }}>
                       {scrapperInfo.rating}
@@ -494,8 +491,8 @@ const RequestStatusPage = () => {
                 </p>
                 <div className="flex items-center gap-1.5">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#718096" strokeWidth="2" fill="none"/>
-                    <circle cx="12" cy="10" r="3" stroke="#718096" strokeWidth="2" fill="none"/>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="#718096" strokeWidth="2" fill="none" />
+                    <circle cx="12" cy="10" r="3" stroke="#718096" strokeWidth="2" fill="none" />
                   </svg>
                   <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
                     {scrapperInfo.distance}
@@ -508,8 +505,8 @@ const RequestStatusPage = () => {
                     className="flex items-center gap-1.5 mt-2"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="#64946e" strokeWidth="2" fill="none"/>
-                      <path d="M12 6v6l4 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="12" cy="12" r="10" stroke="#64946e" strokeWidth="2" fill="none" />
+                      <path d="M12 6v6l4 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <p className="text-xs md:text-sm font-semibold" style={{ color: '#64946e' }}>
                       ETA: {eta}
@@ -535,17 +532,23 @@ const RequestStatusPage = () => {
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Categories:</span>
+                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                  {requestData.orderType === 'cleaning_service' ? 'Service Type:' : 'Categories:'}
+                </span>
                 <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  {requestData.categories?.map(c => c.name).join(', ')}
+                  {requestData.orderType === 'cleaning_service'
+                    ? requestData.serviceDetails?.serviceType
+                    : requestData.categories?.map(c => c.name).join(', ')}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Weight:</span>
-                <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  {requestData.weight} kg
-                </span>
-              </div>
+              {requestData.orderType !== 'cleaning_service' && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Weight:</span>
+                  <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                    {requestData.weight} kg
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Images:</span>
                 <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
@@ -554,7 +557,9 @@ const RequestStatusPage = () => {
               </div>
               {(requestData.pickupSlot || requestData.preferredTime) && (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Pickup Slot:</span>
+                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                    {requestData.orderType === 'cleaning_service' ? 'Service Slot:' : 'Pickup Slot:'}
+                  </span>
                   <span className="text-xs md:text-sm font-semibold text-right" style={{ color: '#2d3748' }}>
                     {requestData.pickupSlot
                       ? `${requestData.pickupSlot.dayName}, ${requestData.pickupSlot.date} • ${requestData.pickupSlot.slot}`
@@ -565,10 +570,13 @@ const RequestStatusPage = () => {
               <div className="pt-3 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
                 <div className="flex justify-between items-center">
                   <span className="text-base md:text-lg font-bold" style={{ color: '#2d3748' }}>
-                    Estimated Payout:
+                    {requestData.orderType === 'cleaning_service' ? 'Service Fee:' : 'Estimated Payout:'}
                   </span>
                   <span className="text-xl md:text-2xl font-bold" style={{ color: '#64946e' }}>
-                    ₹{requestData.estimatedPayout?.toFixed(0) || 0}
+                    {requestData.orderType === 'cleaning_service'
+                      ? `₹${requestData.serviceFee || 0}`
+                      : `₹${requestData.estimatedPayout?.toFixed(0) || 0}`
+                    }
                   </span>
                 </div>
               </div>
@@ -595,7 +603,7 @@ const RequestStatusPage = () => {
               Chat with Scrapper
             </motion.button>
           )}
-          
+
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

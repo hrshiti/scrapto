@@ -744,6 +744,61 @@ const Hero = () => {
               </motion.div>
             </div>
 
+            {/* Cleaning Services Section */}
+            <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-6 md:mb-8">
+              <div className="flex justify-between items-center mb-3 md:mb-4">
+                <h3 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
+                  Home Services
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                  New
+                </span>
+              </div>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                className="relative overflow-hidden rounded-2xl shadow-lg cursor-pointer group"
+                onClick={() => navigate('/book-service/details')}
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                {/* Decorative Circles */}
+                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 rounded-full bg-white opacity-10"></div>
+                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 rounded-full bg-white opacity-10"></div>
+
+                <div className="flex flex-row items-center p-6 md:p-8 relative z-10">
+                  <div className="flex-1">
+                    <h4 className="text-xl md:text-3xl font-bold text-white mb-2">Deep Home Cleaning</h4>
+                    <p className="text-white/90 text-sm md:text-base mb-4 max-w-md">
+                      Professional deep cleaning service including floor scrubbing, cobweb removal, and bathroom cleaning.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                      <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs md:text-sm font-semibold border border-white/30">
+                        Fixed Price: ₹1200
+                      </div>
+                      <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs md:text-sm font-semibold border border-white/30 flex items-center gap-1">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Verified Pros
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:flex ml-6 items-center justify-center bg-white text-emerald-600 rounded-full w-10 h-10 md:w-12 md:h-12 shadow-md group-hover:scale-110 transition-transform">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
             {/* Promotional Banner Carousel */}
             <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-4 md:mb-6">
               <BannerSlider audience="user" />

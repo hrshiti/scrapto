@@ -17,35 +17,59 @@ import ChatListPage from './components/ChatListPage';
 import AllCategoriesPage from './components/AllCategoriesPage';
 import ReviewOrderPage from './components/ReviewOrderPage';
 import ReviewListPage from './components/ReviewListPage';
+import ServiceDetailsPage from './components/ServiceBookingFlow/ServiceDetailsPage';
+import ServiceAddressPage from './components/ServiceBookingFlow/ServiceAddressPage';
+import ServiceSchedulePage from './components/ServiceBookingFlow/ServiceSchedulePage';
+import ServiceConfirmationPage from './components/ServiceBookingFlow/ServiceConfirmationPage';
+
+import { FaHome, FaList, FaRegComments, FaUser } from 'react-icons/fa';
+import WebViewHeader from '../shared/components/WebViewHeader';
 
 const UserModule = () => {
   const { isAuthenticated } = useAuth();
+
+  const navItems = [
+    { label: 'Home', path: '/', icon: FaHome },
+    { label: 'My Requests', path: '/my-requests', icon: FaList },
+    { label: 'Chats', path: '/chats', icon: FaRegComments },
+    { label: 'Profile', path: '/my-profile', icon: FaUser },
+  ];
 
   if (!isAuthenticated) {
     return <LoginSignup />;
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Hero />} />
-      <Route path="/categories" element={<AllCategoriesPage />} />
-      <Route path="/add-scrap/category" element={<CategorySelectionPage />} />
-      <Route path="/add-scrap/upload" element={<ImageUploadPage />} />
-      <Route path="/add-scrap/weight" element={<WeightInputPage />} />
-      <Route path="/add-scrap/address" element={<AddressInputPage />} />
-      <Route path="/add-scrap/confirm" element={<PriceConfirmationPage />} />
-      <Route path="/request-status" element={<RequestStatusPage />} />
-      <Route path="/chats" element={<ChatListPage />} />
-      <Route path="/chat/:chatId" element={<ChatPage />} />
-      <Route path="/chat" element={<ChatPage />} />
-      <Route path="/my-profile" element={<MyProfilePage />} />
-      <Route path="/saved-addresses" element={<SavedAddressesPage />} />
-      <Route path="/my-requests" element={<MyRequestsPage />} />
-      <Route path="/review-order/:orderId" element={<ReviewOrderPage />} />
-      <Route path="/my-reviews" element={<ReviewListPage />} />
-      <Route path="/help" element={<HelpSupport />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="min-h-screen bg-[#f4ebe2]">
+      <WebViewHeader navItems={navItems} userRole="user" />
+
+      <Routes>
+        <Route path="/" element={<Hero />} />
+        <Route path="/categories" element={<AllCategoriesPage />} />
+        <Route path="/add-scrap/category" element={<CategorySelectionPage />} />
+        <Route path="/add-scrap/upload" element={<ImageUploadPage />} />
+        <Route path="/add-scrap/weight" element={<WeightInputPage />} />
+        <Route path="/add-scrap/address" element={<AddressInputPage />} />
+        <Route path="/add-scrap/confirm" element={<PriceConfirmationPage />} />
+
+        {/* Service Booking Flow */}
+        <Route path="/book-service/details" element={<ServiceDetailsPage />} />
+        <Route path="/book-service/address" element={<ServiceAddressPage />} />
+        <Route path="/book-service/schedule" element={<ServiceSchedulePage />} />
+        <Route path="/book-service/confirm" element={<ServiceConfirmationPage />} />
+        <Route path="/request-status" element={<RequestStatusPage />} />
+        <Route path="/chats" element={<ChatListPage />} />
+        <Route path="/chat/:chatId" element={<ChatPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/my-profile" element={<MyProfilePage />} />
+        <Route path="/saved-addresses" element={<SavedAddressesPage />} />
+        <Route path="/my-requests" element={<MyRequestsPage />} />
+        <Route path="/review-order/:orderId" element={<ReviewOrderPage />} />
+        <Route path="/my-reviews" element={<ReviewListPage />} />
+        <Route path="/help" element={<HelpSupport />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ORDER_STATUS, PAYMENT_STATUS, SCRAP_CATEGORIES } from '../config/constants.js';
+import { ORDER_STATUS, PAYMENT_STATUS, SCRAP_CATEGORIES, ORDER_TYPES } from '../config/constants.js';
 
 const orderSchema = new mongoose.Schema({
   user: {
@@ -11,6 +11,21 @@ const orderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Scrapper',
     default: null
+  },
+  orderType: {
+    type: String,
+    enum: Object.values(ORDER_TYPES),
+    default: ORDER_TYPES.SCRAP_SELL,
+    index: true
+  },
+  serviceDetails: {
+    serviceType: String,
+    description: String
+  },
+  serviceFee: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   review: {
     type: mongoose.Schema.Types.ObjectId,
@@ -126,6 +141,7 @@ orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ scrapper: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ paymentStatus: 1 });
+orderSchema.index({ orderType: 1 });
 
 const Order = mongoose.model('Order', orderSchema);
 

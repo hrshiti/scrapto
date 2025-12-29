@@ -1,6 +1,13 @@
 import mongoose from 'mongoose';
+import { PRICE_TYPES } from '../config/constants.js';
 
 const priceSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: Object.values(PRICE_TYPES),
+    default: PRICE_TYPES.MATERIAL,
+    index: true
+  },
   category: {
     type: String,
     required: [true, 'Category is required'],
@@ -9,8 +16,13 @@ const priceSchema = new mongoose.Schema({
   },
   pricePerKg: {
     type: Number,
-    required: [true, 'Price per kg is required'],
-    min: [0, 'Price cannot be negative']
+    min: [0, 'Price cannot be negative'],
+    default: 0
+  },
+  price: {
+    type: Number, // Generic price field for services (Fixed Price) or alternate units
+    min: [0, 'Price cannot be negative'],
+    default: 0
   },
   regionCode: {
     type: String,
@@ -40,13 +52,14 @@ const priceSchema = new mongoose.Schema({
 });
 
 // Compound index for efficient queries
-priceSchema.index({ category: 1, regionCode: 1, effectiveDate: -1, isActive: 1 });
+priceSchema.index({ type: 1, category: 1, regionCode: 1, effectiveDate: -1, isActive: 1 });
 priceSchema.index({ regionCode: 1, isActive: 1 });
 
 // Get current active price for a category and region
-priceSchema.statics.getCurrentPrice = async function(category, regionCode = 'IN-DL') {
+priceSchema.statics.getCurrentPrice = async function (category, regionCode = 'IN-DL', type = PRICE_TYPES.MATERIAL) {
   const price = await this.findOne({
     category,
+    type,
     regionCode,
     isActive: true,
     effectiveDate: { $lte: new Date() }
@@ -56,8 +69,9 @@ priceSchema.statics.getCurrentPrice = async function(category, regionCode = 'IN-
 };
 
 // Get all active prices for a region
-priceSchema.statics.getActivePrices = async function(regionCode = 'IN-DL') {
+priceSchema.statics.getActivePrices = async function (regionCode = 'IN-DL', type = PRICE_TYPES.MATERIAL) {
   const prices = await this.find({
+    type,
     regionCode,
     isActive: true,
     effectiveDate: { $lte: new Date() }

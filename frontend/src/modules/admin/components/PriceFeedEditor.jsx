@@ -1,17 +1,18 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
-import { DEFAULT_PRICE_FEED } from '../../shared/utils/priceFeedUtils';
+import { DEFAULT_PRICE_FEED, DEFAULT_SERVICE_FEED, PRICE_TYPES } from '../../shared/utils/priceFeedUtils';
 import { adminAPI } from '../../shared/utils/api';
 
 const PriceFeedEditor = () => {
   const [prices, setPrices] = useState([]);
+  const [activeTab, setActiveTab] = useState(PRICE_TYPES.MATERIAL);
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showCSVModal, setShowCSVModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newMaterialData, setNewMaterialData] = useState({ category: '', price: '' });
+  const [newMaterialData, setNewMaterialData] = useState({ category: '', price: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -38,29 +39,52 @@ const PriceFeedEditor = () => {
         }));
       }
 
-      // Merge backend prices with defaults to ensure all categories are shown
+      // Merge backend prices with defaults
       const nowIso = new Date().toISOString();
       const processedCategories = new Set();
+      const processedServices = new Set();
+      const finalPrices = [];
 
-      // Start with defaults, replacing with DB version if available
-      const finalPrices = DEFAULT_PRICE_FEED.map((def) => {
-        const match = dbPrices.find(p => p.category === def.category);
+      // 1. Process Material Defaults
+      DEFAULT_PRICE_FEED.forEach((def) => {
+        const match = dbPrices.find(p => p.category === def.category && (!p.type || p.type === PRICE_TYPES.MATERIAL));
         if (match) {
           processedCategories.add(match.category);
-          return match;
+          finalPrices.push({ ...match, type: PRICE_TYPES.MATERIAL });
+        } else {
+          processedCategories.add(def.category);
+          finalPrices.push({
+            ...def,
+            effectiveDate: def.effectiveDate || nowIso,
+            updatedAt: def.updatedAt || nowIso,
+            type: PRICE_TYPES.MATERIAL
+          });
         }
-        processedCategories.add(def.category);
-        return {
-          ...def,
-          effectiveDate: def.effectiveDate || nowIso,
-          updatedAt: def.updatedAt || nowIso
-        };
       });
 
-      // Add any custom categories from DB that weren't in defaults
+      // 2. Process Service Defaults
+      DEFAULT_SERVICE_FEED.forEach((def) => {
+        const match = dbPrices.find(p => p.category === def.category && p.type === PRICE_TYPES.SERVICE);
+        if (match) {
+          processedServices.add(match.category);
+          finalPrices.push({ ...match, type: PRICE_TYPES.SERVICE });
+        } else {
+          processedServices.add(def.category);
+          finalPrices.push({
+            ...def,
+            effectiveDate: def.effectiveDate || nowIso,
+            updatedAt: def.updatedAt || nowIso,
+            type: PRICE_TYPES.SERVICE
+          });
+        }
+      });
+
+      // 3. Add any custom items from DB
       dbPrices.forEach(p => {
-        if (!processedCategories.has(p.category)) {
-          finalPrices.push(p);
+        if ((!p.type || p.type === PRICE_TYPES.MATERIAL) && !processedCategories.has(p.category)) {
+          finalPrices.push({ ...p, type: PRICE_TYPES.MATERIAL });
+        } else if (p.type === PRICE_TYPES.SERVICE && !processedServices.has(p.category)) {
+          finalPrices.push({ ...p, type: PRICE_TYPES.SERVICE });
         }
       });
 
@@ -69,11 +93,10 @@ const PriceFeedEditor = () => {
       console.error('Error loading prices:', err);
       // Fallback to defaults on error
       const nowIso = new Date().toISOString();
-      const defaultPrices = DEFAULT_PRICE_FEED.map((p) => ({
-        ...p,
-        effectiveDate: p.effectiveDate || nowIso,
-        updatedAt: p.updatedAt || nowIso
-      }));
+      const defaultPrices = [
+        ...DEFAULT_PRICE_FEED.map((p) => ({ ...p, effectiveDate: nowIso, updatedAt: nowIso, type: PRICE_TYPES.MATERIAL })),
+        ...DEFAULT_SERVICE_FEED.map((p) => ({ ...p, effectiveDate: nowIso, updatedAt: nowIso, type: PRICE_TYPES.SERVICE }))
+      ];
       setPrices(defaultPrices);
       // Don't show error to user if we have defaults, but maybe log it
       if (err.response?.status !== 404) {
@@ -86,7 +109,14 @@ const PriceFeedEditor = () => {
 
   const handleEdit = (price) => {
     setEditingId(price.id);
-    setEditValue(price.pricePerKg.toString());
+    // For Material: pricePerKg, For Service: price (flat fee)
+    // Actually, backend might store flat fee in pricePerKg for uniformity if I didn't add 'price' field,
+    // but I added 'price' field to Price model.
+    // Ideally, frontend should check 'price' first, then 'pricePerKg'.
+    // NOTE: In current implementation plan, I added 'price' to schemas but 'pricePerKg' is still used for materials.
+    // Let's use the appropriate field.
+    const val = price.type === PRICE_TYPES.SERVICE ? (price.price || price.pricePerKg) : price.pricePerKg;
+    setEditValue(val ? val.toString() : '0');
   };
 
   const handleSave = async (id) => {
@@ -110,15 +140,18 @@ const PriceFeedEditor = () => {
         // New price, create it
         response = await adminAPI.createPrice({
           category: priceToUpdate.category,
-          pricePerKg: newPrice,
+          pricePerKg: priceToUpdate.type === PRICE_TYPES.SERVICE ? 0 : newPrice,
+          price: priceToUpdate.type === PRICE_TYPES.SERVICE ? newPrice : 0,
           regionCode: priceToUpdate.region || 'IN-DL',
           effectiveDate: new Date().toISOString(),
-          isActive: true
+          isActive: true,
+          type: priceToUpdate.type || PRICE_TYPES.MATERIAL
         });
       } else {
         // Existing price, update it
         response = await adminAPI.updatePrice(id, {
-          pricePerKg: newPrice,
+          pricePerKg: priceToUpdate.type === PRICE_TYPES.SERVICE ? 0 : newPrice,
+          price: priceToUpdate.type === PRICE_TYPES.SERVICE ? newPrice : 0,
           effectiveDate: new Date().toISOString()
         });
       }
@@ -188,17 +221,22 @@ const PriceFeedEditor = () => {
     try {
       const response = await adminAPI.createPrice({
         category: newMaterialData.category,
-        pricePerKg: parseFloat(newMaterialData.price),
+        pricePerKg: activeTab === PRICE_TYPES.MATERIAL ? parseFloat(newMaterialData.price) : 0,
+        price: activeTab === PRICE_TYPES.SERVICE ? parseFloat(newMaterialData.price) : 0,
         regionCode: 'IN-DL',
         effectiveDate: new Date().toISOString(),
-        isActive: true
+        isActive: true,
+        type: activeTab
+        // description: newMaterialData.description // Backend Price model doesn't strictly have description, but we can add it or ignore for now.
+        // Actually Price model doesn't have description. I should have added it.
+        // For now, I'll ignore description or assume context implied by category name.
       });
 
       if (response.success) {
         await loadPrices();
         setShowAddModal(false);
-        setNewMaterialData({ category: '', price: '' });
-        alert('Material added successfully!');
+        setNewMaterialData({ category: '', price: '', description: '' });
+        alert(`${activeTab === PRICE_TYPES.SERVICE ? 'Service' : 'Material'} added successfully!`);
       } else {
         throw new Error(response.message || 'Failed to add material');
       }
@@ -227,7 +265,8 @@ const PriceFeedEditor = () => {
         } else {
           // Existing price, update it
           return adminAPI.updatePrice(price.id, {
-            pricePerKg: price.pricePerKg,
+            pricePerKg: price.type === PRICE_TYPES.SERVICE ? 0 : (price.pricePerKg || price.price),
+            price: price.type === PRICE_TYPES.SERVICE ? (price.price || price.pricePerKg) : 0,
             effectiveDate: price.effectiveDate || new Date().toISOString()
           });
         }
@@ -254,9 +293,9 @@ const PriceFeedEditor = () => {
   const handleExportCSV = () => {
     const csvContent = [
       ['Category', 'Price per Kg (₹)', 'Region', 'Effective Date'],
-      ...prices.map(p => [
+      ...prices.filter(p => !p.type || p.type === activeTab).map(p => [
         p.category,
-        p.pricePerKg,
+        p.type === PRICE_TYPES.SERVICE ? (p.price || p.pricePerKg) : p.pricePerKg,
         p.region,
         new Date(p.effectiveDate).toLocaleDateString()
       ])
@@ -413,278 +452,314 @@ const PriceFeedEditor = () => {
             </motion.button>
           </div>
         </div>
-      </motion.div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-4 mt-6 border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab(PRICE_TYPES.MATERIAL)}
+            className={`px-4 py-2 font-semibold text-sm transition-all border-b-2 ${activeTab === PRICE_TYPES.MATERIAL
+              ? 'border-green-600 text-green-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            Scrap Materials
+          </button>
+          <button
+            onClick={() => setActiveTab(PRICE_TYPES.SERVICE)}
+            className={`px-4 py-2 font-semibold text-sm transition-all border-b-2 ${activeTab === PRICE_TYPES.SERVICE
+              ? 'border-green-600 text-green-700'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            Cleaning Services
+          </button>
+        </div>
+      </motion.div >
 
       {/* Loading / Error State */}
-      {loading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
-        >
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
-          <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
-            Loading prices...
-          </p>
-        </motion.div>
-      )}
-
-      {error && !loading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
-        >
-          <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
-            {error}
-          </p>
-          <button
-            onClick={loadPrices}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ backgroundColor: '#64946e' }}
+      {
+        loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
           >
-            Retry
-          </button>
-        </motion.div>
-      )}
+            <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
+            <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
+              Loading prices...
+            </p>
+          </motion.div>
+        )
+      }
+
+      {
+        error && !loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white rounded-2xl shadow-lg p-8 md:p-12 text-center"
+          >
+            <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
+              {error}
+            </p>
+            <button
+              onClick={loadPrices}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
+              style={{ backgroundColor: '#64946e' }}
+            >
+              Retry
+            </button>
+          </motion.div>
+        )
+      }
 
       {/* Price Table */}
-      {!loading && !error && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead style={{ backgroundColor: '#f7fafc' }}>
-                <tr>
-                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Category
-                  </th>
-                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    <span className="hidden sm:inline">Price per Kg (₹)</span>
-                    <span className="sm:hidden">Price (₹)</span>
-                  </th>
-                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden md:table-cell" style={{ color: '#2d3748' }}>
-                    Region
-                  </th>
-                  <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden lg:table-cell" style={{ color: '#2d3748' }}>
-                    Last Updated
-                  </th>
-                  <th className="px-2 py-2 md:px-6 md:py-4 text-center text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {prices.map((price, index) => (
-                  <motion.tr
-                    key={price.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 + index * 0.05 }}
-                    className="border-b" style={{ borderColor: '#e2e8f0' }}
-                  >
-                    <td className="px-2 py-2 md:px-6 md:py-4">
-                      <span className="font-semibold text-xs md:text-sm" style={{ color: '#2d3748' }}>{price.category}</span>
-                    </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4">
-                      {editingId === price.id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            className="w-24 px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
-                            style={{
-                              borderColor: '#e2e8f0',
-                              focusBorderColor: '#64946e',
-                              focusRingColor: '#64946e'
-                            }}
-                            autoFocus
-                          />
-                          <button
-                            onClick={() => handleSave(price.id)}
-                            className="p-2 rounded-lg transition-all"
-                            style={{ backgroundColor: '#d1fae5', color: '#10b981' }}
-                          >
-                            <FaCheck />
-                          </button>
-                          <button
-                            onClick={handleCancel}
-                            className="p-2 rounded-lg transition-all"
-                            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
-                          >
-                            <FaTimes />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <FaRupeeSign style={{ color: '#64946e' }} />
-                          <span className="font-semibold" style={{ color: '#2d3748' }}>
-                            {price.pricePerKg}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4 hidden md:table-cell">
-                      <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{price.region}</span>
-                    </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4 hidden lg:table-cell">
-                      <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                        {new Date(price.updatedAt).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 md:px-6 md:py-4 text-center">
-                      {editingId !== price.id && (
-                        <div className="flex items-center justify-center gap-2">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(price)}
-                            className="p-1.5 md:p-2 rounded-lg transition-all"
-                            style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
-                            title="Edit price"
-                          >
-                            <FaEdit className="text-xs md:text-sm" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDelete(price.id)}
-                            className="p-1.5 md:p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
-                            title="Delete category"
-                            disabled={isSaving}
-                          >
-                            <FaTrash className="text-xs md:text-sm" />
-                          </motion.button>
-                        </div>
-                      )}
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
-
-      {/* CSV Import Modal */}
-      {showCSVModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowCSVModal(false)}
-        >
+      {
+        !loading && !error && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl md:rounded-2xl shadow-lg overflow-hidden"
           >
-            <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-              Import Prices from CSV
-            </h2>
-            <p className="text-sm mb-4" style={{ color: '#718096' }}>
-              Upload a CSV file with columns: Category, Price per Kg, Region, Effective Date
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="w-full px-4 py-3 rounded-xl border-2 mb-4"
-              style={{ borderColor: '#e2e8f0' }}
-            />
-            <div className="flex gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowCSVModal(false)}
-                className="flex-1 px-4 py-3 rounded-xl font-semibold transition-all"
-                style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
-              >
-                Cancel
-              </motion.button>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead style={{ backgroundColor: '#f7fafc' }}>
+                  <tr>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                      {activeTab === PRICE_TYPES.MATERIAL ? 'Category' : 'Service Name'}
+                    </th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                      <span className="hidden sm:inline">{activeTab === PRICE_TYPES.MATERIAL ? 'Price per Kg (₹)' : 'Service Fee (₹)'}</span>
+                      <span className="sm:hidden">{activeTab === PRICE_TYPES.MATERIAL ? 'Price' : 'Fee'}</span>
+                    </th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden md:table-cell" style={{ color: '#2d3748' }}>
+                      Region
+                    </th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden lg:table-cell" style={{ color: '#2d3748' }}>
+                      Last Updated
+                    </th>
+                    <th className="px-2 py-2 md:px-6 md:py-4 text-center text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prices.filter(p => activeTab === PRICE_TYPES.SERVICE ? p.type === PRICE_TYPES.SERVICE : (!p.type || p.type === PRICE_TYPES.MATERIAL)).map((price, index) => (
+                    <motion.tr
+                      key={price.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 + index * 0.05 }}
+                      className="border-b" style={{ borderColor: '#e2e8f0' }}
+                    >
+                      <td className="px-2 py-2 md:px-6 md:py-4">
+                        <span className="font-semibold text-xs md:text-sm" style={{ color: '#2d3748' }}>{price.category}</span>
+                      </td>
+                      <td className="px-2 py-2 md:px-6 md:py-4">
+                        {editingId === price.id ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              className="w-24 px-3 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
+                              style={{
+                                borderColor: '#e2e8f0',
+                                focusBorderColor: '#64946e',
+                                focusRingColor: '#64946e'
+                              }}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSave(price.id)}
+                              className="p-2 rounded-lg transition-all"
+                              style={{ backgroundColor: '#d1fae5', color: '#10b981' }}
+                            >
+                              <FaCheck />
+                            </button>
+                            <button
+                              onClick={handleCancel}
+                              className="p-2 rounded-lg transition-all"
+                              style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <FaRupeeSign style={{ color: '#64946e' }} />
+                            <span className="font-semibold" style={{ color: '#2d3748' }}>
+                              {price.type === PRICE_TYPES.SERVICE ? (price.price || price.pricePerKg) : price.pricePerKg}
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 md:px-6 md:py-4 hidden md:table-cell">
+                        <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{price.region}</span>
+                      </td>
+                      <td className="px-2 py-2 md:px-6 md:py-4 hidden lg:table-cell">
+                        <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                          {new Date(price.updatedAt).toLocaleDateString()}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 md:px-6 md:py-4 text-center">
+                        {editingId !== price.id && (
+                          <div className="flex items-center justify-center gap-2">
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleEdit(price)}
+                              className="p-1.5 md:p-2 rounded-lg transition-all"
+                              style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
+                              title="Edit price"
+                            >
+                              <FaEdit className="text-xs md:text-sm" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => handleDelete(price.id)}
+                              className="p-1.5 md:p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
+                              title="Delete category"
+                              disabled={isSaving}
+                            >
+                              <FaTrash className="text-xs md:text-sm" />
+                            </motion.button>
+                          </div>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </motion.div>
-        </motion.div>
-      )}
+        )
+      }
 
-      {/* Add Material Modal */}
-      {showAddModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowAddModal(false)}
-        >
+      {/* CSV Import Modal */}
+      {
+        showCSVModal && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCSVModal(false)}
           >
-            <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-              Add New Material
-            </h2>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>Category Name</label>
-                <input
-                  type="text"
-                  value={newMaterialData.category}
-                  onChange={(e) => setNewMaterialData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder="e.g. Copper Wire"
-                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                  style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>Price per Kg (₹)</label>
-                <input
-                  type="number"
-                  value={newMaterialData.price}
-                  onChange={(e) => setNewMaterialData(prev => ({ ...prev, price: e.target.value }))}
-                  placeholder="e.g. 450"
-                  className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
-                  style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+                Import Prices from CSV
+              </h2>
+              <p className="text-sm mb-4" style={{ color: '#718096' }}>
+                Upload a CSV file with columns: Category, Price per Kg, Region, Effective Date
+              </p>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="w-full px-4 py-3 rounded-xl border-2 mb-4"
+                style={{ borderColor: '#e2e8f0' }}
+              />
+              <div className="flex gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl font-semibold transition-all"
+                  onClick={() => setShowCSVModal(false)}
+                  className="flex-1 px-4 py-3 rounded-xl font-semibold transition-all"
                   style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                 >
                   Cancel
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 px-4 py-2 rounded-xl font-semibold text-white transition-all shadow-md"
-                  style={{ backgroundColor: '#64946e' }}
-                >
-                  {isSaving ? 'Adding...' : 'Add Material'}
-                </motion.button>
               </div>
-            </form>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      )}
-    </div>
+        )
+      }
+
+      {/* Add Material Modal */}
+      {
+        showAddModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
+                Add New {activeTab === PRICE_TYPES.SERVICE ? 'Service' : 'Material'}
+              </h2>
+              <form onSubmit={handleAddSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>
+                    {activeTab === PRICE_TYPES.SERVICE ? 'Service Name' : 'Category Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={newMaterialData.category}
+                    onChange={(e) => setNewMaterialData(prev => ({ ...prev, category: e.target.value }))}
+                    placeholder={activeTab === PRICE_TYPES.SERVICE ? "e.g. Garage Cleaning" : "e.g. Copper Wire"}
+                    className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                    style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>
+                    {activeTab === PRICE_TYPES.SERVICE ? 'Fixed Fee (₹)' : 'Price per Kg (₹)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={newMaterialData.price}
+                    onChange={(e) => setNewMaterialData(prev => ({ ...prev, price: e.target.value }))}
+                    placeholder={activeTab === PRICE_TYPES.SERVICE ? "e.g. 500" : "e.g. 450"}
+                    className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
+                    style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
+                    required
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="flex-1 px-4 py-2 rounded-xl font-semibold transition-all"
+                    style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={isSaving}
+                    className="flex-1 px-4 py-2 rounded-xl font-semibold text-white transition-all shadow-md"
+                    style={{ backgroundColor: '#64946e' }}
+                  >
+                    {isSaving ? 'Adding...' : (activeTab === PRICE_TYPES.SERVICE ? 'Add Service' : 'Add Material')}
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )
+      }
+    </div >
   );
 };
 

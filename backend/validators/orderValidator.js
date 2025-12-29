@@ -1,8 +1,9 @@
 import { body } from 'express-validator';
-import { SCRAP_CATEGORIES, ORDER_STATUS } from '../config/constants.js';
+import { SCRAP_CATEGORIES, ORDER_STATUS, ORDER_TYPES } from '../config/constants.js';
 
 export const createOrderValidator = [
   body('scrapItems')
+    .if((value, { req }) => req.body.orderType !== ORDER_TYPES.CLEANING_SERVICE)
     .isArray({ min: 1 })
     .withMessage('At least one scrap item is required')
     .custom((items) => {

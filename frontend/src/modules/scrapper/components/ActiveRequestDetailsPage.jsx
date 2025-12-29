@@ -71,10 +71,14 @@ const ActiveRequestDetailsPage = () => {
           const mappedRequest = {
             id: order._id || order.id,
             _id: order._id || order.id,
+            orderType: order.orderType || 'scrap_sell',
+            serviceDetails: order.serviceDetails,
             userName: order.user?.name || 'User',
             userPhone: order.user?.phone || '',
             userEmail: order.user?.email || '',
-            scrapType: order.scrapItems?.map(item => item.category).join(', ') || 'Scrap',
+            scrapType: order.orderType === 'cleaning_service'
+              ? (order.serviceDetails?.serviceType || 'Cleaning Service')
+              : (order.scrapItems?.map(item => item.category).join(', ') || 'Scrap'),
             weight: order.totalWeight,
             pickupSlot: order.pickupSlot || null,
             preferredTime: order.preferredTime || null,
@@ -90,7 +94,9 @@ const ActiveRequestDetailsPage = () => {
               lat: order.pickupAddress?.coordinates?.lat || 19.0760,
               lng: order.pickupAddress?.coordinates?.lng || 72.8777
             },
-            estimatedEarnings: `₹${order.totalAmount || 0}`,
+            estimatedEarnings: order.orderType === 'cleaning_service'
+              ? `₹${order.serviceFee || 0}`
+              : `₹${order.totalAmount || 0}`,
             status: order.status,
             paymentStatus: order.paymentStatus,
             // Backend fields
@@ -108,7 +114,8 @@ const ActiveRequestDetailsPage = () => {
           if (order.status === 'in_progress' || order.status === 'completed') {
             setIsPickedUp(true);
             setPaymentStatus(order.paymentStatus || 'pending');
-            setFinalAmount(`₹${order.totalAmount || 0}`);
+            const amount = order.orderType === 'cleaning_service' ? (order.serviceFee || 0) : (order.totalAmount || 0);
+            setFinalAmount(`₹${amount}`);
             setShowPaymentInput(order.paymentStatus === 'pending');
           }
 
@@ -162,10 +169,14 @@ const ActiveRequestDetailsPage = () => {
           const mappedRequest = {
             id: order._id || order.id,
             _id: order._id || order.id,
+            orderType: order.orderType || 'scrap_sell',
+            serviceDetails: order.serviceDetails,
             userName: order.user?.name || 'User',
             userPhone: order.user?.phone || '',
             userEmail: order.user?.email || '',
-            scrapType: order.scrapItems?.map(item => item.category).join(', ') || 'Scrap',
+            scrapType: order.orderType === 'cleaning_service'
+              ? (order.serviceDetails?.serviceType || 'Cleaning Service')
+              : (order.scrapItems?.map(item => item.category).join(', ') || 'Scrap'),
             weight: order.totalWeight,
             pickupSlot: order.pickupSlot || null,
             preferredTime: order.preferredTime || null,
@@ -181,7 +192,9 @@ const ActiveRequestDetailsPage = () => {
               lat: order.pickupAddress?.coordinates?.lat || 19.0760,
               lng: order.pickupAddress?.coordinates?.lng || 72.8777
             },
-            estimatedEarnings: `₹${order.totalAmount || 0}`,
+            estimatedEarnings: order.orderType === 'cleaning_service'
+              ? `₹${order.serviceFee || 0}`
+              : `₹${order.totalAmount || 0}`,
             status: order.status,
             paymentStatus: order.paymentStatus
           };
@@ -192,7 +205,8 @@ const ActiveRequestDetailsPage = () => {
           if (order.status === 'in_progress' || order.status === 'completed') {
             setIsPickedUp(true);
             setPaymentStatus(order.paymentStatus || 'pending');
-            setFinalAmount(`₹${order.totalAmount || 0}`);
+            const amount = order.orderType === 'cleaning_service' ? (order.serviceFee || 0) : (order.totalAmount || 0);
+            setFinalAmount(`₹${amount}`);
             setShowPaymentInput(order.paymentStatus === 'pending');
           }
         }
@@ -322,17 +336,25 @@ const ActiveRequestDetailsPage = () => {
 
   const handleScrapPickedUp = () => {
     setConfirmAction('pickup');
-    setConfirmMessage('Have you picked up the scrap from the customer?');
+    const isService = requestData.orderType === 'cleaning_service';
+    setConfirmMessage(isService
+      ? 'Have you arrived and started the cleaning service?'
+      : 'Have you picked up the scrap from the customer?'
+    );
     setShowConfirmModal(true);
   };
 
   const handlePaymentMade = () => {
     if (!paidAmount || parseFloat(paidAmount) <= 0) {
-      alert('Please enter a valid payment amount');
+      alert('Please enter a valid amount');
       return;
     }
     setConfirmAction('payment');
-    setConfirmMessage(`Have you paid ₹${paidAmount} to the customer?`);
+    const isService = requestData.orderType === 'cleaning_service';
+    setConfirmMessage(isService
+      ? `Have you received ₹${paidAmount} from the customer?`
+      : `Have you paid ₹${paidAmount} to the customer?`
+    );
     setShowConfirmModal(true);
   };
 
@@ -351,17 +373,18 @@ const ActiveRequestDetailsPage = () => {
 
     try {
       if (confirmAction === 'pickup') {
-        // Update order status to in_progress
         const response = await orderAPI.updateStatus(orderId, 'in_progress');
 
         if (response.success) {
           setIsPickedUp(true);
-          const amount = requestData.estimatedEarnings || '₹450';
+          const isService = requestData.orderType === 'cleaning_service';
+          const amount = isService ? (requestData.estimatedEarnings || '₹0') : (requestData.estimatedEarnings || '₹450');
+          // Strip currency symbol for state
           setFinalAmount(amount);
+
           setPaymentStatus('pending');
           setShowPaymentInput(true);
 
-          // Update local state
           setRequestData({
             ...requestData,
             status: 'in_progress',
@@ -394,46 +417,6 @@ const ActiveRequestDetailsPage = () => {
 
         if (response.success) {
           setPaymentStatus('completed');
-
-          // Earnings are now calculated from backend (Order model)
-          // No need to update localStorage - backend will calculate from completed orders
-
-          // Keep localStorage update as fallback for completed orders display (temporary)
-          const completedOrder = {
-            id: requestData.id,
-            _id: requestData._id,
-            orderId: `ORD-${Date.now()}`,
-            userName: requestData.userName,
-            userPhone: requestData.userPhone,
-            scrapType: requestData.scrapType,
-            images: requestData.images || [],
-            location: requestData.location,
-            estimatedEarnings: requestData.estimatedEarnings,
-            finalAmount: finalAmount || requestData.estimatedEarnings,
-            paidAmount: paidAmount || '0',
-            status: 'completed',
-            completedAt: new Date().toISOString()
-          };
-
-          const existingOrders = JSON.parse(localStorage.getItem('scrapperCompletedOrders') || '[]');
-          const wasFirstPickup = existingOrders.length === 0;
-          existingOrders.push(completedOrder);
-          localStorage.setItem('scrapperCompletedOrders', JSON.stringify(existingOrders));
-
-          // Process milestones
-          const scrapperUser = JSON.parse(localStorage.getItem('scrapperUser') || '{}');
-          if (scrapperUser.phone || scrapperUser.id) {
-            if (wasFirstPickup) {
-              try {
-                checkAndProcessMilestone(scrapperUser.phone || scrapperUser.id, 'scrapper', 'firstPickup');
-              } catch (error) {
-                console.error('Error processing milestone:', error);
-              }
-            }
-          }
-
-          // Redirect to dashboard after delay
-          // The dashboard will show any remaining active requests
           setTimeout(() => {
             navigate('/scrapper', { replace: true });
           }, 1500);
@@ -459,15 +442,6 @@ const ActiveRequestDetailsPage = () => {
     setConfirmAction(null);
     setConfirmMessage('');
   };
-
-  // Create custom icons
-
-
-  // Calculate route path with intermediate points for better visualization
-
-
-  // Calculate center for map
-
 
   return (
     <motion.div
@@ -542,8 +516,6 @@ const ActiveRequestDetailsPage = () => {
         )}
       </div>
 
-
-
       {/* Map Container - Full Screen */}
       <div className="w-full h-screen">
         <ScrapperMap
@@ -553,7 +525,6 @@ const ActiveRequestDetailsPage = () => {
           userName={requestData?.userName}
         />
       </div>
-
 
       {/* Payment Page - Full Screen (when payment pending) */}
       {
@@ -583,7 +554,9 @@ const ActiveRequestDetailsPage = () => {
                   <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold" style={{ color: '#e5e7eb' }}>Make Payment</h1>
+              <h1 className="text-xl font-bold" style={{ color: '#e5e7eb' }}>
+                {requestData.orderType === 'cleaning_service' ? 'Collect Payment' : 'Make Payment'}
+              </h1>
             </div>
 
             {/* Payment Content */}
@@ -610,11 +583,13 @@ const ActiveRequestDetailsPage = () => {
 
                 {/* Payment Input */}
                 <div className="mb-6 p-6 rounded-2xl shadow-lg" style={{ backgroundColor: '#020617' }}>
-                  <h2 className="text-lg font-bold mb-4" style={{ color: '#e5e7eb' }}>Enter Payment Amount</h2>
+                  <h2 className="text-lg font-bold mb-4" style={{ color: '#e5e7eb' }}>
+                    {requestData.orderType === 'cleaning_service' ? 'Enter Amount Received' : 'Enter Amount Paid'}
+                  </h2>
 
                   <div className="mb-4">
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>
-                      Amount Paid (₹)
+                      Amount (₹)
                     </label>
                     <input
                       type="number"
@@ -633,7 +608,10 @@ const ActiveRequestDetailsPage = () => {
                     />
                     {paidAmount && (
                       <p className="text-sm mt-2 text-center" style={{ color: '#9ca3af' }}>
-                        You will pay ₹{parseFloat(paidAmount) || 0} to the customer
+                        {requestData.orderType === 'cleaning_service'
+                          ? `You collected ₹${parseFloat(paidAmount) || 0} from the customer`
+                          : `You will pay ₹${parseFloat(paidAmount) || 0} to the customer`
+                        }
                       </p>
                     )}
                   </div>
@@ -713,7 +691,9 @@ const ActiveRequestDetailsPage = () => {
                   {/* Scrap Images */}
                   {requestData.images && requestData.images.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold mb-2" style={{ color: '#e5e7eb' }}>Scrap Images</p>
+                      <p className="text-xs font-semibold mb-2" style={{ color: '#e5e7eb' }}>
+                        {requestData.orderType === 'cleaning_service' ? 'Area Images' : 'Scrap Images'}
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
                         {requestData.images.slice(0, 6).map((image, idx) => (
                           <motion.div
@@ -745,7 +725,6 @@ const ActiveRequestDetailsPage = () => {
                   )}
                 </div>
 
-                {/* Payment Made Status - Step 3 */}
                 {/* Payment Made Status - Step 3 */
                   // Show this if payment is done BUT order is not yet completed
                 }
@@ -753,10 +732,15 @@ const ActiveRequestDetailsPage = () => {
                   <div className="mb-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(22, 163, 74, 0.15)' }}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold" style={{ color: '#bbf7d0' }}>Payment Status</span>
-                      <span className="text-sm font-bold" style={{ color: '#4ade80' }}>Paid ✓</span>
+                      <span className="text-sm font-bold" style={{ color: '#4ade80' }}>
+                        {requestData.orderType === 'cleaning_service' ? 'Collected ✓' : 'Paid ✓'}
+                      </span>
                     </div>
                     <p className="text-xs mb-3" style={{ color: '#e5e7eb' }}>
-                      Payment of ₹{paidAmount || requestData?.paidAmount || '0'} made successfully to customer
+                      {requestData.orderType === 'cleaning_service'
+                        ? `Payment of ₹${paidAmount || requestData?.paidAmount || '0'} collected successfully`
+                        : `Payment of ₹${paidAmount || requestData?.paidAmount || '0'} made successfully to customer`
+                      }
                     </p>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -799,52 +783,40 @@ const ActiveRequestDetailsPage = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleScrapPickedUp}
-                    className="w-full py-4 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2 mb-3"
-                    style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
+                    className="w-full mb-3 py-3 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2"
+                    style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#ffffff' }}>
+                      <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Scrap Picked Up
+                    {requestData.orderType === 'cleaning_service' ? 'Start Service' : 'Pickup Scrap'}
                   </motion.button>
-                ) : (
-                  <div
-                    className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 mb-3"
-                    style={{ backgroundColor: 'rgba(22, 163, 74, 0.2)', color: '#bbf7d0' }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    Scrap Picked Up Successfully
-                  </div>
-                )}
+                ) : null}
 
-                {/* Contact Buttons */}
                 <div className="grid grid-cols-2 gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleCall}
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl shadow-sm"
-                    style={{ backgroundColor: '#022c22', color: '#6ee7b7' }}
+                    className="py-3 rounded-xl font-semibold text-sm shadow-md flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'rgba(31, 41, 55, 1)', color: '#f9fafb' }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22 16.92V20C22 20.5304 21.7893 21.0391 21.4142 21.4142C21.0391 21.7893 20.5304 22 20 22H4C3.46957 22 2.96086 21.7893 2.58579 21.4142C2.21071 21.0391 2 20.5304 2 20V16.92C2 16.4099 2.1841 15.9196 2.52016 15.5455C2.85622 15.1714 3.30751 14.9416 3.78 14.88L7.22 14.32C7.7301 14.2441 8.2204 14.4282 8.5945 14.7642C8.9686 15.1003 9.1984 15.5516 9.26 16.02L9.72 19.46C9.78 19.93 10.01 20.38 10.35 20.72C10.69 21.06 11.14 21.29 11.61 21.35L12.39 21.46C12.86 21.52 13.31 21.29 13.65 20.95C13.99 20.61 14.22 20.16 14.28 19.69L14.74 16.25C14.8 15.78 15.03 15.33 15.37 14.99C15.71 14.65 16.16 14.42 16.63 14.36L20.07 13.8C20.5405 13.7384 21.0099 13.9682 21.3798 14.3043C21.7497 14.6404 21.9795 15.0917 22 15.5996V16.92Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M14 2L12 4L10 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#4ade80' }}>
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span className="font-semibold text-sm">Call</span>
+                    Call
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handleChat}
-                    className="flex items-center justify-center gap-2 p-3 rounded-xl shadow-sm"
-                    style={{ backgroundColor: '#0b1120', color: '#60a5fa' }}
+                    className="py-3 rounded-xl font-semibold text-sm shadow-md flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'rgba(31, 41, 55, 1)', color: '#f9fafb' }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#60a5fa' }}>
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <span className="font-semibold text-sm">Chat</span>
+                    Chat
                   </motion.button>
                 </div>
               </div>
@@ -853,69 +825,47 @@ const ActiveRequestDetailsPage = () => {
         )
       }
 
-      {/* Custom Confirmation Modal */}
+      {/* Confirmation Modal */}
       <AnimatePresence>
         {showConfirmModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-            onClick={handleCancel}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-70"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-sm rounded-2xl shadow-2xl p-6"
-              style={{ backgroundColor: '#ffffff' }}
-              onClick={(e) => e.stopPropagation()}
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-sm rounded-2xl p-6"
+              style={{ backgroundColor: '#1f2937' }}
             >
-              {/* Icon */}
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ color: '#64946e' }}>
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Message */}
-              <h3 className="text-lg font-bold text-center mb-2" style={{ color: '#2d3748' }}>
+              <h3 className="text-xl font-bold mb-4" style={{ color: '#f9fafb' }}>
                 Confirm Action
               </h3>
-              <p className="text-sm text-center mb-6" style={{ color: '#718096' }}>
+              <p className="mb-6 text-base" style={{ color: '#d1d5db' }}>
                 {confirmMessage}
               </p>
-
-              {/* Buttons */}
               <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={handleCancel}
-                  className="flex-1 py-3 rounded-xl font-semibold text-sm"
-                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
+                  className="flex-1 py-3 rounded-xl font-semibold bg-gray-700 text-white"
                 >
                   Cancel
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
                   onClick={handleConfirm}
-                  className="flex-1 py-3 rounded-xl font-semibold text-sm shadow-lg"
-                  style={{ backgroundColor: '#64946e', color: '#ffffff' }}
+                  className="flex-1 py-3 rounded-xl font-bold bg-green-500 text-gray-900"
                 >
-                  Confirm
-                </motion.button>
+                  Yes, Confirm
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div >
+    </motion.div>
   );
 };
 

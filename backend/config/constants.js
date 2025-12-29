@@ -30,13 +30,6 @@ export const SCRAP_CATEGORIES = {
   OTHER: 'other'
 };
 
-export const NOTIFICATION_TYPES = {
-  ORDER_UPDATE: 'order_update',
-  PAYMENT: 'payment',
-  SYSTEM: 'system',
-  PROMOTION: 'promotion'
-};
-
 export const FILE_TYPES = {
   IMAGE: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'],
   DOCUMENT: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
@@ -46,7 +39,29 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export const PAGINATION = {
   DEFAULT_PAGE: 1,
-  DEFAULT_LIMIT: 10,
-  MAX_LIMIT: 100
+  DEFAULT_LIMIT: 10
 };
 
+export const ORDER_TYPES = {
+  SCRAP_SELL: 'scrap_sell',
+  CLEANING_SERVICE: 'cleaning_service'
+};
+
+export const PRICE_TYPES = {
+  MATERIAL: 'material',
+  SERVICE: 'service'
+};
+
+export const SERVICE_CATEGORIES = {
+  HOME_CLEANING: 'home_cleaning',
+  OFFICE_CLEANING: 'office_cleaning',
+  DEBRIS_REMOVAL: 'debris_removal',
+  GARAGE_CLEANING: 'garage_cleaning'
+};
+
+export const NOTIFICATION_TYPES = {
+  ORDER_UPDATE: 'order_update',
+  PAYMENT: 'payment',
+  SYSTEM: 'system',
+  PROMOTION: 'promotion'
+};

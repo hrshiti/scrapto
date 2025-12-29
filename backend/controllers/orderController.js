@@ -8,22 +8,44 @@ import logger from '../utils/logger.js';
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private (User)
+// @desc    Create new order
+// @route   POST /api/orders
+// @access  Private (User)
 export const createOrder = asyncHandler(async (req, res) => {
-  const { scrapItems, pickupAddress, preferredTime, pickupSlot, images, notes } = req.body;
+  const {
+    scrapItems,
+    pickupAddress,
+    preferredTime,
+    pickupSlot,
+    images,
+    notes,
+    orderType, // New field
+    serviceDetails, // New field
+    serviceFee // New field
+  } = req.body;
   const userId = req.user.id;
 
   // Calculate totals
   let totalWeight = 0;
   let totalAmount = 0;
 
-  scrapItems.forEach(item => {
-    totalWeight += item.weight || 0;
-    totalAmount += item.total || 0;
-  });
+  if (orderType === 'cleaning_service') {
+    // For service, amount is fixed fee
+    totalAmount = serviceFee || 0;
+    // totalWeight stays 0
+  } else {
+    // Default scrap logic
+    if (scrapItems && Array.isArray(scrapItems)) {
+      scrapItems.forEach(item => {
+        totalWeight += item.weight || 0;
+        totalAmount += item.total || 0;
+      });
+    }
+  }
 
-  const order = await Order.create({
+  const orderPayload = {
     user: userId,
-    scrapItems,
+    scrapItems: scrapItems || [],
     totalWeight,
     totalAmount,
     pickupAddress,
@@ -33,12 +55,19 @@ export const createOrder = asyncHandler(async (req, res) => {
     notes: notes || '',
     assignmentStatus: 'unassigned',
     status: ORDER_STATUS.PENDING
-  });
+  };
+
+  // Add new fields if present
+  if (orderType) orderPayload.orderType = orderType;
+  if (serviceDetails) orderPayload.serviceDetails = serviceDetails;
+  if (serviceFee) orderPayload.serviceFee = serviceFee;
+
+  const order = await Order.create(orderPayload);
 
   // Populate user details
   await order.populate('user', 'name phone email');
 
-  logger.info(`Order created: ${order._id} by user: ${userId}`);
+  logger.info(`Order created: ${order._id} by user: ${userId} (Type: ${order.orderType || 'scrap'})`);
 
   sendSuccess(res, 'Order created successfully', { order }, 201);
 });

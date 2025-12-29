@@ -8,11 +8,12 @@ import electronicImage from '../assets/electronicbg.png';
 
 import { useState, useEffect } from 'react';
 import { publicAPI } from '../../shared/utils/api';
-import { getEffectivePriceFeed } from '../../shared/utils/priceFeedUtils';
+import { getEffectivePriceFeed, getEffectiveServiceFeed, PRICE_TYPES } from '../../shared/utils/priceFeedUtils';
 
 const AllCategoriesPage = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Helper to get image based on category name
@@ -31,24 +32,53 @@ const AllCategoriesPage = () => {
       try {
         const response = await publicAPI.getPrices();
         if (response.success && response.data?.prices && response.data.prices.length > 0) {
-          const mapped = response.data.prices.map(price => ({
+          const allItems = response.data.prices;
+
+          // Filter Materials
+          const materialsRaw = allItems.filter(p => !p.type || p.type === PRICE_TYPES.MATERIAL);
+          const mappedMaterials = materialsRaw.map(price => ({
             name: price.category,
             image: getCategoryImage(price.category),
-            description: `Sell your ${price.category} scrap`
+            description: `Sell your ${price.category} scrap`,
+            type: PRICE_TYPES.MATERIAL
           }));
-          setCategories(mapped);
+          setCategories(mappedMaterials);
+
+          // Filter Services
+          const servicesRaw = allItems.filter(p => p.type === PRICE_TYPES.SERVICE);
+          const mappedServices = servicesRaw.map(price => ({
+            name: price.category,
+            price: price.price || 0,
+            image: getCategoryImage(price.category), // Using fallback image for services for now, or add specific ones
+            description: price.description || `Book ${price.category}`,
+            type: PRICE_TYPES.SERVICE
+          }));
+          setServices(mappedServices);
+
         } else {
           throw new Error('No prices from API');
         }
       } catch (error) {
         console.error('Failed to fetch categories:', error);
+        // Fallback
         const defaultFeed = getEffectivePriceFeed();
         const mapped = defaultFeed.map(item => ({
           name: item.category,
           image: getCategoryImage(item.category),
-          description: `Sell your ${item.category} scrap`
+          description: `Sell your ${item.category} scrap`,
+          type: PRICE_TYPES.MATERIAL
         }));
         setCategories(mapped);
+
+        const defaultServices = getEffectiveServiceFeed();
+        const mappedServices = defaultServices.map(item => ({
+          name: item.category,
+          price: item.price,
+          image: getCategoryImage(item.category),
+          description: item.description || `Book ${item.category}`,
+          type: PRICE_TYPES.SERVICE
+        }));
+        setServices(mappedServices);
       } finally {
         setLoading(false);
       }
@@ -56,11 +86,18 @@ const AllCategoriesPage = () => {
     fetchCategories();
   }, []);
 
-  const handleCategoryClick = (category) => {
-    // Navigate to category selection page
-    navigate('/add-scrap/category', {
-      state: { preSelectedCategory: category.name }
-    });
+  const handleCategoryClick = (item) => {
+    if (item.type === PRICE_TYPES.SERVICE) {
+      // Navigate to service booking flow
+      navigate('/book-service/details', {
+        state: { selectedService: item }
+      });
+    } else {
+      // Navigate to scrap flow
+      navigate('/add-scrap/category', {
+        state: { preSelectedCategory: item.name }
+      });
+    }
   };
 
   return (
@@ -98,49 +135,106 @@ const AllCategoriesPage = () => {
 
       {/* Categories Grid */}
       <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto pb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
-          {categories.map((category, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              whileHover={{ y: -5, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleCategoryClick(category)}
-              className="cursor-pointer"
-            >
-              <div
-                className="rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
-                style={{ backgroundColor: '#ffffff' }}
+        {/* Scrap Materials Section */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4 ml-1" style={{ color: '#2d3748' }}>Scrap Materials</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
+            {categories.map((category, index) => (
+              <motion.div
+                key={`cat-${index}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                whileHover={{ y: -5, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleCategoryClick(category)}
+                className="cursor-pointer"
               >
-                <div className="aspect-square relative overflow-hidden bg-gray-100">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover"
-                    style={{ display: 'block' }}
-                    loading="lazy"
-                  />
+                <div
+                  className="rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300"
+                  style={{ backgroundColor: '#ffffff' }}
+                >
+                  <div className="aspect-square relative overflow-hidden bg-gray-100">
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      className="w-full h-full object-cover"
+                      style={{ display: 'block' }}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <p
+                      className="text-base md:text-lg font-semibold text-center mb-1"
+                      style={{ color: '#2d3748' }}
+                    >
+                      {category.name}
+                    </p>
+                    <p
+                      className="text-xs md:text-sm text-center"
+                      style={{ color: '#718096' }}
+                    >
+                      {category.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <p
-                    className="text-base md:text-lg font-semibold text-center mb-1"
-                    style={{ color: '#2d3748' }}
-                  >
-                    {category.name}
-                  </p>
-                  <p
-                    className="text-xs md:text-sm text-center"
-                    style={{ color: '#718096' }}
-                  >
-                    {category.description}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </div>
         </div>
+
+        {/* Cleaning Services Section */}
+        {services.length > 0 && (
+          <div>
+            <h2 className="text-xl font-bold mb-4 ml-1" style={{ color: '#2d3748' }}>Cleaning Services (We Clean, You Pay)</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
+              {services.map((service, index) => (
+                <motion.div
+                  key={`srv-${index}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={{ y: -5, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleCategoryClick(service)}
+                  className="cursor-pointer"
+                >
+                  <div
+                    className="rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border-2"
+                    style={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0' }}
+                  >
+                    <div className="aspect-square relative overflow-hidden bg-gray-100">
+                      <div className="absolute inset-0 flex items-center justify-center bg-green-100">
+                        {/* Use icon or fallback if no image */}
+                        <span className="text-4xl">🧹</span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <p
+                        className="text-base md:text-lg font-bold text-center mb-1"
+                        style={{ color: '#2d3748' }}
+                      >
+                        {service.name}
+                      </p>
+                      <p
+                        className="text-sm font-bold text-center mb-1"
+                        style={{ color: '#e53e3e' }}
+                      >
+                        ₹{service.price} Fee
+                      </p>
+                      <p
+                        className="text-xs md:text-sm text-center truncate"
+                        style={{ color: '#718096' }}
+                      >
+                        {service.description}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
