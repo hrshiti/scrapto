@@ -26,6 +26,7 @@ import bannerRoutes from './routes/bannerRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import referralRoutes from './routes/referralRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
 import { initializeSocket } from './services/socketService.js';
 
 // Validate environment variables
@@ -148,6 +149,7 @@ v1Router.use('/banners', bannerRoutes);
 v1Router.use('/public', publicRoutes);
 v1Router.use('/support', supportRoutes);
 v1Router.use('/admin/referral-system', referralRoutes);
+v1Router.use('/wallet', walletRoutes);
 
 // Mount versioned routes
 app.use('/api/v1', v1Router);
@@ -168,6 +170,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/admin/referral-system', referralRoutes);
+app.use('/api/wallet', walletRoutes);
 
 // Add more routes here as you create them
 

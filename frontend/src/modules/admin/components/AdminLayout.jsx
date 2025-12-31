@@ -47,6 +47,7 @@ const AdminLayout = () => {
     },
     { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
     { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
+    { icon: FaRupeeSign, label: 'Earnings', path: '/admin/earnings' },
     {
       icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions', submenu: [
         { label: 'All Subscriptions', path: '/admin/subscriptions' },
@@ -366,4 +367,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

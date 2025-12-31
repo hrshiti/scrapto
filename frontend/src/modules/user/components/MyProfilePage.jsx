@@ -2,14 +2,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
+import { walletService } from '../../shared/services/wallet.service';
 import ReferAndEarn from './ReferAndEarn';
-import { 
-  FaCheckCircle, 
-  FaBox, 
-  FaWallet, 
-  FaCheck, 
-  FaWeight, 
-  FaStar, 
+import {
+  FaCheckCircle,
+  FaBox,
+  FaWallet,
+  FaCheck,
+  FaWeight,
+  FaStar,
   FaTrophy,
   FaChartLine,
   FaEdit,
@@ -19,12 +20,12 @@ import {
   FaSignOutAlt,
   FaGift
 } from 'react-icons/fa';
-import { 
+import {
   HiTrendingUp,
   HiCollection,
   HiCash
 } from 'react-icons/hi';
-import { 
+import {
   MdCategory,
   MdPayment,
   MdCheckCircleOutline
@@ -40,6 +41,27 @@ const MyProfilePage = () => {
     phone: user?.phone || '+91 98765 43210',
     profilePicture: null,
   });
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || 'User Name',
+        phone: user.phone || '+91 98765 43210',
+        profilePicture: null,
+      });
+
+      // Fetch Wallet Balance
+      walletService.getWalletProfile()
+        .then(data => setWalletBalance(data.balance || 0))
+        .catch(err => console.error('Failed to fetch wallet:', err));
+    }
+  }, [user]);
+
+  const handleSave = () => {
+    console.log('Saving profile:', formData);
+    setIsEditMode(false);
+  };
 
   // Mock data for activity feed
   const activityFeed = [
@@ -122,21 +144,6 @@ const MyProfilePage = () => {
     { name: 'Paper', value: 10, color: '#3a6c4a' },
   ];
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || 'User Name',
-        phone: user.phone || '+91 98765 43210',
-        profilePicture: null,
-      });
-    }
-  }, [user]);
-
-  const handleSave = () => {
-    console.log('Saving profile:', formData);
-    setIsEditMode(false);
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -149,7 +156,7 @@ const MyProfilePage = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 px-4 md:px-6 lg:px-8 py-4 md:py-6" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 
+          <h1
             className="text-xl md:text-2xl font-bold"
             style={{ color: '#2d3748' }}
           >
@@ -173,7 +180,7 @@ const MyProfilePage = () => {
           transition={{ duration: 0.5 }}
           className="mb-4 md:mb-6"
         >
-          <div 
+          <div
             className="rounded-2xl p-4 md:p-6 shadow-md"
             style={{ backgroundColor: '#ffffff' }}
           >
@@ -187,21 +194,21 @@ const MyProfilePage = () => {
                   className="flex items-center gap-3 md:gap-4"
                 >
                   {/* Profile Picture */}
-                  <div 
+                  <div
                     className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center flex-shrink-0 relative"
-                    style={{ 
+                    style={{
                       backgroundColor: 'rgba(100, 148, 110, 0.15)',
                       border: '3px solid rgba(100, 148, 110, 0.3)'
                     }}
                   >
                     {formData.profilePicture ? (
-                      <img 
-                        src={URL.createObjectURL(formData.profilePicture)} 
-                        alt="Profile" 
+                      <img
+                        src={URL.createObjectURL(formData.profilePicture)}
+                        alt="Profile"
                         className="w-full h-full rounded-full object-cover"
                       />
                     ) : (
-                      <span 
+                      <span
                         className="text-2xl md:text-3xl font-bold"
                         style={{ color: '#64946e' }}
                       >
@@ -209,34 +216,34 @@ const MyProfilePage = () => {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* User Info */}
                   <div className="flex-1 min-w-0">
-                    <h2 
+                    <h2
                       className="text-lg md:text-xl font-bold mb-1"
                       style={{ color: '#2d3748' }}
                     >
                       {formData.name}
                     </h2>
-                    <p 
+                    <p
                       className="text-sm md:text-base mb-1"
                       style={{ color: '#718096' }}
                     >
                       {formData.phone}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span 
+                      <span
                         className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ 
+                        style={{
                           backgroundColor: 'rgba(100, 148, 110, 0.1)',
                           color: '#64946e'
                         }}
                       >
                         Verified
                       </span>
-                      <span 
+                      <span
                         className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                        style={{ 
+                        style={{
                           backgroundColor: 'rgba(100, 148, 110, 0.1)',
                           color: '#64946e'
                         }}
@@ -250,7 +257,7 @@ const MyProfilePage = () => {
                   <button
                     onClick={() => setIsEditMode(true)}
                     className="p-2 rounded-lg hover:opacity-70 transition-opacity flex-shrink-0"
-                    style={{ 
+                    style={{
                       backgroundColor: 'rgba(100, 148, 110, 0.1)',
                       color: '#64946e'
                     }}
@@ -269,21 +276,21 @@ const MyProfilePage = () => {
                   {/* Profile Picture Upload */}
                   <div className="flex flex-col items-center gap-3">
                     <div className="relative">
-                      <div 
+                      <div
                         className="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center relative overflow-hidden"
-                        style={{ 
+                        style={{
                           backgroundColor: 'rgba(100, 148, 110, 0.15)',
                           border: '3px solid rgba(100, 148, 110, 0.3)'
                         }}
                       >
                         {formData.profilePicture ? (
-                          <img 
-                            src={URL.createObjectURL(formData.profilePicture)} 
-                            alt="Profile" 
+                          <img
+                            src={URL.createObjectURL(formData.profilePicture)}
+                            alt="Profile"
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
-                          <span 
+                          <span
                             className="text-3xl md:text-4xl font-bold"
                             style={{ color: '#64946e' }}
                           >
@@ -294,7 +301,7 @@ const MyProfilePage = () => {
                       <label
                         htmlFor="profile-picture"
                         className="absolute bottom-0 right-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-110"
-                        style={{ 
+                        style={{
                           backgroundColor: '#64946e',
                           color: '#ffffff'
                         }}
@@ -317,7 +324,7 @@ const MyProfilePage = () => {
 
                   {/* Name Input */}
                   <div>
-                    <label 
+                    <label
                       className="block text-xs md:text-sm font-medium mb-1.5"
                       style={{ color: '#4a5568' }}
                     >
@@ -328,7 +335,7 @@ const MyProfilePage = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg text-sm md:text-base border transition-all focus:outline-none"
-                      style={{ 
+                      style={{
                         borderColor: '#e5ddd4',
                         color: '#2d3748',
                         backgroundColor: '#ffffff'
@@ -346,7 +353,7 @@ const MyProfilePage = () => {
 
                   {/* Phone Input */}
                   <div>
-                    <label 
+                    <label
                       className="block text-xs md:text-sm font-medium mb-1.5"
                       style={{ color: '#4a5568' }}
                     >
@@ -357,7 +364,7 @@ const MyProfilePage = () => {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="w-full px-3 py-2 md:px-4 md:py-2.5 rounded-lg text-sm md:text-base border transition-all focus:outline-none"
-                      style={{ 
+                      style={{
                         borderColor: '#e5ddd4',
                         color: '#2d3748',
                         backgroundColor: '#ffffff'
@@ -378,7 +385,7 @@ const MyProfilePage = () => {
                     <button
                       onClick={() => setIsEditMode(false)}
                       className="flex-1 py-2 md:py-2.5 px-4 rounded-lg font-semibold text-sm md:text-base transition-all"
-                      style={{ 
+                      style={{
                         backgroundColor: '#ffffff',
                         border: '1px solid rgba(100, 148, 110, 0.3)',
                         color: '#64946e'
@@ -411,9 +418,8 @@ const MyProfilePage = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-2 ${
-                activeTab === tab.id ? 'text-white' : 'text-gray-600'
-              }`}
+              className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-semibold text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === tab.id ? 'text-white' : 'text-gray-600'
+                }`}
               style={{
                 backgroundColor: activeTab === tab.id ? '#64946e' : '#ffffff',
                 border: activeTab === tab.id ? 'none' : '1px solid rgba(100, 148, 110, 0.15)',
@@ -437,11 +443,11 @@ const MyProfilePage = () => {
               className="space-y-4 md:space-y-6"
             >
               {/* Quick Stats */}
-              <div 
+              <div
                 className="rounded-2xl p-4 md:p-6"
                 style={{ backgroundColor: '#ffffff' }}
               >
-                <h3 
+                <h3
                   className="font-bold text-base md:text-lg mb-4"
                   style={{ color: '#2d3748' }}
                 >
@@ -451,7 +457,7 @@ const MyProfilePage = () => {
                   {[
                     { label: 'Total Requests', value: stats.totalRequests, icon: FaBox, color: '#64946e' },
                     { label: 'Completed', value: stats.completedRequests, icon: FaCheck, color: '#64946e' },
-                    { label: 'Total Earnings', value: `₹${stats.totalEarnings}`, icon: HiCash, color: '#64946e' },
+                    { label: 'Total Earnings', value: `₹${walletBalance.toFixed(0)}`, icon: HiCash, color: '#64946e' },
                     { label: 'Total Weight', value: `${stats.totalWeight} kg`, icon: FaWeight, color: '#64946e' },
                     { label: 'Avg Rating', value: `${stats.averageRating}`, icon: FaStar, color: '#64946e' },
                     { label: 'Top Category', value: stats.favoriteCategory, icon: FaTrophy, color: '#64946e' },
@@ -467,18 +473,18 @@ const MyProfilePage = () => {
                         style={{ backgroundColor: 'rgba(100, 148, 110, 0.05)' }}
                       >
                         <div className="flex justify-center mb-2">
-                          <IconComponent 
-                            className="text-2xl md:text-3xl" 
+                          <IconComponent
+                            className="text-2xl md:text-3xl"
                             style={{ color: stat.color }}
                           />
                         </div>
-                        <p 
+                        <p
                           className="text-lg md:text-xl font-bold mb-1"
                           style={{ color: '#64946e' }}
                         >
                           {stat.value}
                         </p>
-                        <p 
+                        <p
                           className="text-xs md:text-sm"
                           style={{ color: '#718096' }}
                         >
@@ -491,42 +497,43 @@ const MyProfilePage = () => {
               </div>
 
               {/* Wallet Balance */}
-              <div 
+              <div
                 className="rounded-2xl p-4 md:p-6"
                 style={{ backgroundColor: '#ffffff' }}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 
+                  <h3
                     className="font-bold text-base md:text-lg"
                     style={{ color: '#2d3748' }}
                   >
                     Wallet Balance
                   </h3>
                   <button
-                    className="text-sm font-medium"
+                    onClick={() => navigate('/user/wallet')}
+                    className="text-sm font-medium hover:underline"
                     style={{ color: '#64946e' }}
                   >
                     View All
                   </button>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div 
+                  <div
                     className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
                   >
-                    <HiCash 
-                      className="text-2xl md:text-3xl" 
+                    <HiCash
+                      className="text-2xl md:text-3xl"
                       style={{ color: '#64946e' }}
                     />
                   </div>
                   <div>
-                    <p 
+                    <p
                       className="text-2xl md:text-3xl font-bold"
                       style={{ color: '#64946e' }}
                     >
-                      ₹{stats.totalEarnings}
+                      ₹{walletBalance.toFixed(2)}
                     </p>
-                    <p 
+                    <p
                       className="text-sm md:text-base"
                       style={{ color: '#718096' }}
                     >
@@ -556,7 +563,7 @@ const MyProfilePage = () => {
                   className="rounded-xl p-3 md:p-4 flex items-start gap-3 md:gap-4"
                   style={{ backgroundColor: '#ffffff' }}
                 >
-                  <div 
+                  <div
                     className="w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
                   >
@@ -568,19 +575,19 @@ const MyProfilePage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 
+                        <h4
                           className="font-semibold text-sm md:text-base mb-1"
                           style={{ color: '#2d3748' }}
                         >
                           {activity.title}
                         </h4>
-                        <p 
+                        <p
                           className="text-xs md:text-sm mb-1"
                           style={{ color: '#718096' }}
                         >
                           {activity.description}
                         </p>
-                        <p 
+                        <p
                           className="text-xs"
                           style={{ color: '#a0aec0' }}
                         >
@@ -588,7 +595,7 @@ const MyProfilePage = () => {
                         </p>
                       </div>
                       {activity.amount && (
-                        <p 
+                        <p
                           className="font-bold text-sm md:text-base flex-shrink-0"
                           style={{ color: '#64946e' }}
                         >
@@ -612,13 +619,13 @@ const MyProfilePage = () => {
               className="space-y-4 md:space-y-6"
             >
               {/* Monthly Trend */}
-              <div 
+              <div
                 className="rounded-2xl p-4 md:p-6"
                 style={{ backgroundColor: '#ffffff' }}
               >
                 <div className="flex items-center gap-2 mb-4">
                   <FaChartLine style={{ color: '#64946e' }} />
-                  <h3 
+                  <h3
                     className="font-bold text-base md:text-lg"
                     style={{ color: '#2d3748' }}
                   >
@@ -646,9 +653,9 @@ const MyProfilePage = () => {
                             ₹{data.earnings}
                           </span>
                         </div>
-                        <div 
+                        <div
                           className="h-2 rounded-full"
-                          style={{ 
+                          style={{
                             backgroundColor: 'rgba(100, 148, 110, 0.1)',
                             position: 'relative',
                             overflow: 'hidden'
@@ -669,13 +676,13 @@ const MyProfilePage = () => {
               </div>
 
               {/* Category Distribution */}
-              <div 
+              <div
                 className="rounded-2xl p-4 md:p-6"
                 style={{ backgroundColor: '#ffffff' }}
               >
                 <div className="flex items-center gap-2 mb-4">
                   <MdCategory style={{ color: '#64946e', fontSize: '20px' }} />
-                  <h3 
+                  <h3
                     className="font-bold text-base md:text-lg"
                     style={{ color: '#2d3748' }}
                   >
@@ -700,9 +707,9 @@ const MyProfilePage = () => {
                             {cat.value}%
                           </span>
                         </div>
-                        <div 
+                        <div
                           className="h-3 rounded-full"
-                          style={{ 
+                          style={{
                             backgroundColor: 'rgba(100, 148, 110, 0.1)',
                             position: 'relative',
                             overflow: 'hidden'
@@ -747,7 +754,7 @@ const MyProfilePage = () => {
             navigate('/');
           }}
           className="w-full p-4 rounded-xl font-semibold transition-all duration-300 mt-6 mb-20 md:mb-8 flex items-center justify-center gap-2"
-          style={{ 
+          style={{
             backgroundColor: '#ffffff',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             color: '#ef4444'
@@ -768,4 +775,3 @@ const MyProfilePage = () => {
 };
 
 export default MyProfilePage;
-

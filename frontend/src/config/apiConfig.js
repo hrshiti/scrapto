@@ -33,6 +33,13 @@ export const API_ENDPOINTS = {
     status: (orderId) => `/payments/order/${orderId}/status`,
     mine: '/payments/my-payments',
   },
+  wallet: {
+    profile: '/wallet/profile',
+    transactions: '/wallet/transactions',
+    recharge: '/wallet/recharge/create',
+    verifyRecharge: '/wallet/recharge/verify',
+    payOrder: '/wallet/pay-order',
+  },
   uploads: {
     orderImages: '/uploads/order-images',
     kycDocs: '/uploads/kyc-docs',
@@ -61,4 +68,3 @@ export const API_ENDPOINTS = {
     subscriptionPlanById: (id) => `/admin/subscriptions/plans/${id}`,
   },
 };
-

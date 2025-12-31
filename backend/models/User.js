@@ -65,13 +65,29 @@ const userSchema = new mongoose.Schema({
   isPhoneVerified: {
     type: Boolean,
     default: false
+  },
+  wallet: {
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Insufficient funds']
+    },
+    currency: {
+      type: String,
+      default: 'INR'
+    },
+    status: {
+      type: String,
+      enum: ['ACTIVE', 'FROZEN'],
+      default: 'ACTIVE'
+    }
   }
 }, {
   timestamps: true
 });
 
 // Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
     next();
   }
@@ -80,12 +96,12 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.matchPassword = async function(enteredPassword) {
+userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Generate OTP for phone verification
-userSchema.methods.generateOTP = function() {
+userSchema.methods.generateOTP = function () {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   this.phoneVerificationOTP = otp;
   this.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -93,20 +109,20 @@ userSchema.methods.generateOTP = function() {
 };
 
 // Verify OTP
-userSchema.methods.verifyOTP = function(otp) {
+userSchema.methods.verifyOTP = function (otp) {
   if (!this.phoneVerificationOTP || !this.otpExpiresAt) {
     return false;
   }
-  
+
   if (this.otpExpiresAt < new Date()) {
     return false;
   }
-  
+
   return this.phoneVerificationOTP === otp;
 };
 
 // Remove password and sensitive data from JSON output
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.phoneVerificationOTP;

@@ -15,6 +15,7 @@ import CompletedOrders from './components/CompletedOrders';
 import SubscriptionsList from './components/SubscriptionsList';
 import SubscriptionPlanManagement from './components/SubscriptionPlanManagement';
 import Reports from './components/Reports';
+import Earnings from './components/Earnings';
 import AdminProfile from './components/AdminProfile';
 import ReferralsList from './components/ReferralsList';
 import ReferralSettings from './components/ReferralSettings';
@@ -90,6 +91,7 @@ const AdminModuleRoutes = () => {
         <Route path="referrals/campaigns" element={<CampaignManagement />} />
         {/* Reports & Analytics */}
         <Route path="reports" element={<Reports />} />
+        <Route path="earnings" element={<Earnings />} />
         {/* Banner Management */}
         <Route path="banners" element={<BannerManagement />} />
         {/* Help & Support */}
@@ -98,20 +100,10 @@ const AdminModuleRoutes = () => {
         <Route path="profile" element={<AdminProfile />} />
         {/* Placeholder routes for future pages */}
         <Route path="settings" element={<div className="p-6 text-center">App Settings - Coming Soon</div>} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
-      <Route path="/login" element={<Navigate to="/admin" replace />} />
+      <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
   );
 };
 
-// Main Admin Module Component
-const AdminModule = () => {
-  return (
-    <AdminAuthProvider>
-      <AdminModuleRoutes />
-    </AdminAuthProvider>
-  );
-};
-
-export default AdminModule;
+export default AdminModuleRoutes;

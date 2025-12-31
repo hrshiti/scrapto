@@ -2,16 +2,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
 import {
   getScrapperRequestById,
-  updateScrapperRequest,
-  removeScrapperRequest,
-  getScrapperAssignedRequests
 } from '../../shared/utils/scrapperRequestUtils';
 import { orderAPI, scrapperOrdersAPI } from '../../shared/utils/api';
-import { useRef } from 'react';
+import { walletService } from '../../shared/services/wallet.service';
 import ScrapperMap from './GoogleMaps/ScrapperMap';
+
+// Load Razorpay Script
+const loadRazorpay = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const ActiveRequestDetailsPage = () => {
   const navigate = useNavigate();
@@ -32,6 +39,11 @@ const ActiveRequestDetailsPage = () => {
   const [allActiveRequests, setAllActiveRequests] = useState([]);
   const [currentRequestIndex, setCurrentRequestIndex] = useState(-1);
 
+  // Wallet State
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [useWallet, setUseWallet] = useState(true);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Check authentication first
   useEffect(() => {
     const scrapperAuth = localStorage.getItem('scrapperAuthenticated');
@@ -41,6 +53,19 @@ const ActiveRequestDetailsPage = () => {
       return;
     }
   }, [navigate]);
+
+  // Fetch Wallet Balance
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const data = await walletService.getWalletProfile();
+        setWalletBalance(data.balance || 0);
+      } catch (error) {
+        console.error('Failed to fetch wallet:', error);
+      }
+    };
+    fetchWallet();
+  }, []);
 
   // Load order data from backend
   useEffect(() => {
@@ -290,26 +315,6 @@ const ActiveRequestDetailsPage = () => {
     }
   }, []);
 
-  const renderPickupSlot = () => {
-    const slot = requestData.pickupSlot;
-    if (!slot && !requestData.preferredTime) return null;
-
-    const label = slot
-      ? `${slot.dayName}, ${slot.date} • ${slot.slot}`
-      : requestData.preferredTime;
-
-    return (
-      <div className="mb-4">
-        <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-          Pickup Slot:
-        </p>
-        <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
-          {label}
-        </p>
-      </div>
-    );
-  };
-
   if (!requestData) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
@@ -349,13 +354,119 @@ const ActiveRequestDetailsPage = () => {
       alert('Please enter a valid amount');
       return;
     }
-    setConfirmAction('payment');
-    const isService = requestData.orderType === 'cleaning_service';
-    setConfirmMessage(isService
-      ? `Have you received ₹${paidAmount} from the customer?`
-      : `Have you paid ₹${paidAmount} to the customer?`
-    );
+
+    // Determine Logic based on Type
+    const isCleaning = requestData.orderType === 'cleaning_service';
+
+    // For Scrap Sell (Scrapper Pays)
+    if (!isCleaning) {
+      // Logic handled in handleRazorpayPayment or handleWalletPayment
+      setConfirmAction('payment_scrap');
+      setConfirmMessage(`Pay ₹${paidAmount} to User?`);
+      setShowConfirmModal(true);
+      return;
+    }
+
+    // For Cleaning Service (User Pays)
+    setConfirmAction('payment_cleaning');
+    setConfirmMessage(`Have you collected ₹${paidAmount} from the customer?`);
     setShowConfirmModal(true);
+  };
+
+  // Payment Logic for Scrap Sell (Scrapper Pays User)
+  const processScrapPayment = async () => {
+    const amount = Number(paidAmount);
+
+    // 1. Check Wallet Balance
+    if (useWallet && walletBalance >= amount) {
+      // Pay via Wallet
+      try {
+        setIsProcessingPayment(true);
+        await walletService.payOrderViaWallet((requestData._id || requestData.id), amount);
+        completePaymentSuccess(amount);
+      } catch (error) {
+        alert(error.response?.data?.message || 'Wallet payment failed');
+        setIsProcessingPayment(false);
+      }
+    } else {
+      // 2. Pay via Razorpay
+      try {
+        setIsProcessingPayment(true);
+        const res = await loadRazorpay();
+        if (!res) {
+          alert('Razorpay SDK failed to load');
+          return;
+        }
+
+        // Create Order
+        // This API should create a Payment Link or Order specifically for "Order Completion"
+        // For now reusing recharge or creating a dedicated endpoint is better.
+        // Using Standard Payment Flow:
+        const orderData = await walletService.createRechargeOrder(amount); // Reusing logic for now, backend differentiates by notes
+
+        const options = {
+          key: orderData.data.keyId,
+          amount: orderData.data.amount,
+          currency: orderData.data.currency,
+          name: "Scrapto",
+          description: "Order Payment to User",
+          order_id: orderData.data.orderId,
+          handler: async function (response) {
+            try {
+              // Verify and Complete
+              // Ideally call a specific endpoint like /payments/verify-order-payment
+              // Simulating success for now or using standard verify
+              await walletService.verifyRecharge({
+                ...response,
+                amount: amount
+              });
+              completePaymentSuccess(amount);
+            } catch (err) {
+              alert('Payment Verification Failed');
+              setIsProcessingPayment(false);
+            }
+          },
+          prefill: {
+            name: "Scrapper",
+            contact: user?.phone
+          },
+          theme: {
+            color: "#22c55e"
+          }
+        };
+
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.open();
+
+      } catch (error) {
+        console.error(error);
+        setIsProcessingPayment(false);
+      }
+    }
+  };
+
+  const completePaymentSuccess = async (amount) => {
+    const orderId = requestData._id || requestData.id;
+    // Update order status
+    try {
+      await orderAPI.updateStatus(orderId, 'in_progress', 'completed', amount);
+      setPaymentStatus('completed');
+      setShowPaymentInput(false);
+      setIsProcessingPayment(false);
+      setRequestData({
+        ...requestData,
+        status: 'in_progress',
+        paymentStatus: 'completed',
+        paidAmount: amount
+      });
+
+      // Auto complete after short delay? Or let them click complete?
+      // Let's prompt complete
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update order status'); // TODO: Handle this better
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleCompleteOrder = () => {
@@ -393,7 +504,11 @@ const ActiveRequestDetailsPage = () => {
         } else {
           throw new Error(response.message || 'Failed to update order status');
         }
-      } else if (confirmAction === 'payment') {
+      } else if (confirmAction === 'payment_scrap') {
+        setShowConfirmModal(false);
+        processScrapPayment(); // Trigger the logic
+        return;
+      } else if (confirmAction === 'payment_cleaning') {
         // Update order status to in_progress (just in case) and paymentStatus to completed
         const response = await orderAPI.updateStatus(orderId, 'in_progress', 'completed', Number(paidAmount));
 
@@ -587,6 +702,35 @@ const ActiveRequestDetailsPage = () => {
                     {requestData.orderType === 'cleaning_service' ? 'Enter Amount Received' : 'Enter Amount Paid'}
                   </h2>
 
+                  {/* Payment Mode Selection for Scrap Pickup */}
+                  {requestData.orderType !== 'cleaning_service' && (
+                    <div className="mb-6 p-3 rounded-xl bg-gray-800 border border-gray-700">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-400 text-sm">Wallet Balance</span>
+                        <span className="text-white font-bold">₹{walletBalance}</span>
+                      </div>
+
+                      {paidAmount && Number(paidAmount) > walletBalance && (
+                        <p className="text-red-400 text-xs mb-2">Insufficient Balance. Pay online.</p>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setUseWallet(true)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${useWallet && walletBalance >= Number(paidAmount) ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400'}`}
+                        >
+                          Wallet
+                        </button>
+                        <button
+                          onClick={() => setUseWallet(false)}
+                          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${!useWallet || walletBalance < Number(paidAmount) ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'}`}
+                        >
+                          Online
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4">
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>
                       Amount (₹)
@@ -639,14 +783,20 @@ const ActiveRequestDetailsPage = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={handlePaymentMade}
-                    disabled={!paidAmount || parseFloat(paidAmount) <= 0}
+                    disabled={!paidAmount || parseFloat(paidAmount) <= 0 || isProcessingPayment}
                     className="w-full py-4 rounded-xl font-bold text-base shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#22c55e', color: '#0f172a' }}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor" />
-                    </svg>
-                    Confirm Payment
+                    {isProcessingPayment ? (
+                      <span>Processing...</span>
+                    ) : (
+                      <>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor" />
+                        </svg>
+                        Confirm Payment
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </div>
@@ -820,9 +970,9 @@ const ActiveRequestDetailsPage = () => {
                   </motion.button>
                 </div>
               </div>
-            </motion.div>
-          </>
-        )
+            </div>
+          </motion.div>
+      )
       }
 
       {/* Confirmation Modal */}

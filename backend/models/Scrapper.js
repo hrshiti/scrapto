@@ -200,6 +200,22 @@ const scrapperSchema = new mongoose.Schema({
       default: 0
     }
   },
+  wallet: {
+    balance: {
+      type: Number,
+      default: 0,
+      min: [0, 'Insufficient funds']
+    },
+    currency: {
+      type: String,
+      default: 'INR'
+    },
+    status: {
+      type: String,
+      enum: ['ACTIVE', 'FROZEN'],
+      default: 'ACTIVE'
+    }
+  },
   referralCode: {
     type: String,
     unique: true,
