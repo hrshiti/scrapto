@@ -4,9 +4,29 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { chatAPI } from '../../shared/utils/api';
 import socketClient from '../../shared/utils/socketClient';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { FaSpinner } from 'react-icons/fa';
 
 const ChatPage = () => {
+  const staticTexts = [
+    "Loading chat...",
+    "Failed to load chat",
+    "Failed to send message",
+    "Chat not found",
+    "Go Back",
+    "Initializing Chat...",
+    "typing...",
+    "Online",
+    "Unknown User",
+    "Type a message...",
+    "Just now",
+    "{minutes}m ago",
+    "{hours}h ago",
+    "Unknown",
+    "S",
+    "U"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const location = useLocation();
   const { chatId: chatIdParam } = useParams();
@@ -142,7 +162,7 @@ const ChatPage = () => {
 
     } catch (err) {
       console.error('Error initializing chat:', err);
-      setError(err.message || 'Failed to load chat');
+      setError(err.message || getTranslatedText('Failed to load chat'));
     } finally {
       setLoading(false);
     }
@@ -307,7 +327,7 @@ const ChatPage = () => {
       }
     } catch (err) {
       console.error('Error sending message:', err);
-      setError(err.message || 'Failed to send message');
+      setError(err.message || getTranslatedText('Failed to send message'));
       // Remove temp message
       setMessages(prev => prev.filter(msg => !msg._id?.startsWith('temp_')));
     } finally {
@@ -334,9 +354,9 @@ const ChatPage = () => {
     const diff = now - messageDate;
     const minutes = Math.floor(diff / 60000);
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+    if (minutes < 1) return getTranslatedText('Just now');
+    if (minutes < 60) return getTranslatedText("{minutes}m ago", { minutes });
+    if (minutes < 1440) return getTranslatedText("{hours}h ago", { hours: Math.floor(minutes / 60) });
     return messageDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   };
 
@@ -371,7 +391,7 @@ const ChatPage = () => {
       <div className="fixed inset-0 flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center">
           <FaSpinner className="animate-spin mx-auto mb-4" style={{ color: '#64946e', fontSize: '2rem' }} />
-          <p style={{ color: '#2d3748' }}>Loading chat...</p>
+          <p style={{ color: '#2d3748' }}>{getTranslatedText("Loading chat...")}</p>
         </div>
       </div>
     );
@@ -382,14 +402,14 @@ const ChatPage = () => {
       <div className="fixed inset-0 flex items-center justify-center p-4" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center max-w-md">
           <p className="mb-4 text-lg font-medium" style={{ color: '#2d3748' }}>
-            {error === 'Order ID or Chat ID is required' ? 'Chat not found' : error}
+            {error === 'Order ID or Chat ID is required' ? getTranslatedText('Chat not found') : error}
           </p>
           <button
             onClick={() => navigate(-1)}
             className="px-6 py-2 rounded-xl font-semibold text-white shadow-md transition-transform active:scale-95"
             style={{ backgroundColor: '#64946e' }}
           >
-            Go Back
+            {getTranslatedText("Go Back")}
           </button>
         </div>
       </div>
@@ -401,7 +421,7 @@ const ChatPage = () => {
     return (
       <div className="fixed inset-0 flex items-center justify-center p-4" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center">
-          <p className="text-lg text-gray-600">Initializing Chat...</p>
+          <p className="text-lg text-gray-600">{getTranslatedText("Initializing Chat...")}</p>
         </div>
       </div>
     )
@@ -452,7 +472,7 @@ const ChatPage = () => {
               className="w-10 h-10 rounded-full flex items-center justify-center text-base font-bold relative"
               style={{ backgroundColor: 'rgba(100, 148, 110, 0.15)', color: '#64946e' }}
             >
-              {otherUser.name?.split(' ').map(n => n[0]).join('') || 'U'}
+              {otherUser.name?.split(' ').map(n => n[0]).join('') || getTranslatedText('U')}
               {/* Online indicator */}
               <div
                 className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
@@ -464,17 +484,17 @@ const ChatPage = () => {
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-semibold truncate" style={{ color: '#2d3748' }}>
-                {otherUser.name || 'Unknown User'}
+                {otherUser.name || getTranslatedText('Unknown User')}
               </h3>
               <div className="flex items-center gap-1">
                 {otherUserTyping && (
                   <span className="text-xs italic" style={{ color: '#718096' }}>
-                    typing...
+                    {getTranslatedText("typing...")}
                   </span>
                 )}
                 {!otherUserTyping && (
                   <span className="text-xs" style={{ color: '#10b981' }}>
-                    • Online
+                    • {getTranslatedText("Online")}
                   </span>
                 )}
               </div>
@@ -518,8 +538,8 @@ const ChatPage = () => {
         <div className="space-y-3 pb-2">
           {messages.map((message) => {
             const isScrapperMessage = message.senderId?._id === user._id || message.senderType === 'scrapper';
-            const senderName = message.senderId?.name || 'Unknown';
-            const senderInitials = senderName.split(' ').map(n => n[0]).join('') || 'S';
+            const senderName = message.senderId?.name || getTranslatedText('Unknown');
+            const senderInitials = senderName.split(' ').map(n => n[0]).join('') || getTranslatedText('S');
 
             return (
               <motion.div
@@ -610,7 +630,7 @@ const ChatPage = () => {
                 handleTyping();
               }}
               onKeyDown={handleKeyPress}
-              placeholder="Type a message..."
+              placeholder={getTranslatedText("Type a message...")}
               rows={1}
               disabled={sending}
               className="w-full py-2.5 px-4 rounded-2xl border-2 focus:outline-none resize-none text-sm disabled:opacity-50"

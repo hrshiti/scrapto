@@ -9,8 +9,65 @@ import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRe
 import { earningsAPI, scrapperOrdersAPI } from '../../shared/utils/api';
 import { kycAPI } from '../../shared/utils/api';
 import BannerSlider from '../../shared/components/BannerSlider';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ScrapperDashboard = () => {
+  const staticTexts = [
+    "Loading dashboard...",
+    "Welcome, {name}! 👋",
+    "Ready to start earning?",
+    "Available for Pickups",
+    "Currently Offline",
+    "You will receive requests",
+    "Turn on to receive requests",
+    "ON",
+    "OFF",
+    "Market Price Add‑On",
+    "Unlock real‑time scrap rates",
+    "View plans",
+    "Earnings Summary",
+    "Today",
+    "This Week",
+    "This Month",
+    "Total",
+    "Quick Stats",
+    "Completed",
+    "Rating",
+    "Active",
+    "Active Requests",
+    "View All",
+    "Unknown User",
+    "Scrap",
+    "Time not specified",
+    "Accepted",
+    "Picked Up",
+    "Payment Pending",
+    "View {count} more request",
+    "View {count} more requests",
+    "Subscription Status",
+    "Active until {date}",
+    "Recent Activity",
+    "Order ID: {id}",
+    "Estimated Earnings",
+    "No activity recorded yet.",
+    "Verified",
+    "Pending",
+    "Rejected",
+    "Not Submitted",
+    "Hi, Scrapper!",
+    "Scrapper",
+    "View Earnings",
+    "Scrap Pickup",
+    "User",
+    "Invite scrappers and earn rewards",
+    "Orders History",
+    "order",
+    "orders",
+    "No Completed Orders Yet",
+    "Your completed orders will appear here",
+    "Completed on:"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isAvailable, setIsAvailable] = useState(false);
@@ -417,7 +474,7 @@ const ScrapperDashboard = () => {
             style={{ borderColor: '#64946e' }}
           />
           <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-            Loading dashboard...
+            {getTranslatedText("Loading dashboard...")}
           </p>
         </div>
       </motion.div>
@@ -437,10 +494,10 @@ const ScrapperDashboard = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
-              Welcome, {user?.name || 'Scrapper'}! 👋
+              {getTranslatedText("Welcome, {name}! 👋", { name: user?.name || getTranslatedText('Scrapper') })}
             </h1>
             <p className="text-xs md:text-sm mt-1" style={{ color: '#718096' }}>
-              Ready to start earning?
+              {getTranslatedText("Ready to start earning?")}
             </p>
           </div>
           <button
@@ -474,10 +531,10 @@ const ScrapperDashboard = () => {
             />
             <div>
               <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                {isAvailable ? 'Available for Pickups' : 'Currently Offline'}
+                {isAvailable ? getTranslatedText('Available for Pickups') : getTranslatedText('Currently Offline')}
               </p>
               <p className="text-xs" style={{ color: '#718096' }}>
-                {isAvailable ? 'You will receive requests' : 'Turn on to receive requests'}
+                {isAvailable ? getTranslatedText('You will receive requests') : getTranslatedText('Turn on to receive requests')}
               </p>
             </div>
           </div>
@@ -491,7 +548,7 @@ const ScrapperDashboard = () => {
               color: isAvailable ? '#ffffff' : '#64946e'
             }}
           >
-            {isAvailable ? 'ON' : 'OFF'}
+            {isAvailable ? getTranslatedText('ON') : getTranslatedText('OFF')}
           </motion.button>
         </motion.div>
 
@@ -521,10 +578,10 @@ const ScrapperDashboard = () => {
               </div>
               <div>
                 <p className="text-xs font-semibold mb-1" style={{ color: '#a5b4fc' }}>
-                  Market Price Add‑On
+                  {getTranslatedText("Market Price Add‑On")}
                 </p>
                 <h3 className="text-sm md:text-base font-bold mb-1" style={{ color: '#e5e7eb' }}>
-                  Unlock real‑time scrap rates
+                  {getTranslatedText("Unlock real‑time scrap rates")}
                 </h3>
               </div>
             </div>
@@ -538,7 +595,7 @@ const ScrapperDashboard = () => {
                   backgroundColor: 'transparent'
                 }}
               >
-                View plans
+                {getTranslatedText("View plans")}
               </button>
             </div>
           </div>
@@ -556,29 +613,29 @@ const ScrapperDashboard = () => {
           style={{ backgroundColor: '#ffffff' }}
         >
           <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-            Earnings Summary
+            {getTranslatedText("Earnings Summary")}
           </h2>
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div className="p-3 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>Today</p>
+              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>{getTranslatedText("Today")}</p>
               <p className="text-lg md:text-2xl font-bold" style={{ color: '#64946e' }}>
                 ₹{earnings.today.toLocaleString()}
               </p>
             </div>
             <div className="p-3 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>This Week</p>
+              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>{getTranslatedText("This Week")}</p>
               <p className="text-lg md:text-2xl font-bold" style={{ color: '#64946e' }}>
                 ₹{earnings.week.toLocaleString()}
               </p>
             </div>
             <div className="p-3 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>This Month</p>
+              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>{getTranslatedText("This Month")}</p>
               <p className="text-lg md:text-2xl font-bold" style={{ color: '#64946e' }}>
                 ₹{earnings.month.toLocaleString()}
               </p>
             </div>
             <div className="p-3 md:p-4 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
-              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>Total</p>
+              <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>{getTranslatedText("Total")}</p>
               <p className="text-lg md:text-2xl font-bold" style={{ color: '#64946e' }}>
                 ₹{earnings.total.toLocaleString()}
               </p>
@@ -595,14 +652,14 @@ const ScrapperDashboard = () => {
           style={{ backgroundColor: '#ffffff' }}
         >
           <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-            Quick Stats
+            {getTranslatedText("Quick Stats")}
           </h2>
           <div className="grid grid-cols-3 gap-3 md:gap-4">
             <div className="text-center p-3 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
               <p className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#64946e' }}>
                 {stats.completedPickups}
               </p>
-              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>Completed</p>
+              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Completed")}</p>
             </div>
             <div className="text-center p-3 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
               <div className="flex items-center justify-center gap-1 mb-1">
@@ -613,13 +670,13 @@ const ScrapperDashboard = () => {
                   {stats.rating}
                 </p>
               </div>
-              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>Rating</p>
+              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Rating")}</p>
             </div>
             <div className="text-center p-3 rounded-xl" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
               <p className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#64946e' }}>
                 {stats.activeRequests}
               </p>
-              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>Active</p>
+              <p className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Active")}</p>
             </div>
           </div>
         </motion.div>
@@ -640,27 +697,27 @@ const ScrapperDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                Active Requests
+                {getTranslatedText("Active Requests")}
               </h2>
               <button
                 onClick={() => navigate('/scrapper/my-active-requests')}
                 className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
                 style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
               >
-                View All
+                {getTranslatedText("View All")}
               </button>
             </div>
             <div className="space-y-3">
               {activeRequests.slice(0, 3).map((request, index) => {
                 const statusColors = {
-                  accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: 'Accepted' },
-                  picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: 'Picked Up' },
-                  payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'Payment Pending' }
+                  accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: getTranslatedText('Accepted') },
+                  picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: getTranslatedText('Picked Up') },
+                  payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: getTranslatedText('Payment Pending') }
                 };
                 const statusConfig = statusColors[request.status] || statusColors.accepted;
                 const pickupTime = request.pickupSlot
-                  ? `${request.pickupSlot.dayName}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
-                  : request.preferredTime || 'Time not specified';
+                  ? `${getTranslatedText(request.pickupSlot.dayName)}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
+                  : request.preferredTime || getTranslatedText('Time not specified');
 
                 return (
                   <motion.div
@@ -685,10 +742,10 @@ const ScrapperDashboard = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
-                              {request.userName || 'Unknown User'}
+                              {request.userName || getTranslatedText('Unknown User')}
                             </p>
                             <p className="text-xs truncate" style={{ color: '#718096' }}>
-                              {request.scrapType || 'Scrap'}
+                              {getTranslatedText(request.scrapType || 'Scrap')}
                             </p>
                           </div>
                         </div>
@@ -735,7 +792,9 @@ const ScrapperDashboard = () => {
                 className="w-full mt-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                 style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
               >
-                View {activeRequests.length - 3} more request{activeRequests.length - 3 > 1 ? 's' : ''}
+                {activeRequests.length - 3 > 1
+                  ? getTranslatedText("View {count} more requests", { count: activeRequests.length - 3 })
+                  : getTranslatedText("View {count} more request", { count: activeRequests.length - 3 })}
               </button>
             )}
           </motion.div>
@@ -780,15 +839,15 @@ const ScrapperDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
-                    Subscription Status
+                    {getTranslatedText("Subscription Status")}
                   </h3>
                   <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                    Active until {formattedDate}
+                    {getTranslatedText("Active until {date}", { date: formattedDate })}
                   </p>
                 </div>
                 <div className="px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
                   <p className="text-xs md:text-sm font-semibold" style={{ color: '#10b981' }}>
-                    Active
+                    {getTranslatedText("Active")}
                   </p>
                 </div>
               </div>
@@ -807,14 +866,14 @@ const ScrapperDashboard = () => {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                Recent Activity
+                {getTranslatedText("Recent Activity")}
               </h2>
               <button
                 onClick={() => navigate('/scrapper/earnings')}
                 className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
                 style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
               >
-                View Earnings
+                {getTranslatedText("View Earnings")}
               </button>
             </div>
             <div className="space-y-3">
@@ -844,10 +903,10 @@ const ScrapperDashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                          {order.scrapType || 'Scrap Pickup'}
+                          {getTranslatedText(order.scrapType || 'Scrap Pickup')}
                         </p>
                         <p className="text-xs" style={{ color: '#718096' }}>
-                          {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • from {order.userName || 'User'}
+                          {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • from {order.userName || getTranslatedText('User')}
                         </p>
                       </div>
                     </div>
@@ -856,7 +915,7 @@ const ScrapperDashboard = () => {
                         ₹{order.amount || order.totalAmount || 0}
                       </p>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
-                        Completed
+                        {getTranslatedText("Completed")}
                       </span>
                     </div>
                   </motion.div>
@@ -885,10 +944,10 @@ const ScrapperDashboard = () => {
               </div>
               <div>
                 <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
-                  Refer & Earn
+                  {getTranslatedText("Refer & Earn")}
                 </h3>
                 <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                  Invite scrappers and earn rewards
+                  {getTranslatedText("Invite scrappers and earn rewards")}
                 </p>
               </div>
             </div>
@@ -908,11 +967,11 @@ const ScrapperDashboard = () => {
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-              Orders History
+              {getTranslatedText("Orders History")}
             </h2>
             {completedOrders.length > 0 && (
               <span className="text-xs md:text-sm px-3 py-1 rounded-full" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}>
-                {completedOrders.length} {completedOrders.length === 1 ? 'order' : 'orders'}
+                {completedOrders.length} {completedOrders.length === 1 ? getTranslatedText('order') : getTranslatedText('orders')}
               </span>
             )}
           </div>
@@ -928,10 +987,10 @@ const ScrapperDashboard = () => {
                 </svg>
               </div>
               <h3 className="text-base md:text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-                No Completed Orders Yet
+                {getTranslatedText("No Completed Orders Yet")}
               </h3>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Your completed orders will appear here
+                {getTranslatedText("Your completed orders will appear here")}
               </p>
             </div>
           ) : (
@@ -973,7 +1032,7 @@ const ScrapperDashboard = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
-                              {order.userName || 'Unknown User'}
+                              {order.userName || getTranslatedText('Unknown User')}
                             </p>
                             <p className="text-xs truncate" style={{ color: '#718096' }}>
                               {order.orderId || order.id || 'N/A'}
@@ -982,7 +1041,7 @@ const ScrapperDashboard = () => {
                         </div>
                         <div className="ml-10 space-y-1">
                           <p className="text-xs font-medium" style={{ color: '#2d3748' }}>
-                            {order.scrapType || 'Scrap'}
+                            {getTranslatedText(order.scrapType || 'Scrap')}
                           </p>
                           {order.location?.address && (
                             <div className="flex items-center gap-1">
@@ -1036,14 +1095,14 @@ const ScrapperDashboard = () => {
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                           <span className="text-xs font-semibold" style={{ color: '#10b981' }}>
-                            Completed
+                            {getTranslatedText("Completed")}
                           </span>
                         </div>
                       </div>
                     </div>
                     <div className="mt-2 pt-2 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
                       <p className="text-xs" style={{ color: '#718096' }}>
-                        Completed on: {formattedDate}
+                        {getTranslatedText("Completed on:")} {formattedDate}
                       </p>
                     </div>
                   </motion.div>

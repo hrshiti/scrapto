@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaGift,
   FaSave,
@@ -18,6 +19,30 @@ const MilestoneRewards = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const staticTexts = [
+    "Milestones not configured",
+    "First Request",
+    "When referred user creates first request",
+    "First Completion",
+    "When referred user's first request is completed",
+    "KYC Verified",
+    "When referred scrapper's KYC is verified",
+    "Subscription",
+    "When referred scrapper subscribes",
+    "First Pickup",
+    "When referred scrapper completes first pickup",
+    "Milestone Rewards",
+    "Configure milestone reward amounts for users and scrappers",
+    "User Milestone Rewards",
+    "Referrer Reward (₹)",
+    "Referee Reward (₹)",
+    "Scrapper Milestone Rewards",
+    "Saving...",
+    "Saved!",
+    "Save Milestones"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadSettings();
@@ -105,7 +130,7 @@ const MilestoneRewards = () => {
     );
   }
 
-  if (!settings || !settings.lifecycleRewards) return <div className="text-center p-4">Milestones not configured</div>;
+  if (!settings || !settings.lifecycleRewards) return <div className="text-center p-4">{getTranslatedText("Milestones not configured")}</div>;
 
   const milestones = settings.lifecycleRewards;
 
@@ -137,10 +162,10 @@ const MilestoneRewards = () => {
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-              Milestone Rewards
+              {getTranslatedText("Milestone Rewards")}
             </h1>
             <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-              Configure milestone reward amounts for users and scrappers
+              {getTranslatedText("Configure milestone reward amounts for users and scrappers")}
             </p>
           </div>
         </div>
@@ -156,7 +181,7 @@ const MilestoneRewards = () => {
         <div className="flex items-center gap-3 mb-6">
           <FaUsers className="text-2xl" style={{ color: '#64946e' }} />
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            User Milestone Rewards
+            {getTranslatedText("User Milestone Rewards")}
           </h2>
         </div>
 
@@ -191,7 +216,7 @@ const MilestoneRewards = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Referrer Reward (₹)
+                        {getTranslatedText("Referrer Reward (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -212,7 +237,7 @@ const MilestoneRewards = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Referee Reward (₹)
+                        {getTranslatedText("Referee Reward (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -249,7 +274,7 @@ const MilestoneRewards = () => {
         <div className="flex items-center gap-3 mb-6">
           <FaTruck className="text-2xl" style={{ color: '#64946e' }} />
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            Scrapper Milestone Rewards
+            {getTranslatedText("Scrapper Milestone Rewards")}
           </h2>
         </div>
 
@@ -284,7 +309,7 @@ const MilestoneRewards = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Referrer Reward (₹)
+                        {getTranslatedText("Referrer Reward (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -305,7 +330,7 @@ const MilestoneRewards = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Referee Reward (₹)
+                        {getTranslatedText("Referee Reward (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -353,17 +378,17 @@ const MilestoneRewards = () => {
           {saving ? (
             <>
               <FaSpinner className="animate-spin" />
-              Saving...
+              {getTranslatedText("Saving...")}
             </>
           ) : saved ? (
             <>
               <FaCheckCircle />
-              Saved!
+              {getTranslatedText("Saved!")}
             </>
           ) : (
             <>
               <FaSave />
-              Save Milestones
+              {getTranslatedText("Save Milestones")}
             </>
           )}
         </motion.button>

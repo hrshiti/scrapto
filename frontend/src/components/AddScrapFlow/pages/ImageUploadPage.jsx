@@ -3,8 +3,34 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { uploadAPI } from '../../../modules/shared/utils/api';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ImageUploadPage = () => {
+  const staticTexts = [
+    "Upload Scrap Images",
+    "Step 2 of 4",
+    "Selected Categories:",
+    "Drag & drop images here or click to browse",
+    "Choose from Gallery",
+    "Take Photo",
+    "Add More Images",
+    "Uploading...",
+    "Continue with",
+    "Image",
+    "Images",
+    "Upload at least one image to continue",
+    "Please login again to upload images.",
+    "Failed to upload images. Please try again.",
+    "Plastic",
+    "Metal",
+    "Paper",
+    "Electronics",
+    "Copper",
+    "Aluminium",
+    "Steel",
+    "Brass"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const fileInputRef = useRef(null);
@@ -30,7 +56,7 @@ const ImageUploadPage = () => {
   }, [isAuthenticated, navigate]);
 
   const handleFileSelect = (files) => {
-    const imageFiles = Array.from(files).filter(file => 
+    const imageFiles = Array.from(files).filter(file =>
       file.type.startsWith('image/')
     );
 
@@ -98,10 +124,10 @@ const ImageUploadPage = () => {
     } catch (error) {
       console.error('Upload failed:', error);
       if (error.status === 401) {
-        alert('Please login again to upload images.');
+        alert(getTranslatedText('Please login again to upload images.'));
         navigate('/auth/login', { replace: true });
       } else {
-        alert(error.message || 'Failed to upload images. Please try again.');
+        alert(getTranslatedText(error.message || 'Failed to upload images. Please try again.'));
       }
     } finally {
       setIsUploading(false);
@@ -136,11 +162,11 @@ const ImageUploadPage = () => {
             <path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h2 
+        <h2
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
-          Upload Scrap Images
+          {getTranslatedText("Upload Scrap Images")}
         </h2>
         <div className="w-10"></div> {/* Spacer for centering */}
       </div>
@@ -157,7 +183,7 @@ const ImageUploadPage = () => {
               style={{ backgroundColor: '#64946e' }}
             />
           </div>
-          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 2 of 4</span>
+          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 2 of 4")}</span>
         </div>
       </div>
 
@@ -165,7 +191,7 @@ const ImageUploadPage = () => {
       {selectedCategories.length > 0 && (
         <div className="px-3 md:px-6 pt-3">
           <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-            Selected Categories:
+            {getTranslatedText("Selected Categories:")}
           </p>
           <div className="flex flex-wrap gap-2">
             {selectedCategories.map((cat) => (
@@ -174,7 +200,7 @@ const ImageUploadPage = () => {
                 className="px-2 py-1 rounded-full text-xs md:text-sm font-medium"
                 style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               >
-                {cat.name}
+                {getTranslatedText(cat.name)}
               </span>
             ))}
           </div>
@@ -192,9 +218,8 @@ const ImageUploadPage = () => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-2xl p-6 md:p-12 text-center transition-all duration-300 ${
-              isDragging ? 'border-[#64946e] bg-[rgba(100,148,110,0.1)]' : 'border-[rgba(100,148,110,0.3)]'
-            }`}
+            className={`border-2 border-dashed rounded-2xl p-6 md:p-12 text-center transition-all duration-300 ${isDragging ? 'border-[#64946e] bg-[rgba(100,148,110,0.1)]' : 'border-[rgba(100,148,110,0.3)]'
+              }`}
             style={{ backgroundColor: isDragging ? 'rgba(100, 148, 110, 0.1)' : '#ffffff' }}
           >
             <motion.div
@@ -203,7 +228,7 @@ const ImageUploadPage = () => {
               transition={{ type: 'spring', stiffness: 200 }}
               className="flex flex-col items-center"
             >
-              <div 
+              <div
                 className="w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mb-4"
                 style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
               >
@@ -211,17 +236,17 @@ const ImageUploadPage = () => {
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <h3 
+              <h3
                 className="text-base md:text-xl font-semibold mb-2"
                 style={{ color: '#2d3748' }}
               >
-                Upload Scrap Images
+                {getTranslatedText("Upload Scrap Images")}
               </h3>
-              <p 
+              <p
                 className="text-xs md:text-sm mb-4"
                 style={{ color: '#718096' }}
               >
-                Drag & drop images here or click to browse
+                {getTranslatedText("Drag & drop images here or click to browse")}
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
@@ -231,7 +256,7 @@ const ImageUploadPage = () => {
                   onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
                   onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
                 >
-                  Choose from Gallery
+                  {getTranslatedText("Choose from Gallery")}
                 </button>
                 <button
                   onClick={handleCameraClick}
@@ -244,7 +269,7 @@ const ImageUploadPage = () => {
                     e.target.style.backgroundColor = 'transparent';
                   }}
                 >
-                  📷 Take Photo
+                  📷 {getTranslatedText("Take Photo")}
                 </button>
               </div>
             </motion.div>
@@ -296,7 +321,7 @@ const ImageUploadPage = () => {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" strokeLinecap="round" />
               </svg>
-              <span className="text-sm md:text-base font-semibold">Add More Images</span>
+              <span className="text-sm md:text-base font-semibold">{getTranslatedText("Add More Images")}</span>
             </motion.button>
           </div>
         )}
@@ -313,9 +338,9 @@ const ImageUploadPage = () => {
       </div>
 
       {/* Footer with Continue Button - Fixed on Mobile */}
-      <div 
+      <div
         className="fixed md:relative bottom-0 left-0 right-0 p-3 md:p-6 border-t z-50"
-        style={{ 
+        style={{
           borderColor: 'rgba(100, 148, 110, 0.2)',
           backgroundColor: '#f4ebe2'
         }}
@@ -332,14 +357,14 @@ const ImageUploadPage = () => {
             onMouseEnter={(e) => { if (!isUploading) e.target.style.backgroundColor = '#5a8263'; }}
             onMouseLeave={(e) => { if (!isUploading) e.target.style.backgroundColor = '#64946e'; }}
           >
-            {isUploading ? 'Uploading...' : `Continue with ${uploadedImages.length} ${uploadedImages.length === 1 ? 'Image' : 'Images'}`}
+            {isUploading ? getTranslatedText('Uploading...') : `${getTranslatedText("Continue with")} ${uploadedImages.length} ${uploadedImages.length === 1 ? getTranslatedText('Image') : getTranslatedText('Images')}`}
           </motion.button>
         ) : (
-          <p 
+          <p
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >
-            Upload at least one image to continue
+            {getTranslatedText("Upload at least one image to continue")}
           </p>
         )}
       </div>

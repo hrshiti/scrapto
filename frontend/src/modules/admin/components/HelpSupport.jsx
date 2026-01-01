@@ -5,6 +5,7 @@ import {
   FaSpinner, FaUser, FaClock, FaComment
 } from 'react-icons/fa';
 import { supportAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const STATUS_CONFIG = {
   open: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Open' },
@@ -30,6 +31,34 @@ const HelpSupport = () => {
     priority: 'all',
     search: ''
   });
+
+  const staticTexts = [
+    "Failed to load tickets",
+    "Failed to update status",
+    "Help & Support",
+    "Manage user inquiries and support tickets",
+    "Search subject, name...",
+    "All Status",
+    "Open",
+    "In Progress",
+    "Resolved",
+    "Closed",
+    "All Priorities",
+    "Low",
+    "Medium",
+    "High",
+    "Urgent",
+    "Tickets ({count})",
+    "No tickets found",
+    "Guest",
+    "Mark {status}",
+    "{priority} Priority",
+    "responses",
+    "Reply to this ticket... (Feature coming soon in backend)",
+    "Send Reply",
+    "Select a ticket to view details"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   const [selectedTicket, setSelectedTicket] = useState(null);
 
@@ -82,7 +111,7 @@ const HelpSupport = () => {
       }
     } catch (err) {
       console.error('Error updating status:', err);
-      alert('Failed to update status');
+      alert(getTranslatedText('Failed to update status'));
     }
   };
 
@@ -97,10 +126,10 @@ const HelpSupport = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
-              Help & Support
+              {getTranslatedText("Help & Support")}
             </h1>
             <p className="text-gray-600">
-              Manage user inquiries and support tickets
+              {getTranslatedText("Manage user inquiries and support tickets")}
             </p>
           </div>
           <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
@@ -114,7 +143,7 @@ const HelpSupport = () => {
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search subject, name..."
+              placeholder={getTranslatedText("Search subject, name...")}
               value={filters.search}
               onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
@@ -127,11 +156,11 @@ const HelpSupport = () => {
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
               className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
             >
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{getTranslatedText("All Status")}</option>
+              <option value="open">{getTranslatedText("Open")}</option>
+              <option value="in_progress">{getTranslatedText("In Progress")}</option>
+              <option value="resolved">{getTranslatedText("Resolved")}</option>
+              <option value="closed">{getTranslatedText("Closed")}</option>
             </select>
           </div>
           <select
@@ -139,11 +168,11 @@ const HelpSupport = () => {
             onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
             className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 border-gray-200 focus:border-blue-500"
           >
-            <option value="all">All Priorities</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
+            <option value="all">{getTranslatedText("All Priorities")}</option>
+            <option value="low">{getTranslatedText("Low")}</option>
+            <option value="medium">{getTranslatedText("Medium")}</option>
+            <option value="high">{getTranslatedText("High")}</option>
+            <option value="urgent">{getTranslatedText("Urgent")}</option>
           </select>
         </div>
       </motion.div>
@@ -156,7 +185,7 @@ const HelpSupport = () => {
           className="lg:col-span-1 bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col h-[600px]"
         >
           <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h2 className="font-bold text-gray-700">Tickets ({tickets.length})</h2>
+            <h2 className="font-bold text-gray-700">{getTranslatedText("Tickets ({count})", { count: tickets.length })}</h2>
           </div>
 
           <div className="overflow-y-auto flex-1 p-2 space-y-2">
@@ -166,7 +195,7 @@ const HelpSupport = () => {
               </div>
             ) : tickets.length === 0 ? (
               <div className="text-center p-8 text-gray-500">
-                No tickets found
+                {getTranslatedText("No tickets found")}
               </div>
             ) : (
               tickets.map(ticket => (
@@ -174,13 +203,13 @@ const HelpSupport = () => {
                   key={ticket._id}
                   onClick={() => setSelectedTicket(ticket)}
                   className={`p-4 rounded-xl cursor-pointer transition-all border-2 ${selectedTicket?._id === ticket._id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-transparent hover:bg-gray-50'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-transparent hover:bg-gray-50'
                     }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${STATUS_CONFIG[ticket.status]?.bg || 'bg-gray-100'} ${STATUS_CONFIG[ticket.status]?.text || 'text-gray-600'}`}>
-                      {STATUS_CONFIG[ticket.status]?.label || ticket.status}
+                      {getTranslatedText(STATUS_CONFIG[ticket.status]?.label || ticket.status)}
                     </span>
                     <span className="text-xs text-gray-400">
                       {new Date(ticket.createdAt).toLocaleDateString()}
@@ -189,7 +218,7 @@ const HelpSupport = () => {
                   <h3 className="font-bold text-gray-800 text-sm mb-1 truncate">{ticket.subject}</h3>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     <FaUser className="text-xs" />
-                    <span className="truncate max-w-[100px]">{ticket.name || 'Guest'}</span>
+                    <span className="truncate max-w-[100px]">{getTranslatedText(ticket.name || 'Guest')}</span>
                   </div>
                 </div>
               ))
@@ -226,7 +255,7 @@ const HelpSupport = () => {
                           onClick={() => handleUpdateStatus(selectedTicket._id, status)}
                           className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg capitalize transition-colors"
                         >
-                          Mark {status.replace('_', ' ')}
+                          {getTranslatedText("Mark {status}", { status: status.replace('_', ' ') })}
                         </button>
                       )
                     ))}
@@ -235,10 +264,10 @@ const HelpSupport = () => {
 
                 <div className="flex gap-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_CONFIG[selectedTicket.status]?.bg} ${STATUS_CONFIG[selectedTicket.status]?.text}`}>
-                    {STATUS_CONFIG[selectedTicket.status]?.label}
+                    {getTranslatedText(STATUS_CONFIG[selectedTicket.status]?.label)}
                   </span>
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 uppercase">
-                    {selectedTicket.priority} Priority
+                    {getTranslatedText("{priority} Priority", { priority: selectedTicket.priority })}
                   </span>
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 uppercase">
                     {selectedTicket.type}
@@ -254,7 +283,7 @@ const HelpSupport = () => {
                 {/* Responses would go here */}
                 {selectedTicket.responses?.length > 0 && (
                   <div className="space-y-4 mt-6">
-                    <h3 className="font-bold text-gray-700 mb-2"> responses</h3>
+                    <h3 className="font-bold text-gray-700 mb-2"> {getTranslatedText("responses")}</h3>
                     {/* Map responses */}
                   </div>
                 )}
@@ -262,13 +291,13 @@ const HelpSupport = () => {
 
               <div className="p-4 bg-white border-t border-gray-100">
                 <textarea
-                  placeholder="Reply to this ticket... (Feature coming soon in backend)"
+                  placeholder={getTranslatedText("Reply to this ticket... (Feature coming soon in backend)")}
                   disabled
                   className="w-full p-3 rounded-lg border bg-gray-50 focus:outline-none text-sm resize-none h-24"
                 />
                 <div className="flex justify-end mt-2">
                   <button disabled className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed">
-                    Send Reply
+                    {getTranslatedText("Send Reply")}
                   </button>
                 </div>
               </div>
@@ -276,7 +305,7 @@ const HelpSupport = () => {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <FaComment className="text-4xl mb-4" />
-              <p>Select a ticket to view details</p>
+              <p>{getTranslatedText("Select a ticket to view details")}</p>
             </div>
           )}
         </motion.div>

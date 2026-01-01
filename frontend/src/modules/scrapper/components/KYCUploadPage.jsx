@@ -3,8 +3,44 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { kycAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const KYCUploadPage = () => {
+  const staticTexts = [
+    "Checking status...",
+    "Please enter a valid 12-digit Aadhaar number",
+    "Please upload Aadhaar photo",
+    "Please upload selfie photo",
+    "Failed to submit KYC. Please try again.",
+    "KYC Verification",
+    "Complete your KYC to start receiving pickup requests",
+    "Step 1 of 1",
+    "Aadhaar Number",
+    "Enter 12-digit Aadhaar number",
+    "Masked: {masked}",
+    "Aadhaar Card Photo",
+    "Click to upload",
+    "Aadhaar photo",
+    "PNG, JPG or JPEG (MAX. 5MB)",
+    "Remove Photo",
+    "Selfie Photo",
+    "selfie photo",
+    "Driving License (optional)",
+    "license",
+    "Remove License",
+    "Important Information",
+    "Your KYC documents will be verified by our admin team",
+    "Verification usually takes 24-48 hours",
+    "You can start receiving requests after verification",
+    "All documents are securely stored and encrypted",
+    "Submitting...",
+    "Submit KYC",
+    "KYC Submitted Successfully!",
+    "Your KYC documents have been submitted for verification.",
+    "Verification Time:",
+    "Usually takes 24-48 hours. You'll be notified once verification is complete."
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [aadhaarNumber, setAadhaarNumber] = useState('');
@@ -45,7 +81,7 @@ const KYCUploadPage = () => {
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-4" style={{ borderColor: '#64946e' }} />
-          <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>Checking status...</p>
+          <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{getTranslatedText("Checking status...")}</p>
         </div>
       </div>
     );
@@ -96,17 +132,17 @@ const KYCUploadPage = () => {
     e.preventDefault();
 
     if (!aadhaarNumber || aadhaarNumber.length !== 12) {
-      alert('Please enter a valid 12-digit Aadhaar number');
+      alert(getTranslatedText('Please enter a valid 12-digit Aadhaar number'));
       return;
     }
 
     if (!aadhaarPhoto) {
-      alert('Please upload Aadhaar photo');
+      alert(getTranslatedText('Please upload Aadhaar photo'));
       return;
     }
 
     if (!selfiePhoto) {
-      alert('Please upload selfie photo');
+      alert(getTranslatedText('Please upload selfie photo'));
       return;
     }
 
@@ -140,7 +176,7 @@ const KYCUploadPage = () => {
       }, 1200);
     } catch (error) {
       console.error('KYC submit failed:', error);
-      alert(error.message || 'Failed to submit KYC. Please try again.');
+      alert(error.message || getTranslatedText('Failed to submit KYC. Please try again.'));
       setIsSubmitting(false);
     }
   };
@@ -173,10 +209,10 @@ const KYCUploadPage = () => {
             </svg>
           </button>
           <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
-            KYC Verification
+            {getTranslatedText("KYC Verification")}
           </h1>
           <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-            Complete your KYC to start receiving pickup requests
+            {getTranslatedText("Complete your KYC to start receiving pickup requests")}
           </p>
         </motion.div>
 
@@ -197,7 +233,7 @@ const KYCUploadPage = () => {
                 style={{ backgroundColor: '#64946e' }}
               />
             </div>
-            <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 1 of 1</span>
+            <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 1 of 1")}</span>
           </div>
         </motion.div>
 
@@ -213,13 +249,13 @@ const KYCUploadPage = () => {
           {/* Aadhaar Number */}
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Aadhaar Number <span className="text-red-500">*</span>
+              {getTranslatedText("Aadhaar Number")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={aadhaarNumber}
               onChange={handleAadhaarNumberChange}
-              placeholder="Enter 12-digit Aadhaar number"
+              placeholder={getTranslatedText("Enter 12-digit Aadhaar number")}
               maxLength={12}
               className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
               style={{
@@ -231,7 +267,7 @@ const KYCUploadPage = () => {
             />
             {aadhaarNumber.length === 12 && (
               <p className="text-xs mt-1" style={{ color: '#718096' }}>
-                Masked: {maskedAadhaar}
+                {getTranslatedText("Masked: {masked}", { masked: maskedAadhaar })}
               </p>
             )}
           </div>
@@ -239,7 +275,7 @@ const KYCUploadPage = () => {
           {/* Aadhaar Photo Upload */}
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Aadhaar Card Photo <span className="text-red-500">*</span>
+              {getTranslatedText("Aadhaar Card Photo")} <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
               <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-green-500"
@@ -256,9 +292,9 @@ const KYCUploadPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="mb-2 text-sm" style={{ color: '#718096' }}>
-                      <span className="font-semibold">Click to upload</span> Aadhaar photo
+                      <span className="font-semibold">{getTranslatedText("Click to upload")}</span> {getTranslatedText("Aadhaar photo")}
                     </p>
-                    <p className="text-xs" style={{ color: '#a0aec0' }}>PNG, JPG or JPEG (MAX. 5MB)</p>
+                    <p className="text-xs" style={{ color: '#a0aec0' }}>{getTranslatedText("PNG, JPG or JPEG (MAX. 5MB)")}</p>
                   </div>
                 )}
                 <input
@@ -279,7 +315,7 @@ const KYCUploadPage = () => {
                   className="text-xs font-semibold"
                   style={{ color: '#ef4444' }}
                 >
-                  Remove Photo
+                  {getTranslatedText("Remove Photo")}
                 </button>
               )}
             </div>
@@ -288,7 +324,7 @@ const KYCUploadPage = () => {
           {/* Selfie Photo Upload */}
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Selfie Photo <span className="text-red-500">*</span>
+              {getTranslatedText("Selfie Photo")} <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
               <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-green-500"
@@ -305,9 +341,9 @@ const KYCUploadPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <p className="mb-2 text-sm" style={{ color: '#718096' }}>
-                      <span className="font-semibold">Click to upload</span> selfie photo
+                      <span className="font-semibold">{getTranslatedText("Click to upload")}</span> {getTranslatedText("selfie photo")}
                     </p>
-                    <p className="text-xs" style={{ color: '#a0aec0' }}>PNG, JPG or JPEG (MAX. 5MB)</p>
+                    <p className="text-xs" style={{ color: '#a0aec0' }}>{getTranslatedText("PNG, JPG or JPEG (MAX. 5MB)")}</p>
                   </div>
                 )}
                 <input
@@ -328,7 +364,7 @@ const KYCUploadPage = () => {
                   className="text-xs font-semibold"
                   style={{ color: '#ef4444' }}
                 >
-                  Remove Photo
+                  {getTranslatedText("Remove Photo")}
                 </button>
               )}
             </div>
@@ -337,7 +373,7 @@ const KYCUploadPage = () => {
           {/* License Upload (optional) */}
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Driving License (optional)
+              {getTranslatedText("Driving License (optional)")}
             </label>
             <div className="space-y-3">
               <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:border-green-500"
@@ -354,9 +390,9 @@ const KYCUploadPage = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                     <p className="mb-2 text-sm" style={{ color: '#718096' }}>
-                      <span className="font-semibold">Click to upload</span> license
+                      <span className="font-semibold">{getTranslatedText("Click to upload")}</span> {getTranslatedText("license")}
                     </p>
-                    <p className="text-xs" style={{ color: '#a0aec0' }}>PNG, JPG or JPEG (MAX. 5MB)</p>
+                    <p className="text-xs" style={{ color: '#a0aec0' }}>{getTranslatedText("PNG, JPG or JPEG (MAX. 5MB)")}</p>
                   </div>
                 )}
                 <input
@@ -376,7 +412,7 @@ const KYCUploadPage = () => {
                   className="text-xs font-semibold"
                   style={{ color: '#ef4444' }}
                 >
-                  Remove License
+                  {getTranslatedText("Remove License")}
                 </button>
               )}
             </div>
@@ -390,13 +426,13 @@ const KYCUploadPage = () => {
               </svg>
               <div>
                 <p className="text-sm font-semibold mb-1" style={{ color: '#2d3748' }}>
-                  Important Information
+                  {getTranslatedText("Important Information")}
                 </p>
                 <ul className="text-xs space-y-1" style={{ color: '#718096' }}>
-                  <li>• Your KYC documents will be verified by our admin team</li>
-                  <li>• Verification usually takes 24-48 hours</li>
-                  <li>• You can start receiving requests after verification</li>
-                  <li>• All documents are securely stored and encrypted</li>
+                  <li>• {getTranslatedText("Your KYC documents will be verified by our admin team")}</li>
+                  <li>• {getTranslatedText("Verification usually takes 24-48 hours")}</li>
+                  <li>• {getTranslatedText("You can start receiving requests after verification")}</li>
+                  <li>• {getTranslatedText("All documents are securely stored and encrypted")}</li>
                 </ul>
               </div>
             </div>
@@ -418,10 +454,10 @@ const KYCUploadPage = () => {
                   transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                   className="w-5 h-5 rounded-full border-2 border-white border-t-transparent"
                 />
-                <span>Submitting...</span>
+                <span>{getTranslatedText("Submitting...")}</span>
               </div>
             ) : (
-              'Submit KYC'
+              getTranslatedText('Submit KYC')
             )}
           </motion.button>
         </motion.form>
@@ -446,17 +482,17 @@ const KYCUploadPage = () => {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
-                      KYC Submitted Successfully!
+                      {getTranslatedText("KYC Submitted Successfully!")}
                     </h3>
                     <p className="text-sm mb-2" style={{ color: '#718096' }}>
-                      Your KYC documents have been submitted for verification.
+                      {getTranslatedText("Your KYC documents have been submitted for verification.")}
                     </p>
                     <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
                       <p className="text-xs font-semibold mb-1" style={{ color: '#2d3748' }}>
-                        ⏱️ Verification Time:
+                        ⏱️ {getTranslatedText("Verification Time:")}
                       </p>
                       <p className="text-xs" style={{ color: '#64946e' }}>
-                        Usually takes 24-48 hours. You'll be notified once verification is complete.
+                        {getTranslatedText("Usually takes 24-48 hours. You'll be notified once verification is complete.")}
                       </p>
                     </div>
                   </div>

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { FaPlus, FaEdit, FaTrash, FaCheck, FaTimes, FaSave } from 'react-icons/fa';
 import { adminAPI, subscriptionAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const SubscriptionPlanManagement = () => {
   const [plans, setPlans] = useState([]);
@@ -9,6 +10,56 @@ const SubscriptionPlanManagement = () => {
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+
+  const staticTexts = [
+    "Failed to load subscription plans",
+    "Plan updated successfully!",
+    "Plan created successfully!",
+    "Failed to save plan",
+    "Failed to save plan. Please try again.",
+    "Are you sure you want to delete this plan? This action cannot be undone.",
+    "Plan deleted successfully!",
+    "Failed to delete plan",
+    "Failed to delete plan. Please try again.",
+    "1 month",
+    "months",
+    "1 year",
+    "years",
+    "days",
+    "Subscription Plan Management",
+    "Create and manage subscription plans for scrappers",
+    "Create Plan",
+    "Loading plans...",
+    "Retry",
+    "Popular",
+    "+{count} more features",
+    "Active",
+    "Inactive",
+    "Max {count} pickups",
+    "Unlimited",
+    "Edit",
+    "Edit Plan",
+    "Create New Plan",
+    "Plan Name *",
+    "e.g., Basic Plan",
+    "Description",
+    "Plan description...",
+    "Price (₹) *",
+    "Duration *",
+    "Duration Type *",
+    "Monthly",
+    "Quarterly",
+    "Yearly",
+    "Max Pickups (leave empty for unlimited)",
+    "Features",
+    "Add a feature...",
+    "Add",
+    "Popular",
+    "Save Plan",
+    "Cancel"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -37,11 +88,11 @@ const SubscriptionPlanManagement = () => {
       if (response.success && response.data?.plans) {
         setPlans(response.data.plans);
       } else {
-        setError('Failed to load subscription plans');
+        setError(getTranslatedText('Failed to load subscription plans'));
       }
     } catch (err) {
       console.error('Error loading plans:', err);
-      setError(err.message || 'Failed to load subscription plans');
+      setError(err.message || getTranslatedText('Failed to load subscription plans'));
     } finally {
       setLoading(false);
     }
@@ -107,18 +158,18 @@ const SubscriptionPlanManagement = () => {
         await loadPlans();
         setShowCreateModal(false);
         setEditingId(null);
-        alert(editingId ? 'Plan updated successfully!' : 'Plan created successfully!');
+        alert(editingId ? getTranslatedText('Plan updated successfully!') : getTranslatedText('Plan created successfully!'));
       } else {
-        throw new Error(response.error || response.message || 'Failed to save plan');
+        throw new Error(response.error || response.message || getTranslatedText('Failed to save plan'));
       }
     } catch (error) {
       console.error('Error saving plan:', error);
-      alert(error.message || 'Failed to save plan. Please try again.');
+      alert(error.message || getTranslatedText('Failed to save plan. Please try again.'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this plan? This action cannot be undone.')) {
+    if (!confirm(getTranslatedText('Are you sure you want to delete this plan? This action cannot be undone.'))) {
       return;
     }
 
@@ -126,13 +177,13 @@ const SubscriptionPlanManagement = () => {
       const response = await adminAPI.deletePlan(id);
       if (response.success) {
         await loadPlans();
-        alert('Plan deleted successfully!');
+        alert(getTranslatedText('Plan deleted successfully!'));
       } else {
-        throw new Error(response.error || response.message || 'Failed to delete plan');
+        throw new Error(response.error || response.message || getTranslatedText('Failed to delete plan'));
       }
     } catch (error) {
       console.error('Error deleting plan:', error);
-      alert(error.message || 'Failed to delete plan. Please try again.');
+      alert(error.message || getTranslatedText('Failed to delete plan. Please try again.'));
     }
   };
 
@@ -155,13 +206,13 @@ const SubscriptionPlanManagement = () => {
 
   const formatDuration = (duration, durationType) => {
     if (durationType === 'monthly') {
-      return duration === 1 ? '1 month' : `${duration} months`;
+      return duration === 1 ? getTranslatedText('1 month') : `${duration} ${getTranslatedText('months')}`;
     } else if (durationType === 'quarterly') {
-      return `${duration} months`;
+      return `${duration} ${getTranslatedText('months')}`;
     } else if (durationType === 'yearly') {
-      return duration === 12 ? '1 year' : `${duration / 12} years`;
+      return duration === 12 ? getTranslatedText('1 year') : `${duration / 12} ${getTranslatedText('years')}`;
     }
-    return `${duration} days`;
+    return `${duration} ${getTranslatedText('days')}`;
   };
 
   return (
@@ -175,10 +226,10 @@ const SubscriptionPlanManagement = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-lg md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Subscription Plan Management
+              {getTranslatedText("Subscription Plan Management")}
             </h1>
             <p className="text-xs md:text-sm lg:text-base" style={{ color: '#718096' }}>
-              Create and manage subscription plans for scrappers
+              {getTranslatedText("Create and manage subscription plans for scrappers")}
             </p>
           </div>
           <motion.button
@@ -189,7 +240,7 @@ const SubscriptionPlanManagement = () => {
             style={{ backgroundColor: '#64946e', color: '#ffffff' }}
           >
             <FaPlus />
-            <span>Create Plan</span>
+            <span>{getTranslatedText("Create Plan")}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -203,7 +254,7 @@ const SubscriptionPlanManagement = () => {
         >
           <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
           <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
-            Loading plans...
+            {getTranslatedText("Loading plans...")}
           </p>
         </motion.div>
       )}
@@ -222,7 +273,7 @@ const SubscriptionPlanManagement = () => {
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
             style={{ backgroundColor: '#64946e' }}
           >
-            Retry
+            {getTranslatedText("Retry")}
           </button>
         </motion.div>
       )}
@@ -239,7 +290,7 @@ const SubscriptionPlanManagement = () => {
             >
               {plan.isPopular && (
                 <div className="absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: '#64946e' }}>
-                  Popular
+                  {getTranslatedText("Popular")}
                 </div>
               )}
               <div className="mb-4">
@@ -269,22 +320,21 @@ const SubscriptionPlanManagement = () => {
                     ))}
                     {plan.features.length > 3 && (
                       <li className="text-xs" style={{ color: '#718096' }}>
-                        +{plan.features.length - 3} more features
+                        {getTranslatedText("+{count} more features", { count: plan.features.length - 3 })}
                       </li>
                     )}
                   </ul>
                 )}
                 <div className="flex items-center gap-2 mb-4">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      plan.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${plan.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}
                   >
-                    {plan.isActive ? 'Active' : 'Inactive'}
+                    {plan.isActive ? getTranslatedText('Active') : getTranslatedText('Inactive')}
                   </span>
                   {plan.maxPickups && (
                     <span className="text-xs" style={{ color: '#718096' }}>
-                      Max {plan.maxPickups} pickups
+                      {getTranslatedText("Max {count} pickups", { count: plan.maxPickups })}
                     </span>
                   )}
                 </div>
@@ -298,7 +348,7 @@ const SubscriptionPlanManagement = () => {
                   style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
                 >
                   <FaEdit />
-                  <span>Edit</span>
+                  <span>{getTranslatedText("Edit")}</span>
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -330,13 +380,13 @@ const SubscriptionPlanManagement = () => {
             className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           >
             <h2 className="text-xl md:text-2xl font-bold mb-4" style={{ color: '#2d3748' }}>
-              {editingId ? 'Edit Plan' : 'Create New Plan'}
+              {editingId ? getTranslatedText('Edit Plan') : getTranslatedText('Create New Plan')}
             </h2>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Plan Name *
+                  {getTranslatedText("Plan Name *")}
                 </label>
                 <input
                   type="text"
@@ -344,13 +394,13 @@ const SubscriptionPlanManagement = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
                   style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
-                  placeholder="e.g., Basic Plan"
+                  placeholder={getTranslatedText("e.g., Basic Plan")}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Description
+                  {getTranslatedText("Description")}
                 </label>
                 <textarea
                   value={formData.description}
@@ -358,14 +408,14 @@ const SubscriptionPlanManagement = () => {
                   className="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
                   style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
                   rows="3"
-                  placeholder="Plan description..."
+                  placeholder={getTranslatedText("Plan description...")}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Price (₹) *
+                    {getTranslatedText("Price (₹) *")}
                   </label>
                   <input
                     type="number"
@@ -379,7 +429,7 @@ const SubscriptionPlanManagement = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Duration *
+                    {getTranslatedText("Duration *")}
                   </label>
                   <input
                     type="number"
@@ -395,7 +445,7 @@ const SubscriptionPlanManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Duration Type *
+                    {getTranslatedText("Duration Type *")}
                   </label>
                   <select
                     value={formData.durationType}
@@ -403,14 +453,14 @@ const SubscriptionPlanManagement = () => {
                     className="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
                     style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                    <option value="yearly">Yearly</option>
+                    <option value="monthly">{getTranslatedText("Monthly")}</option>
+                    <option value="quarterly">{getTranslatedText("Quarterly")}</option>
+                    <option value="yearly">{getTranslatedText("Yearly")}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Max Pickups (leave empty for unlimited)
+                    {getTranslatedText("Max Pickups (leave empty for unlimited)")}
                   </label>
                   <input
                     type="number"
@@ -419,14 +469,14 @@ const SubscriptionPlanManagement = () => {
                     className="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
                     style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
                     min="0"
-                    placeholder="Unlimited"
+                    placeholder={getTranslatedText("Unlimited")}
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Features
+                  {getTranslatedText("Features")}
                 </label>
                 <div className="flex gap-2 mb-2">
                   <input
@@ -436,14 +486,14 @@ const SubscriptionPlanManagement = () => {
                     onKeyPress={(e) => e.key === 'Enter' && addFeature()}
                     className="flex-1 px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
                     style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
-                    placeholder="Add a feature..."
+                    placeholder={getTranslatedText("Add a feature...")}
                   />
                   <button
                     onClick={addFeature}
                     className="px-4 py-2 rounded-lg font-semibold text-white"
                     style={{ backgroundColor: '#64946e' }}
                   >
-                    Add
+                    {getTranslatedText("Add")}
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -471,7 +521,7 @@ const SubscriptionPlanManagement = () => {
                     className="w-4 h-4"
                   />
                   <label htmlFor="isActive" className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Active
+                    {getTranslatedText("Active")}
                   </label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -483,7 +533,7 @@ const SubscriptionPlanManagement = () => {
                     className="w-4 h-4"
                   />
                   <label htmlFor="isPopular" className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Popular
+                    {getTranslatedText("Popular")}
                   </label>
                 </div>
               </div>
@@ -497,7 +547,7 @@ const SubscriptionPlanManagement = () => {
                   style={{ backgroundColor: '#64946e' }}
                 >
                   <FaSave />
-                  <span>Save Plan</span>
+                  <span>{getTranslatedText("Save Plan")}</span>
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -509,7 +559,7 @@ const SubscriptionPlanManagement = () => {
                   className="flex-1 px-4 py-3 rounded-xl font-semibold transition-all"
                   style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                 >
-                  Cancel
+                  {getTranslatedText("Cancel")}
                 </motion.button>
               </div>
             </div>
@@ -521,6 +571,3 @@ const SubscriptionPlanManagement = () => {
 };
 
 export default SubscriptionPlanManagement;
-
-
-

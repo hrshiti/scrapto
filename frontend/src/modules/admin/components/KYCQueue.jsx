@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { FaUserShield, FaCheckCircle, FaTimesCircle, FaEye, FaClock, FaFilter } from 'react-icons/fa';
 import KYCDetailModal from './KYCDetailModal';
 import { adminAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const KYCQueue = () => {
   const [kycList, setKycList] = useState([]);
@@ -12,6 +13,38 @@ const KYCQueue = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const staticTexts = [
+    "Failed to load KYC data",
+    "Failed to update KYC status. Please try again.",
+    "Pending",
+    "Verified",
+    "Rejected",
+    "{count} min ago",
+    "{count} hour ago",
+    "{count} hours ago",
+    "{count} day ago",
+    "{count} days ago",
+    "KYC Verification Queue",
+    "Review and verify scrapper KYC submissions",
+    "{count} Pending",
+    "Search by name, phone, or Aadhaar...",
+    "all",
+    "pending",
+    "verified",
+    "rejected",
+    "Loading KYC data...",
+    "Error loading KYC data",
+    "Retry",
+    "No KYC submissions found",
+    "Try a different search term",
+    "All KYC submissions have been processed",
+    "🆔 Aadhaar: {number}",
+    "Submitted {time}",
+    "View Details",
+    "View",
+    "Not provided"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadKYCData();
@@ -53,17 +86,17 @@ const KYCQueue = () => {
             rejectionReason: scrapper.kyc?.rejectionReason || null,
             vehicleInfo: scrapper.vehicleInfo ?
               `${scrapper.vehicleInfo.type || ''} - ${scrapper.vehicleInfo.number || ''}` :
-              'Not provided',
+              getTranslatedText('Not provided'),
             kycData: scrapper.kyc || null
           }));
         setKycList(transformedKYCs);
       } else {
-        setError('Failed to load KYC data');
+        setError(getTranslatedText('Failed to load KYC data'));
         setKycList([]);
       }
     } catch (err) {
       console.error('Error loading KYC data:', err);
-      setError(err.message || 'Failed to load KYC data');
+      setError(err.message || getTranslatedText('Failed to load KYC data'));
       setKycList([]);
     } finally {
       setLoading(false);
@@ -106,7 +139,7 @@ const KYCQueue = () => {
       setSelectedKYC(null);
     } catch (error) {
       console.error('Error updating KYC status:', error);
-      alert(error.message || 'Failed to update KYC status. Please try again.');
+      alert(error.message || getTranslatedText('Failed to update KYC status. Please try again.'));
     }
   };
 
@@ -124,7 +157,7 @@ const KYCQueue = () => {
         style={{ backgroundColor: style.bg, color: style.color }}
       >
         <Icon className="text-xs" />
-        <span className="hidden sm:inline">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+        <span className="hidden sm:inline">{getTranslatedText(status.charAt(0).toUpperCase() + status.slice(1))}</span>
         <span className="sm:hidden">{status.charAt(0).toUpperCase()}</span>
       </span>
     );
@@ -138,9 +171,9 @@ const KYCQueue = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMins < 60) return getTranslatedText("{count} min ago", { count: diffMins });
+    if (diffHours < 24) return getTranslatedText(diffHours > 1 ? "{count} hours ago" : "{count} hour ago", { count: diffHours });
+    return getTranslatedText(diffDays > 1 ? "{count} days ago" : "{count} day ago", { count: diffDays });
   };
 
   return (
@@ -154,16 +187,16 @@ const KYCQueue = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              KYC Verification Queue
+              {getTranslatedText("KYC Verification Queue")}
             </h1>
             <p className="text-xs md:text-base" style={{ color: '#718096' }}>
-              Review and verify scrapper KYC submissions
+              {getTranslatedText("Review and verify scrapper KYC submissions")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
               <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                {filteredKYCs.filter(k => k.status === 'pending').length} Pending
+                {getTranslatedText("{count} Pending", { count: filteredKYCs.filter(k => k.status === 'pending').length })}
               </span>
             </div>
           </div>
@@ -182,7 +215,7 @@ const KYCQueue = () => {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Search by name, phone, or Aadhaar..."
+              placeholder={getTranslatedText("Search by name, phone, or Aadhaar...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-3 py-2 md:px-4 md:py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
@@ -207,7 +240,7 @@ const KYCQueue = () => {
                   color: filter === status ? '#ffffff' : '#2d3748'
                 }}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {getTranslatedText(status)}
               </button>
             ))}
           </div>
@@ -223,7 +256,7 @@ const KYCQueue = () => {
         >
           <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
           <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
-            Loading KYC data...
+            {getTranslatedText("Loading KYC data...")}
           </p>
         </motion.div>
       )}
@@ -236,7 +269,7 @@ const KYCQueue = () => {
         >
           <FaTimesCircle className="mx-auto mb-4 text-4xl" style={{ color: '#ef4444' }} />
           <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
-            Error loading KYC data
+            {getTranslatedText("Error loading KYC data")}
           </h3>
           <p className="text-sm md:text-base mb-4" style={{ color: '#718096' }}>
             {error}
@@ -246,7 +279,7 @@ const KYCQueue = () => {
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
             style={{ backgroundColor: '#64946e' }}
           >
-            Retry
+            {getTranslatedText("Retry")}
           </button>
         </motion.div>
       )}
@@ -268,10 +301,10 @@ const KYCQueue = () => {
               >
                 <FaUserShield className="mx-auto mb-4" style={{ color: '#cbd5e0', fontSize: '48px' }} />
                 <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  No KYC submissions found
+                  {getTranslatedText("No KYC submissions found")}
                 </p>
                 <p className="text-sm" style={{ color: '#718096' }}>
-                  {searchQuery ? 'Try a different search term' : 'All KYC submissions have been processed'}
+                  {searchQuery ? getTranslatedText('Try a different search term') : getTranslatedText('All KYC submissions have been processed')}
                 </p>
               </motion.div>
             ) : (
@@ -304,9 +337,9 @@ const KYCQueue = () => {
                           </div>
                           <div className="space-y-0.5 md:space-y-1 text-xs md:text-sm" style={{ color: '#718096' }}>
                             <p>📱 {kyc.scrapperPhone}</p>
-                            <p>🆔 Aadhaar: {kyc.aadhaarNumber}</p>
+                            <p>{getTranslatedText("🆔 Aadhaar: {number}", { number: kyc.aadhaarNumber })}</p>
                             <p>🚗 {kyc.vehicleInfo}</p>
-                            <p className="text-xs">Submitted {getTimeAgo(kyc.submittedAt)}</p>
+                            <p className="text-xs">{getTranslatedText("Submitted {time}", { time: getTimeAgo(kyc.submittedAt) })}</p>
                           </div>
                         </div>
                       </div>
@@ -322,8 +355,8 @@ const KYCQueue = () => {
                         style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                       >
                         <FaEye className="text-xs md:text-sm" />
-                        <span className="hidden sm:inline">View Details</span>
-                        <span className="sm:hidden">View</span>
+                        <span className="hidden sm:inline">{getTranslatedText("View Details")}</span>
+                        <span className="sm:hidden">{getTranslatedText("View")}</span>
                       </motion.button>
                     </div>
                   </div>

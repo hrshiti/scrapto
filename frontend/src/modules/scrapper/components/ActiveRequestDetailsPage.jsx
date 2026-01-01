@@ -12,8 +12,60 @@ import {
 import { orderAPI, scrapperOrdersAPI } from '../../shared/utils/api';
 import { useRef } from 'react';
 import ScrapperMap from './GoogleMaps/ScrapperMap';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ActiveRequestDetailsPage = () => {
+  const staticTexts = [
+    "Loading request details...",
+    "Active Request",
+    "Pickup Details",
+    "Scrap Images",
+    "Area Images",
+    "Pickup Slot:",
+    "Collect Payment",
+    "Make Payment",
+    "Estimated Amount",
+    "Enter Amount Received",
+    "Enter Amount Paid",
+    "Amount (₹)",
+    "Confirm Payment",
+    "Payment Status",
+    "Collected ✓",
+    "Paid ✓",
+    "Complete Order",
+    "Order Completed!",
+    "Redirecting to dashboard...",
+    "Start Service",
+    "Pickup Scrap",
+    "Call Customer",
+    "Message",
+    "Chat",
+    "Confirm Action",
+    "Cancel",
+    "Confirm",
+    "Please enter a valid amount",
+    "Order ID not found",
+    "Failed to update order status",
+    "Failed to update payment status",
+    "Failed to complete order",
+    "Failed to process. Please try again.",
+    "Have you arrived and started the cleaning service?",
+    "Have you picked up the scrap from the customer?",
+    "Have you received ₹{amount} from the customer?",
+    "Have you paid ₹{amount} to the customer?",
+    "Are you sure you want to complete this order?",
+    "You collected ₹{amount} from the customer",
+    "You will pay ₹{amount} to the customer",
+    "Payment of ₹{amount} collected successfully",
+    "Payment of ₹{amount} made successfully to customer",
+    "User",
+    "Scrap",
+    "Cleaning Service",
+    "Address not available",
+    "of",
+    "Yes, Confirm"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const location = useLocation();
   const { requestId } = useParams();
@@ -77,8 +129,8 @@ const ActiveRequestDetailsPage = () => {
             userPhone: order.user?.phone || '',
             userEmail: order.user?.email || '',
             scrapType: order.orderType === 'cleaning_service'
-              ? (order.serviceDetails?.serviceType || 'Cleaning Service')
-              : (order.scrapItems?.map(item => item.category).join(', ') || 'Scrap'),
+              ? (getTranslatedText(order.serviceDetails?.serviceType || 'Cleaning Service'))
+              : (order.scrapItems?.map(item => getTranslatedText(item.category)).join(', ') || getTranslatedText('Scrap')),
             weight: order.totalWeight,
             pickupSlot: order.pickupSlot || null,
             preferredTime: order.preferredTime || null,
@@ -133,7 +185,7 @@ const ActiveRequestDetailsPage = () => {
             setCurrentRequestIndex(index >= 0 ? index : 0);
           }
         } else {
-          throw new Error('Order not found');
+          throw new Error(getTranslatedText('Order not found'));
         }
       } catch (error) {
         console.error('Failed to load order:', error);
@@ -175,8 +227,8 @@ const ActiveRequestDetailsPage = () => {
             userPhone: order.user?.phone || '',
             userEmail: order.user?.email || '',
             scrapType: order.orderType === 'cleaning_service'
-              ? (order.serviceDetails?.serviceType || 'Cleaning Service')
-              : (order.scrapItems?.map(item => item.category).join(', ') || 'Scrap'),
+              ? (getTranslatedText(order.serviceDetails?.serviceType || 'Cleaning Service'))
+              : (order.scrapItems?.map(item => getTranslatedText(item.category)).join(', ') || getTranslatedText('Scrap')),
             weight: order.totalWeight,
             pickupSlot: order.pickupSlot || null,
             preferredTime: order.preferredTime || null,
@@ -301,7 +353,7 @@ const ActiveRequestDetailsPage = () => {
     return (
       <div className="mb-4">
         <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-          Pickup Slot:
+          {getTranslatedText("Pickup Slot:")}
         </p>
         <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
           {label}
@@ -313,7 +365,7 @@ const ActiveRequestDetailsPage = () => {
   if (!requestData) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
-        <p style={{ color: '#718096' }}>Loading request details...</p>
+        <p style={{ color: '#718096' }}>{getTranslatedText("Loading request details...")}</p>
       </div>
     );
   }
@@ -338,36 +390,36 @@ const ActiveRequestDetailsPage = () => {
     setConfirmAction('pickup');
     const isService = requestData.orderType === 'cleaning_service';
     setConfirmMessage(isService
-      ? 'Have you arrived and started the cleaning service?'
-      : 'Have you picked up the scrap from the customer?'
+      ? getTranslatedText('Have you arrived and started the cleaning service?')
+      : getTranslatedText('Have you picked up the scrap from the customer?')
     );
     setShowConfirmModal(true);
   };
 
   const handlePaymentMade = () => {
     if (!paidAmount || parseFloat(paidAmount) <= 0) {
-      alert('Please enter a valid amount');
+      alert(getTranslatedText('Please enter a valid amount'));
       return;
     }
     setConfirmAction('payment');
     const isService = requestData.orderType === 'cleaning_service';
     setConfirmMessage(isService
-      ? `Have you received ₹${paidAmount} from the customer?`
-      : `Have you paid ₹${paidAmount} to the customer?`
+      ? getTranslatedText("Have you received ₹{amount} from the customer?", { amount: paidAmount })
+      : getTranslatedText("Have you paid ₹{amount} to the customer?", { amount: paidAmount })
     );
     setShowConfirmModal(true);
   };
 
   const handleCompleteOrder = () => {
     setConfirmAction('complete');
-    setConfirmMessage('Are you sure you want to complete this order?');
+    setConfirmMessage(getTranslatedText('Are you sure you want to complete this order?'));
     setShowConfirmModal(true);
   };
 
   const handleConfirm = async () => {
     const orderId = requestData._id || requestData.id;
     if (!orderId) {
-      alert('Order ID not found');
+      alert(getTranslatedText('Order ID not found'));
       return;
     }
 
@@ -391,7 +443,7 @@ const ActiveRequestDetailsPage = () => {
             paymentStatus: 'pending'
           });
         } else {
-          throw new Error(response.message || 'Failed to update order status');
+          throw new Error(getTranslatedText('Failed to update order status'));
         }
       } else if (confirmAction === 'payment') {
         // Update order status to in_progress (just in case) and paymentStatus to completed
@@ -409,7 +461,7 @@ const ActiveRequestDetailsPage = () => {
             paidAmount: paidAmount
           });
         } else {
-          throw new Error(response.message || 'Failed to update payment status');
+          throw new Error(getTranslatedText('Failed to update payment status'));
         }
       } else if (confirmAction === 'complete') {
         // Update order status to completed
@@ -421,7 +473,7 @@ const ActiveRequestDetailsPage = () => {
             navigate('/scrapper', { replace: true });
           }, 1500);
         } else {
-          throw new Error(response.message || 'Failed to complete order');
+          throw new Error(getTranslatedText('Failed to complete order'));
         }
       }
 
@@ -430,7 +482,7 @@ const ActiveRequestDetailsPage = () => {
       setConfirmMessage('');
     } catch (error) {
       console.error('Failed to confirm action:', error);
-      alert(error.message || 'Failed to process. Please try again.');
+      alert(error.message || getTranslatedText('Failed to process. Please try again.'));
       setShowConfirmModal(false);
       setConfirmAction(null);
       setConfirmMessage('');
@@ -464,10 +516,10 @@ const ActiveRequestDetailsPage = () => {
             </svg>
           </button>
           <div>
-            <h1 className="text-xl font-bold" style={{ color: '#2d3748' }}>Active Request</h1>
+            <h1 className="text-xl font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Active Request")}</h1>
             {allActiveRequests.length > 1 && (
               <p className="text-xs" style={{ color: '#718096' }}>
-                {currentRequestIndex + 1} of {allActiveRequests.length}
+                {currentRequestIndex + 1} {getTranslatedText("of")} {allActiveRequests.length}
               </p>
             )}
           </div>
@@ -555,7 +607,7 @@ const ActiveRequestDetailsPage = () => {
                 </svg>
               </button>
               <h1 className="text-xl font-bold" style={{ color: '#e5e7eb' }}>
-                {requestData.orderType === 'cleaning_service' ? 'Collect Payment' : 'Make Payment'}
+                {requestData.orderType === 'cleaning_service' ? getTranslatedText('Collect Payment') : getTranslatedText('Make Payment')}
               </h1>
             </div>
 
@@ -576,7 +628,7 @@ const ActiveRequestDetailsPage = () => {
                     </div>
                   </div>
                   <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(31, 41, 55, 0.9)' }}>
-                    <p className="text-xs mb-1" style={{ color: '#9ca3af' }}>Estimated Amount</p>
+                    <p className="text-xs mb-1" style={{ color: '#9ca3af' }}>{getTranslatedText("Estimated Amount")}</p>
                     <p className="text-xl font-bold" style={{ color: '#4ade80' }}>{finalAmount || requestData?.estimatedEarnings || '₹450'}</p>
                   </div>
                 </div>
@@ -584,12 +636,12 @@ const ActiveRequestDetailsPage = () => {
                 {/* Payment Input */}
                 <div className="mb-6 p-6 rounded-2xl shadow-lg" style={{ backgroundColor: '#020617' }}>
                   <h2 className="text-lg font-bold mb-4" style={{ color: '#e5e7eb' }}>
-                    {requestData.orderType === 'cleaning_service' ? 'Enter Amount Received' : 'Enter Amount Paid'}
+                    {requestData.orderType === 'cleaning_service' ? getTranslatedText('Enter Amount Received') : getTranslatedText('Enter Amount Paid')}
                   </h2>
 
                   <div className="mb-4">
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#d1d5db' }}>
-                      Amount (₹)
+                      {getTranslatedText("Amount (₹)")}
                     </label>
                     <input
                       type="number"
@@ -609,8 +661,8 @@ const ActiveRequestDetailsPage = () => {
                     {paidAmount && (
                       <p className="text-sm mt-2 text-center" style={{ color: '#9ca3af' }}>
                         {requestData.orderType === 'cleaning_service'
-                          ? `You collected ₹${parseFloat(paidAmount) || 0} from the customer`
-                          : `You will pay ₹${parseFloat(paidAmount) || 0} to the customer`
+                          ? getTranslatedText("You collected ₹{amount} from the customer", { amount: parseFloat(paidAmount) || 0 })
+                          : getTranslatedText("You will pay ₹{amount} to the customer", { amount: parseFloat(paidAmount) || 0 })
                         }
                       </p>
                     )}
@@ -646,7 +698,7 @@ const ActiveRequestDetailsPage = () => {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor" />
                     </svg>
-                    Confirm Payment
+                    {getTranslatedText("Confirm Payment")}
                   </motion.button>
                 </div>
               </div>
@@ -668,7 +720,7 @@ const ActiveRequestDetailsPage = () => {
               {/* Request Content - Compact - Scrollable */}
               <div className="p-4 pb-2 overflow-y-auto flex-1" style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>Pickup Details</h2>
+                  <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>{getTranslatedText("Pickup Details")}</h2>
                 </div>
 
                 {/* Request Details - Compact */}
@@ -692,7 +744,7 @@ const ActiveRequestDetailsPage = () => {
                   {requestData.images && requestData.images.length > 0 && (
                     <div className="mt-3">
                       <p className="text-xs font-semibold mb-2" style={{ color: '#e5e7eb' }}>
-                        {requestData.orderType === 'cleaning_service' ? 'Area Images' : 'Scrap Images'}
+                        {requestData.orderType === 'cleaning_service' ? getTranslatedText('Area Images') : getTranslatedText('Scrap Images')}
                       </p>
                       <div className="grid grid-cols-3 gap-2">
                         {requestData.images.slice(0, 6).map((image, idx) => (
@@ -731,15 +783,15 @@ const ActiveRequestDetailsPage = () => {
                 {(paymentStatus === 'paid' || paymentStatus === 'completed') && requestData?.status !== 'completed' && (
                   <div className="mb-3 p-4 rounded-xl" style={{ backgroundColor: 'rgba(22, 163, 74, 0.15)' }}>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold" style={{ color: '#bbf7d0' }}>Payment Status</span>
+                      <span className="text-sm font-semibold" style={{ color: '#bbf7d0' }}>{getTranslatedText("Payment Status")}</span>
                       <span className="text-sm font-bold" style={{ color: '#4ade80' }}>
-                        {requestData.orderType === 'cleaning_service' ? 'Collected ✓' : 'Paid ✓'}
+                        {requestData.orderType === 'cleaning_service' ? getTranslatedText('Collected ✓') : getTranslatedText('Paid ✓')}
                       </span>
                     </div>
                     <p className="text-xs mb-3" style={{ color: '#e5e7eb' }}>
                       {requestData.orderType === 'cleaning_service'
-                        ? `Payment of ₹${paidAmount || requestData?.paidAmount || '0'} collected successfully`
-                        : `Payment of ₹${paidAmount || requestData?.paidAmount || '0'} made successfully to customer`
+                        ? getTranslatedText("Payment of ₹{amount} collected successfully", { amount: paidAmount || requestData?.paidAmount || '0' })
+                        : getTranslatedText("Payment of ₹{amount} made successfully to customer", { amount: paidAmount || requestData?.paidAmount || '0' })
                       }
                     </p>
                     <motion.button
@@ -752,7 +804,7 @@ const ActiveRequestDetailsPage = () => {
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
-                      Complete Order
+                      {getTranslatedText("Complete Order")}
                     </motion.button>
                   </div>
                 )}
@@ -763,8 +815,8 @@ const ActiveRequestDetailsPage = () => {
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="mx-auto mb-2" style={{ color: '#4ade80' }}>
                       <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    <p className="text-sm font-bold mb-1" style={{ color: '#bbf7d0' }}>Order Completed!</p>
-                    <p className="text-xs" style={{ color: '#e5e7eb' }}>Redirecting to dashboard...</p>
+                    <p className="text-sm font-bold mb-1" style={{ color: '#bbf7d0' }}>{getTranslatedText("Order Completed!")}</p>
+                    <p className="text-xs" style={{ color: '#e5e7eb' }}>{getTranslatedText("Redirecting to dashboard...")}</p>
                   </div>
                 )}
               </div>
@@ -789,7 +841,7 @@ const ActiveRequestDetailsPage = () => {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ color: '#ffffff' }}>
                       <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {requestData.orderType === 'cleaning_service' ? 'Start Service' : 'Pickup Scrap'}
+                    {requestData.orderType === 'cleaning_service' ? getTranslatedText('Start Service') : getTranslatedText('Pickup Scrap')}
                   </motion.button>
                 ) : null}
 
@@ -804,7 +856,7 @@ const ActiveRequestDetailsPage = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#4ade80' }}>
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Call
+                    {getTranslatedText("Call")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -816,7 +868,7 @@ const ActiveRequestDetailsPage = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ color: '#60a5fa' }}>
                       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Chat
+                    {getTranslatedText("Chat")}
                   </motion.button>
                 </div>
               </div>
@@ -842,7 +894,7 @@ const ActiveRequestDetailsPage = () => {
               style={{ backgroundColor: '#1f2937' }}
             >
               <h3 className="text-xl font-bold mb-4" style={{ color: '#f9fafb' }}>
-                Confirm Action
+                {getTranslatedText("Confirm Action")}
               </h3>
               <p className="mb-6 text-base" style={{ color: '#d1d5db' }}>
                 {confirmMessage}
@@ -852,13 +904,13 @@ const ActiveRequestDetailsPage = () => {
                   onClick={handleCancel}
                   className="flex-1 py-3 rounded-xl font-semibold bg-gray-700 text-white"
                 >
-                  Cancel
+                  {getTranslatedText("Cancel")}
                 </button>
                 <button
                   onClick={handleConfirm}
                   className="flex-1 py-3 rounded-xl font-bold bg-green-500 text-gray-900"
                 >
-                  Yes, Confirm
+                  {getTranslatedText("Yes, Confirm")}
                 </button>
               </div>
             </motion.div>

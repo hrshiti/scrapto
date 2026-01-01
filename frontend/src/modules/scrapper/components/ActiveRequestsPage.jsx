@@ -9,8 +9,42 @@ import {
   migrateOldActiveRequest
 } from '../../shared/utils/scrapperRequestUtils';
 import { scrapperOrdersAPI, orderAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ActiveRequestsPage = () => {
+  const staticTexts = [
+    "Online",
+    "Active",
+    "New Request",
+    "Pickup slot",
+    "Time Conflict",
+    "This request overlaps with an existing pickup. You can still accept it.",
+    "You have {count} active request",
+    "You have {count} active requests",
+    "Accept Order",
+    "Active Requests ({count})",
+    "Accepted",
+    "Picked Up",
+    "Payment Pending",
+    "Unknown User",
+    "Scrap",
+    "Time not specified",
+    "Calculating...",
+    "Order accepted successfully!",
+    "⚠️ Time Conflict Detected!",
+    "This request overlaps with one of your existing requests.",
+    "Do you still want to accept this request?",
+    "Failed to accept order",
+    "Failed to accept request. Please try again.",
+    "Pickup time not selected",
+    "User",
+    "New scrap request received.",
+    "User Name: {name}.",
+    "Product Category: {category}.",
+    "Location: {location}.",
+    "Pickup Time: {time}."
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isOnline, setIsOnline] = useState(true);
@@ -53,8 +87,8 @@ const ActiveRequestsPage = () => {
               lng: order.pickupAddress?.coordinates?.lng || 0,
               address: order.pickupAddress?.street || 'Unknown'
             },
-            userName: order.user?.name || 'User',
-            scrapType: Array.isArray(order.scrapItems) ? order.scrapItems[0]?.category : 'Scrap',
+            userName: order.user?.name || getTranslatedText('User'),
+            scrapType: Array.isArray(order.scrapItems) ? getTranslatedText(order.scrapItems[0]?.category) : getTranslatedText('Scrap'),
             estimatedEarnings: `₹${order.totalAmount || 0}`
           }));
 
@@ -144,8 +178,8 @@ const ActiveRequestsPage = () => {
                 lng: order.pickupAddress?.coordinates?.lng || 0,
                 address: order.pickupAddress?.street || 'Unknown'
               },
-              userName: order.user?.name || 'User',
-              scrapType: Array.isArray(order.scrapItems) ? order.scrapItems[0]?.category : 'Scrap',
+              userName: order.user?.name || getTranslatedText('User'),
+              scrapType: Array.isArray(order.scrapItems) ? getTranslatedText(order.scrapItems[0]?.category) : getTranslatedText('Scrap'),
               estimatedEarnings: `₹${order.totalAmount || 0}`
             })));
           } catch (err) {
@@ -178,11 +212,11 @@ const ActiveRequestsPage = () => {
               location: {
                 address: order.pickupAddress?.street
                   ? `${order.pickupAddress.street}, ${order.pickupAddress.city || ''}, ${order.pickupAddress.state || ''} ${order.pickupAddress.pincode || ''}`.trim()
-                  : 'Address not available',
+                  : getTranslatedText('Address not available'),
                 lat: order.pickupAddress?.coordinates?.lat || 19.0760,
                 lng: order.pickupAddress?.coordinates?.lng || 72.8777
               },
-              distance: 'Calculating...', // Can calculate from current location
+              distance: getTranslatedText('Calculating...'), // Can calculate from current location
               estimatedEarnings: `₹${order.totalAmount || 0}`,
               // Backend fields
               status: order.status,
@@ -244,13 +278,13 @@ const ActiveRequestsPage = () => {
       const slot =
         incomingRequest.pickupSlot?.slot ||
         incomingRequest.preferredTime ||
-        'पिकअप समय चुना नहीं गया है';
+        getTranslatedText('Pickup time not selected');
 
-      let text = 'नई स्क्रैपटो रिक्वेस्ट आई है।';
-      text += ` यूज़र का नाम: ${name}।`;
-      text += ` प्रोडक्ट कैटेगरी: ${scrapType}।`;
-      text += ` लोकेशन: ${address}।`;
-      text += ` पिकअप टाइम: ${slot}।`;
+      let text = getTranslatedText('New scrap request received.');
+      text += ' ' + getTranslatedText('User Name: {name}.', { name });
+      text += ' ' + getTranslatedText('Product Category: {category}.', { category: scrapType });
+      text += ' ' + getTranslatedText('Location: {location}.', { location: address });
+      text += ' ' + getTranslatedText('Pickup Time: {time}.', { time: slot });
 
       if (typeof window !== 'undefined' && window.speechSynthesis && window.SpeechSynthesisUtterance) {
         const speakOnce = () => {
@@ -312,9 +346,9 @@ const ActiveRequestsPage = () => {
     if (hasConflict) {
       // Show warning but allow user to proceed if they want
       const proceed = window.confirm(
-        '⚠️ Time Conflict Detected!\n\n' +
-        'This request overlaps with one of your existing requests.\n\n' +
-        'Do you still want to accept this request?'
+        getTranslatedText('⚠️ Time Conflict Detected!') + '\n\n' +
+        getTranslatedText('This request overlaps with one of your existing requests.') + '\n\n' +
+        getTranslatedText('Do you still want to accept this request?')
       );
 
       if (!proceed) {
@@ -331,7 +365,7 @@ const ActiveRequestsPage = () => {
       const response = await scrapperOrdersAPI.accept(orderId);
 
       if (response.success) {
-        console.log('✅ Order accepted successfully!', response.data);
+        console.log('✅ ' + getTranslatedText('Order accepted successfully!'), response.data);
 
         // Clear incoming request
         setIncomingRequest(null);
@@ -342,11 +376,11 @@ const ActiveRequestsPage = () => {
           replace: false
         });
       } else {
-        throw new Error(response.message || 'Failed to accept order');
+        throw new Error(getTranslatedText(response.message || 'Failed to accept order'));
       }
     } catch (error) {
       console.error('Failed to accept request:', error);
-      alert(error.message || 'Failed to accept request. Please try again.');
+      alert(getTranslatedText(error.message || 'Failed to accept request. Please try again.'));
       // Re-enable audio if error
       setAudioPlaying(true);
     }
@@ -396,12 +430,12 @@ const ActiveRequestsPage = () => {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              {existingRequests.length} Active
+              {existingRequests.length} {getTranslatedText("Active")}
             </button>
           )}
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: '#10b981' }} />
-            <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>Online</span>
+            <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>{getTranslatedText("Online")}</span>
           </div>
         </div>
       </div>
@@ -413,7 +447,7 @@ const ActiveRequestsPage = () => {
           scrapperLocation={currentLocation}
           // If there's an incoming request, show user location. Otherwise just show Scrapper's location.
           userLocation={incomingRequest ? incomingRequest.location : null}
-          userName={incomingRequest ? incomingRequest.userName : 'Active Request'}
+          userName={incomingRequest ? incomingRequest.userName : getTranslatedText('Active Request')}
         />
       </div>
 
@@ -435,7 +469,7 @@ const ActiveRequestsPage = () => {
             style={{ minHeight: 0, WebkitOverflowScrolling: 'touch' }}
           >
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>New Request</h2>
+              <h2 className="text-lg font-bold" style={{ color: '#e5e7eb' }}>{getTranslatedText("New Request")}</h2>
               <button
                 onClick={handleRejectRequest}
                 className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -489,7 +523,7 @@ const ActiveRequestsPage = () => {
                     <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs" style={{ color: '#9ca3af' }}>Pickup slot</p>
+                    <p className="text-xs" style={{ color: '#9ca3af' }}>{getTranslatedText("Pickup slot")}</p>
                     <p className="text-xs font-semibold truncate" style={{ color: '#e5e7eb' }}>
                       {incomingRequest.pickupSlot
                         ? `${incomingRequest.pickupSlot.dayName}, ${incomingRequest.pickupSlot.date} • ${incomingRequest.pickupSlot.slot}`
@@ -506,9 +540,9 @@ const ActiveRequestsPage = () => {
                     <path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <div className="flex-1">
-                    <p className="text-xs font-semibold" style={{ color: '#fca5a5' }}>Time Conflict</p>
+                    <p className="text-xs font-semibold" style={{ color: '#fca5a5' }}>{getTranslatedText("Time Conflict")}</p>
                     <p className="text-[11px] mt-0.5" style={{ color: '#fecaca' }}>
-                      This request overlaps with an existing pickup. You can still accept it.
+                      {getTranslatedText("This request overlaps with an existing pickup. You can still accept it.")}
                     </p>
                   </div>
                 </div>
@@ -518,7 +552,9 @@ const ActiveRequestsPage = () => {
               {existingRequests.length > 0 && (
                 <div className="mt-2 p-2 rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
                   <p className="text-xs" style={{ color: '#6ee7b7' }}>
-                    You have {existingRequests.length} active request{existingRequests.length > 1 ? 's' : ''}
+                    {existingRequests.length === 1
+                      ? getTranslatedText("You have {count} active request", { count: existingRequests.length })
+                      : getTranslatedText("You have {count} active requests", { count: existingRequests.length })}
                   </p>
                 </div>
               )}
@@ -544,7 +580,7 @@ const ActiveRequestsPage = () => {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Accept Order
+              {getTranslatedText("Accept Order")}
             </motion.button>
           </div>
         </motion.div>
@@ -562,7 +598,7 @@ const ActiveRequestsPage = () => {
           <div className="p-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold" style={{ color: '#2d3748' }}>
-                Active Requests ({existingRequests.length})
+                {getTranslatedText("Active Requests ({count})", { count: existingRequests.length })}
               </h3>
               <button
                 onClick={() => setShowActiveRequestsPanel(false)}
@@ -578,14 +614,14 @@ const ActiveRequestsPage = () => {
           <div className="p-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 10rem)' }}>
             {existingRequests.map((request) => {
               const statusColors = {
-                accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: 'Accepted' },
-                picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: 'Picked Up' },
-                payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: 'Payment Pending' }
+                accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: getTranslatedText('Accepted') },
+                picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: getTranslatedText('Picked Up') },
+                payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: getTranslatedText('Payment Pending') }
               };
               const statusConfig = statusColors[request.status] || statusColors.accepted;
               const pickupTime = request.pickupSlot
                 ? `${request.pickupSlot.dayName}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
-                : request.preferredTime || 'Time not specified';
+                : request.preferredTime || getTranslatedText('Time not specified');
 
               return (
                 <motion.div
@@ -611,10 +647,10 @@ const ActiveRequestsPage = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
-                          {request.userName || 'Unknown User'}
+                          {request.userName || getTranslatedText('Unknown User')}
                         </p>
                         <p className="text-xs truncate" style={{ color: '#718096' }}>
-                          {request.scrapType || 'Scrap'}
+                          {getTranslatedText(request.scrapType) || getTranslatedText('Scrap')}
                         </p>
                       </div>
                     </div>

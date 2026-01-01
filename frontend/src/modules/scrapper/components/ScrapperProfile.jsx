@@ -4,8 +4,50 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { kycAPI, subscriptionAPI, reviewAPI, scrapperProfileAPI } from '../../shared/utils/api';
 import RatingDisplay from '../../shared/components/RatingDisplay';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ScrapperProfile = () => {
+  const staticTexts = [
+    "Loading profile...",
+    "Scrapper Profile",
+    "Close",
+    "Scrapper",
+    "Phone not set",
+    "Logout",
+    "Verified",
+    "Pending",
+    "Rejected",
+    "Not Submitted",
+    "No subscription",
+    "{planName} active",
+    "Vehicle not set",
+    "Profile details",
+    "Edit profile",
+    "Name",
+    "Phone",
+    "Vehicle",
+    "Not provided",
+    "Heard about Scrapto",
+    "Profile editing will be available soon.",
+    "KYC status",
+    "View",
+    "Subscription",
+    "{planName} • ₹{price}/month",
+    "No active subscription",
+    "Manage",
+    "Active requests",
+    "View and manage current pickups",
+    "Earnings & history",
+    "Check completed pickups and payouts",
+    "Refer & Earn",
+    "Share your code and earn extra on pickups",
+    "Terms & Conditions",
+    "Read how Scrapto works for scrappers",
+    "Terms & Conditions screen will be added later.",
+    "Help & Support",
+    "Get help for any issue"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [kycStatus, setKycStatus] = useState('not_submitted');
@@ -101,13 +143,13 @@ const ScrapperProfile = () => {
   const getKycLabel = () => {
     switch (kycStatus) {
       case 'verified':
-        return { label: 'Verified', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' };
+        return { label: getTranslatedText('Verified'), color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' };
       case 'pending':
-        return { label: 'Pending', color: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' };
+        return { label: getTranslatedText('Pending'), color: '#f97316', bg: 'rgba(249, 115, 22, 0.1)' };
       case 'rejected':
-        return { label: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
+        return { label: getTranslatedText('Rejected'), color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
       default:
-        return { label: 'Not Submitted', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
+        return { label: getTranslatedText('Not Submitted'), color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
     }
   };
 
@@ -118,7 +160,7 @@ const ScrapperProfile = () => {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center">
           <div className="w-12 h-12 rounded-full border-4 border-gray-300 border-t-green-600 mx-auto mb-4 animate-spin" />
-          <p style={{ color: '#718096' }}>Loading profile...</p>
+          <p style={{ color: '#718096' }}>{getTranslatedText("Loading profile...")}</p>
         </div>
       </div>
     );
@@ -140,14 +182,14 @@ const ScrapperProfile = () => {
             className="text-xl md:text-2xl font-bold"
             style={{ color: '#2d3748' }}
           >
-            Scrapper Profile
+            {getTranslatedText("Scrapper Profile")}
           </h1>
           <button
             onClick={() => navigate('/scrapper')}
             className="px-3 py-1.5 rounded-full text-xs md:text-sm font-semibold hover:opacity-80 transition-opacity"
             style={{ color: '#64946e', backgroundColor: 'rgba(100,148,110,0.12)' }}
           >
-            Close
+            {getTranslatedText("Close")}
           </button>
         </div>
       </div>
@@ -189,13 +231,13 @@ const ScrapperProfile = () => {
                       className="text-lg md:text-xl font-bold"
                       style={{ color: '#2d3748' }}
                     >
-                      {scrapperUser?.name || 'Scrapper'}
+                      {scrapperUser?.name || getTranslatedText('Scrapper')}
                     </h2>
                     <p
                       className="text-sm md:text-base"
                       style={{ color: '#718096' }}
                     >
-                      {scrapperUser?.phone || 'Phone not set'}
+                      {scrapperUser?.phone || getTranslatedText('Phone not set')}
                     </p>
                   </div>
                   <button
@@ -204,7 +246,7 @@ const ScrapperProfile = () => {
                     className="text-[11px] md:text-xs font-semibold px-3 py-1.5 rounded-full border flex-shrink-0"
                     style={{ borderColor: '#fecaca', color: '#b91c1c', backgroundColor: '#fef2f2' }}
                   >
-                    Logout
+                    {getTranslatedText("Logout")}
                   </button>
                 </div>
 
@@ -227,7 +269,7 @@ const ScrapperProfile = () => {
                     className="text-xs px-2 py-0.5 rounded-full"
                     style={{ backgroundColor: kycConfig.bg, color: kycConfig.color }}
                   >
-                    KYC: {kycConfig.label}
+                    {getTranslatedText("KYC:")} {kycConfig.label}
                   </span>
                   {/* Subscription badge */}
                   <span
@@ -237,14 +279,14 @@ const ScrapperProfile = () => {
                       color: subscription ? '#166534' : '#4b5563'
                     }}
                   >
-                    {subscription ? `${subscription.planName} active` : 'No subscription'}
+                    {subscription ? getTranslatedText("{planName} active", { planName: subscription.planName }) : getTranslatedText('No subscription')}
                   </span>
                   {/* Vehicle info small badge */}
                   <span
                     className="text-xs px-2 py-0.5 rounded-full"
                     style={{ backgroundColor: 'rgba(148,163,184,0.16)', color: '#4b5563' }}
                   >
-                    {scrapperUser?.vehicleInfo || 'Vehicle not set'}
+                    {scrapperUser?.vehicleInfo || getTranslatedText('Vehicle not set')}
                   </span>
                 </div>
               </div>
@@ -258,35 +300,35 @@ const ScrapperProfile = () => {
           <div className="rounded-2xl border border-gray-100 bg-gray-50/80 p-3 md:p-4 space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-xs md:text-sm font-semibold" style={{ color: '#4b5563' }}>
-                Profile details
+                {getTranslatedText("Profile details")}
               </p>
               <button
                 type="button"
                 className="text-[11px] md:text-xs font-semibold px-2.5 py-1 rounded-full"
                 style={{ backgroundColor: 'rgba(100,148,110,0.08)', color: '#166534' }}
                 onClick={() => {
-                  alert('Profile editing will be available soon.');
+                  alert(getTranslatedText('Profile editing will be available soon.'));
                 }}
               >
-                Edit profile
+                {getTranslatedText("Edit profile")}
               </button>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] md:text-xs" style={{ color: '#4b5563' }}>
-              <span>Name</span>
+              <span>{getTranslatedText("Name")}</span>
               <span className="font-semibold text-right" style={{ color: '#111827' }}>
                 {scrapperUser?.name || '-'}
               </span>
-              <span>Phone</span>
+              <span>{getTranslatedText("Phone")}</span>
               <span className="font-semibold text-right" style={{ color: '#111827' }}>
                 {scrapperUser?.phone || '-'}
               </span>
-              <span>Vehicle</span>
+              <span>{getTranslatedText("Vehicle")}</span>
               <span className="font-semibold text-right" style={{ color: '#111827' }}>
-                {scrapperUser?.vehicleInfo || 'Not provided'}
+                {scrapperUser?.vehicleInfo || getTranslatedText('Not provided')}
               </span>
               {scrapperUser?.heardFrom && (
                 <>
-                  <span>Heard about Scrapto</span>
+                  <span>{getTranslatedText("Heard about Scrapto")}</span>
                   <span className="font-semibold text-right" style={{ color: '#111827' }}>
                     {scrapperUser.heardFrom.startsWith('other:')
                       ? scrapperUser.heardFrom.replace('other:', '')
@@ -307,7 +349,7 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  KYC status
+                  {getTranslatedText("KYC status")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
                   {kycConfig.label}
@@ -317,7 +359,7 @@ const ScrapperProfile = () => {
                 className="px-2.5 py-1 rounded-full text-[11px] font-semibold"
                 style={{ backgroundColor: kycConfig.bg, color: kycConfig.color }}
               >
-                View
+                {getTranslatedText("View")}
               </span>
             </button>
 
@@ -329,19 +371,19 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Subscription
+                  {getTranslatedText("Subscription")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
                   {subscription
-                    ? `${subscription.planName} • ₹${subscription.price}/month`
-                    : 'No active subscription'}
+                    ? getTranslatedText("{planName} • ₹{price}/month", { planName: subscription.planName, price: subscription.price })
+                    : getTranslatedText('No active subscription')}
                 </p>
               </div>
               <span
                 className="px-2.5 py-1 rounded-full text-[11px] font-semibold"
                 style={{ backgroundColor: 'rgba(100,148,110,0.1)', color: '#166534' }}
               >
-                Manage
+                {getTranslatedText("Manage")}
               </span>
             </button>
 
@@ -353,10 +395,10 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Active requests
+                  {getTranslatedText("Active requests")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
-                  View and manage current pickups
+                  {getTranslatedText("View and manage current pickups")}
                 </p>
               </div>
               <span className="text-sm" style={{ color: '#6b7280' }}>
@@ -371,10 +413,10 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Earnings & history
+                  {getTranslatedText("Earnings & history")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
-                  Check completed pickups and payouts
+                  {getTranslatedText("Check completed pickups and payouts")}
                 </p>
               </div>
               <span className="text-sm" style={{ color: '#6b7280' }}>
@@ -390,10 +432,10 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Refer & Earn
+                  {getTranslatedText("Refer & Earn")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
-                  Share your code and earn extra on pickups
+                  {getTranslatedText("Share your code and earn extra on pickups")}
                 </p>
               </div>
               <span className="text-sm" style={{ color: '#6b7280' }}>
@@ -404,16 +446,16 @@ const ScrapperProfile = () => {
             <button
               type="button"
               onClick={() => {
-                alert('Terms & Conditions screen will be added later.');
+                alert(getTranslatedText('Terms & Conditions screen will be added later.'));
               }}
               className="w-full flex items-center justify-between px-3 md:px-4 py-3 md:py-3.5 text-left"
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Terms & Conditions
+                  {getTranslatedText("Terms & Conditions")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
-                  Read how Scrapto works for scrappers
+                  {getTranslatedText("Read how Scrapto works for scrappers")}
                 </p>
               </div>
               <span className="text-sm" style={{ color: '#6b7280' }}>
@@ -428,10 +470,10 @@ const ScrapperProfile = () => {
             >
               <div>
                 <p className="text-xs md:text-sm font-semibold" style={{ color: '#111827' }}>
-                  Help & Support
+                  {getTranslatedText("Help & Support")}
                 </p>
                 <p className="text-[11px] md:text-xs" style={{ color: '#6b7280' }}>
-                  Get help for any issue
+                  {getTranslatedText("Get help for any issue")}
                 </p>
               </div>
               <span className="text-sm" style={{ color: '#6b7280' }}>

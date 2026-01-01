@@ -4,8 +4,46 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../shared/utils/referralUtils';
 import { kycAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const KYCStatusPage = () => {
+  const staticTexts = [
+    "Pending Verification",
+    "Your KYC is under review",
+    "Our admin team is verifying your documents. This usually takes 24-48 hours.",
+    "verified",
+    "Verified",
+    "Your KYC has been verified",
+    "You can now start receiving pickup requests.",
+    "Completed",
+    "rejected",
+    "Rejected",
+    "Your KYC was rejected",
+    "Please resubmit your KYC documents with correct information.",
+    "Resubmit required",
+    "Not Submitted",
+    "KYC not submitted",
+    "Please complete your KYC to continue.",
+    "Not started",
+    "KYC Status",
+    "Track your KYC verification status",
+    "Testing Mode: Auto-verification in {countdown} seconds",
+    "Estimated Completion Time:",
+    "Submitted Details",
+    "Aadhaar Number:",
+    "Submitted On:",
+    "Status:",
+    "Resubmit KYC",
+    "Continue to Subscription",
+    "Waiting for Verification",
+    "Your KYC is under review. You'll be automatically redirected to dashboard once verified.",
+    "What happens next?",
+    "Our admin team will verify your documents",
+    "Verification typically takes 24-48 hours",
+    "You'll receive a notification once verification is complete",
+    "Once verified, you can start receiving pickup requests"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [kycData, setKycData] = useState(null);
@@ -77,7 +115,7 @@ const KYCStatusPage = () => {
     switch (kycStatus) {
       case 'pending':
         return {
-          label: 'Pending Verification',
+          label: getTranslatedText('Pending Verification'),
           color: '#f59e0b',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -85,13 +123,13 @@ const KYCStatusPage = () => {
               <path d="M12 6v6l4 2" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ),
-          message: 'Your KYC is under review',
-          description: 'Our admin team is verifying your documents. This usually takes 24-48 hours.',
+          message: getTranslatedText('Your KYC is under review'),
+          description: getTranslatedText('Our admin team is verifying your documents. This usually takes 24-48 hours.'),
           estimatedTime: '24-48 hours'
         };
       case 'verified':
         return {
-          label: 'Verified',
+          label: getTranslatedText('Verified'),
           color: '#10b981',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -99,13 +137,13 @@ const KYCStatusPage = () => {
               <path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ),
-          message: 'Your KYC has been verified',
-          description: 'You can now start receiving pickup requests.',
-          estimatedTime: 'Completed'
+          message: getTranslatedText('Your KYC has been verified'),
+          description: getTranslatedText('You can now start receiving pickup requests.'),
+          estimatedTime: getTranslatedText('Completed')
         };
       case 'rejected':
         return {
-          label: 'Rejected',
+          label: getTranslatedText('Rejected'),
           color: '#ef4444',
           icon: (
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -113,18 +151,18 @@ const KYCStatusPage = () => {
               <path d="M15 9l-6 6M9 9l6 6" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
             </svg>
           ),
-          message: 'Your KYC was rejected',
-          description: 'Please resubmit your KYC documents with correct information.',
-          estimatedTime: 'Resubmit required'
+          message: getTranslatedText('Your KYC was rejected'),
+          description: getTranslatedText('Please resubmit your KYC documents with correct information.'),
+          estimatedTime: getTranslatedText('Resubmit required')
         };
       default:
         return {
-          label: 'Not Submitted',
+          label: getTranslatedText('Not Submitted'),
           color: '#718096',
           icon: null,
-          message: 'KYC not submitted',
-          description: 'Please complete your KYC to continue.',
-          estimatedTime: 'Not started'
+          message: getTranslatedText('KYC not submitted'),
+          description: getTranslatedText('Please complete your KYC to continue.'),
+          estimatedTime: getTranslatedText('Not started')
         };
     }
   };
@@ -159,12 +197,12 @@ const KYCStatusPage = () => {
             </button>
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#2d3748' }}>
-                KYC Status
+                {getTranslatedText("KYC Status")}
               </h1>
             </div>
           </div>
           <p className="text-sm md:text-base ml-14" style={{ color: '#718096' }}>
-            Track your KYC verification status
+            {getTranslatedText("Track your KYC verification status")}
           </p>
         </motion.div>
 
@@ -217,7 +255,7 @@ const KYCStatusPage = () => {
                     <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <p className="text-sm font-semibold" style={{ color: '#64946e' }}>
-                    Testing Mode: Auto-verification in {countdown} seconds
+                    {getTranslatedText("Testing Mode: Auto-verification in {countdown} seconds", { countdown })}
                   </p>
                 </div>
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}>
@@ -241,7 +279,7 @@ const KYCStatusPage = () => {
                     <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Estimated Completion Time:
+                    {getTranslatedText("Estimated Completion Time:")}
                   </span>
                 </div>
                 <span className="text-sm font-bold" style={{ color: '#64946e' }}>
@@ -255,17 +293,17 @@ const KYCStatusPage = () => {
           {kycData && (
             <div className="pt-6 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
               <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
-                Submitted Details
+                {getTranslatedText("Submitted Details")}
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: '#718096' }}>Aadhaar Number:</span>
+                  <span className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Aadhaar Number:")}</span>
                   <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>
                     {kycData.aadhaarNumber}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: '#718096' }}>Submitted On:</span>
+                  <span className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Submitted On:")}</span>
                   <span className="text-sm font-semibold" style={{ color: '#2d3748' }}>
                     {new Date(kycData.submittedAt).toLocaleDateString('en-IN', {
                       day: 'numeric',
@@ -275,7 +313,7 @@ const KYCStatusPage = () => {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: '#718096' }}>Status:</span>
+                  <span className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Status:")}</span>
                   <span
                     className="text-sm font-semibold px-3 py-1 rounded-full"
                     style={{
@@ -300,7 +338,7 @@ const KYCStatusPage = () => {
                 className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               >
-                Resubmit KYC
+                {getTranslatedText("Resubmit KYC")}
               </motion.button>
             )}
 
@@ -320,17 +358,17 @@ const KYCStatusPage = () => {
                 className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300"
                 style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               >
-                Continue to Subscription
+                {getTranslatedText("Continue to Subscription")}
               </motion.button>
             )}
 
             {kycStatus === 'pending' && (
               <div className="p-4 rounded-xl text-center" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>
                 <p className="text-sm font-semibold mb-1" style={{ color: '#f59e0b' }}>
-                  ⏳ Waiting for Verification
+                  ⏳ {getTranslatedText("Waiting for Verification")}
                 </p>
                 <p className="text-xs" style={{ color: '#718096' }}>
-                  Your KYC is under review. You'll be automatically redirected to dashboard once verified.
+                  {getTranslatedText("Your KYC is under review. You'll be automatically redirected to dashboard once verified.")}
                 </p>
               </div>
             )}
@@ -351,13 +389,13 @@ const KYCStatusPage = () => {
             </svg>
             <div>
               <p className="text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                What happens next?
+                {getTranslatedText("What happens next?")}
               </p>
               <ul className="text-xs md:text-sm space-y-1" style={{ color: '#718096' }}>
-                <li>• Our admin team will verify your documents</li>
-                <li>• Verification typically takes 24-48 hours</li>
-                <li>• You'll receive a notification once verification is complete</li>
-                <li>• Once verified, you can start receiving pickup requests</li>
+                <li>• {getTranslatedText("Our admin team will verify your documents")}</li>
+                <li>• {getTranslatedText("Verification typically takes 24-48 hours")}</li>
+                <li>• {getTranslatedText("You'll receive a notification once verification is complete")}</li>
+                <li>• {getTranslatedText("Once verified, you can start receiving pickup requests")}</li>
               </ul>
             </div>
           </div>

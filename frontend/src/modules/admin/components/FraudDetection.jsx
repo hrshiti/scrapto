@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaShieldAlt,
   FaCheckCircle,
@@ -20,6 +21,50 @@ const FraudDetection = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('all'); // all, high, medium, low
+  const staticTexts = [
+    "Failed to load flagged referrals",
+    "Approve this referral? This will mark it as verified.",
+    "Manually approved by admin from fraud detection.",
+    "Referral approved successfully",
+    "Failed to approve referral",
+    "Error approving referral",
+    "Enter rejection reason:",
+    "Rejected by admin: {reason}",
+    "Referral rejected successfully",
+    "Failed to reject referral",
+    "Error rejecting referral",
+    "HIGH",
+    "MEDIUM",
+    "LOW",
+    "Fraud Detection",
+    "Review and manage flagged referrals",
+    "Flagged Referrals",
+    "Search by code, referrer, or referee...",
+    "All Severities",
+    "High",
+    "Medium",
+    "Low",
+    "No Flagged Referrals",
+    "Try adjusting your filters",
+    "All referrals are clean!",
+    "No Code",
+    "Referrer:",
+    "Referee:",
+    "Date:",
+    "Fraud Flags ({count}):",
+    "Review",
+    "Referral Details",
+    "Referral Code",
+    "None",
+    "Referrer",
+    "Referee",
+    "Created At",
+    "Device Info",
+    "IP Address",
+    "Approve",
+    "Reject"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadFlaggedReferrals();
@@ -43,6 +88,7 @@ const FraudDetection = () => {
       }
     } catch (err) {
       console.error('Failed to load flagged referrals', err);
+      // Optional: Add localized alert or error state if needed
     } finally {
       setLoading(false);
     }
@@ -73,45 +119,45 @@ const FraudDetection = () => {
   };
 
   const handleApprove = async (referralId) => {
-    if (!window.confirm('Approve this referral? This will mark it as verified.')) return;
+    if (!window.confirm(getTranslatedText('Approve this referral? This will mark it as verified.'))) return;
     try {
       const response = await referralAPI.updateReferral(referralId, {
         status: 'verified',
         // Maybe clear flags or mark resolved? 
         // For now just status change.
-        notes: 'Manually approved by admin from fraud detection.'
+        notes: getTranslatedText('Manually approved by admin from fraud detection.')
       });
       if (response.success) {
         setShowDetailModal(false);
         loadFlaggedReferrals(); // Refresh list
-        alert('Referral approved successfully');
+        alert(getTranslatedText('Referral approved successfully'));
       } else {
-        alert('Failed to approve referral');
+        alert(getTranslatedText('Failed to approve referral'));
       }
     } catch (err) {
       console.error('Error approving referral:', err);
-      alert('Error approving referral');
+      alert(getTranslatedText('Error approving referral'));
     }
   };
 
   const handleReject = async (referralId, reason) => {
-    const reasonText = reason || prompt('Enter rejection reason:');
+    const reasonText = reason || prompt(getTranslatedText('Enter rejection reason:'));
     if (reasonText) {
       try {
         const response = await referralAPI.updateReferral(referralId, {
           status: 'rejected', // or 'fraud'
-          notes: `Rejected by admin: ${reasonText}`
+          notes: getTranslatedText('Rejected by admin: {reason}', { reason: reasonText })
         });
         if (response.success) {
           setShowDetailModal(false);
           loadFlaggedReferrals();
-          alert('Referral rejected successfully');
+          alert(getTranslatedText('Referral rejected successfully'));
         } else {
-          alert('Failed to reject referral');
+          alert(getTranslatedText('Failed to reject referral'));
         }
       } catch (err) {
         console.error('Error rejecting referral:', err);
-        alert('Error rejecting referral');
+        alert(getTranslatedText('Error rejecting referral'));
       }
     }
   };
@@ -131,7 +177,7 @@ const FraudDetection = () => {
         style={{ backgroundColor: badge.bg, color: badge.color }}
       >
         <Icon />
-        {severity.toUpperCase()}
+        {getTranslatedText(severity.toUpperCase())}
       </span>
     );
   };
@@ -162,10 +208,10 @@ const FraudDetection = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Fraud Detection
+                {getTranslatedText("Fraud Detection")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Review and manage flagged referrals
+                {getTranslatedText("Review and manage flagged referrals")}
               </p>
             </div>
           </div>
@@ -174,7 +220,7 @@ const FraudDetection = () => {
               {flaggedReferrals.length}
             </p>
             <p className="text-xs" style={{ color: '#718096' }}>
-              Flagged Referrals
+              {getTranslatedText("Flagged Referrals")}
             </p>
           </div>
         </div>
@@ -185,7 +231,7 @@ const FraudDetection = () => {
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#718096' }} />
             <input
               type="text"
-              placeholder="Search by code, referrer, or referee..."
+              placeholder={getTranslatedText("Search by code, referrer, or referee...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
@@ -206,10 +252,10 @@ const FraudDetection = () => {
               color: '#2d3748'
             }}
           >
-            <option value="all">All Severities</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="all">{getTranslatedText("All Severities")}</option>
+            <option value="high">{getTranslatedText("High")}</option>
+            <option value="medium">{getTranslatedText("Medium")}</option>
+            <option value="low">{getTranslatedText("Low")}</option>
           </select>
         </div>
       </motion.div>
@@ -226,12 +272,12 @@ const FraudDetection = () => {
             <div className="p-12 text-center">
               <FaShieldAlt className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
               <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-                No Flagged Referrals
+                {getTranslatedText("No Flagged Referrals")}
               </h3>
               <p className="text-sm" style={{ color: '#718096' }}>
                 {searchTerm || filterSeverity !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'All referrals are clean!'}
+                  ? getTranslatedText('Try adjusting your filters')
+                  : getTranslatedText('All referrals are clean!')}
               </p>
             </div>
           ) : (
@@ -269,25 +315,25 @@ const FraudDetection = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                              {referral.codeUsed || 'No Code'}
+                              {referral.codeUsed || getTranslatedText('No Code')}
                             </h3>
                             {highestSeverity && getSeverityBadge(highestSeverity.severity)}
 
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
                             <div>
-                              <span className="font-semibold">Referrer:</span> {referral.referrer?.name || referral.referrerId}
+                              <span className="font-semibold">{getTranslatedText("Referrer:")}</span> {referral.referrer?.name || referral.referrerId}
                             </div>
                             <div>
-                              <span className="font-semibold">Referee:</span> {referral.referee?.name || referral.refereeId}
+                              <span className="font-semibold">{getTranslatedText("Referee:")}</span> {referral.referee?.name || referral.refereeId}
                             </div>
                             <div>
-                              <span className="font-semibold">Date:</span> {new Date(referral.createdAt).toLocaleDateString()}
+                              <span className="font-semibold">{getTranslatedText("Date:")}</span> {new Date(referral.createdAt).toLocaleDateString()}
                             </div>
                           </div>
                           <div className="mt-2">
                             <p className="text-xs font-semibold mb-1" style={{ color: '#2d3748' }}>
-                              Fraud Flags ({referral.fraudFlags?.length || 0}):
+                              {getTranslatedText("Fraud Flags ({count}):", { count: referral.fraudFlags?.length || 0 })}
                             </p>
                             <div className="flex flex-wrap gap-1">
                               {referral.fraudFlags?.map((flag, flagIndex) => (
@@ -329,7 +375,7 @@ const FraudDetection = () => {
                         style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                       >
                         <FaEye className="text-xs md:text-sm" />
-                        <span className="hidden sm:inline">Review</span>
+                        <span className="hidden sm:inline">{getTranslatedText("Review")}</span>
                       </motion.button>
                     </div>
                   </div>
@@ -360,7 +406,7 @@ const FraudDetection = () => {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
-                    Referral Details
+                    {getTranslatedText("Referral Details")}
                   </h2>
                   <button
                     onClick={() => setShowDetailModal(false)}
@@ -372,25 +418,25 @@ const FraudDetection = () => {
 
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referral Code</p>
-                    <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.codeUsed || 'None'}</p>
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("Referral Code")}</p>
+                    <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.codeUsed || getTranslatedText('None')}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referrer</p>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("Referrer")}</p>
                       <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referrer?.name} ({selectedReferral.referrer?.email})</p>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Referee</p>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("Referee")}</p>
                       <p className="text-base" style={{ color: '#2d3748' }}>{selectedReferral.referee?.name} ({selectedReferral.referee?.email})</p>
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Created At</p>
+                    <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("Created At")}</p>
                     <p className="text-base" style={{ color: '#2d3748' }}>{new Date(selectedReferral.createdAt).toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold mb-2" style={{ color: '#718096' }}>Fraud Flags</p>
+                    <p className="text-sm font-semibold mb-2" style={{ color: '#718096' }}>{getTranslatedText("Fraud Flags")}</p>
                     <div className="space-y-2">
                       {selectedReferral.fraudFlags?.map((flag, index) => (
                         <div
@@ -414,13 +460,13 @@ const FraudDetection = () => {
                   </div>
                   {selectedReferral.deviceInfo && (
                     <div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>Device Info</p>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("Device Info")}</p>
                       <p className="text-xs" style={{ color: '#2d3748' }}>{selectedReferral.deviceInfo}</p>
                     </div>
                   )}
                   {selectedReferral.ipAddress && (
                     <div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>IP Address</p>
+                      <p className="text-sm font-semibold mb-1" style={{ color: '#718096' }}>{getTranslatedText("IP Address")}</p>
                       <p className="text-xs" style={{ color: '#2d3748' }}>{selectedReferral.ipAddress}</p>
                     </div>
                   )}
@@ -435,7 +481,7 @@ const FraudDetection = () => {
                     style={{ backgroundColor: '#10b981', color: '#ffffff' }}
                   >
                     <FaCheckCircle />
-                    Approve
+                    {getTranslatedText("Approve")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -445,7 +491,7 @@ const FraudDetection = () => {
                     style={{ backgroundColor: '#ef4444', color: '#ffffff' }}
                   >
                     <FaTimesCircle />
-                    Reject
+                    {getTranslatedText("Reject")}
                   </motion.button>
                 </div>
               </div>

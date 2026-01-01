@@ -2,8 +2,34 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { scrapperOrdersAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const MyActiveRequestsPage = () => {
+  const staticTexts = [
+    "My Active Requests",
+    "{count} request in progress",
+    "{count} requests in progress",
+    "Go Online",
+    "No Active Requests",
+    "You don't have any active requests at the moment.",
+    "Go Online to Receive Requests",
+    "Accepted",
+    "Picked Up",
+    "Payment Pending",
+    "Payment Done",
+    "Location",
+    "Pickup Time",
+    "Distance",
+    "View Details & Continue",
+    "Time not specified",
+    "User",
+    "Scrap",
+    "Address not available",
+    "Unknown User",
+    "Loading active requests...",
+    "Failed to load active requests"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const [activeRequests, setActiveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,15 +86,15 @@ const MyActiveRequestsPage = () => {
       id: order._id,
       orderId: order._id,
       userId: order.user?._id || order.user,
-      userName: order.user?.name || 'User',
+      userName: order.user?.name || getTranslatedText('User'),
       userPhone: order.user?.phone || '',
-      scrapType: categories.join(', ') || 'Scrap',
+      scrapType: categories.map(c => getTranslatedText(c)).join(', ') || getTranslatedText('Scrap'),
       weight: order.totalWeight,
       pickupSlot: order.pickupSlot,
       preferredTime: order.preferredTime,
       images: (order.images || []).map((img) => img.url || img.preview || img),
       location: {
-        address: address || 'Address not available',
+        address: address || getTranslatedText('Address not available'),
         lat: order.pickupAddress?.coordinates?.lat || 19.076,
         lng: order.pickupAddress?.coordinates?.lng || 72.8777
       },
@@ -105,7 +131,7 @@ const MyActiveRequestsPage = () => {
       setLoading(false);
     } catch (err) {
       console.error('Failed to load active requests:', err);
-      setError(err?.message || 'Failed to load active requests');
+      setError(err?.message || getTranslatedText('Failed to load active requests'));
       setLoading(false);
     }
   };
@@ -140,25 +166,25 @@ const MyActiveRequestsPage = () => {
       accepted: {
         bg: 'rgba(59, 130, 246, 0.1)',
         color: '#2563eb',
-        label: 'Accepted',
+        label: getTranslatedText('Accepted'),
         icon: '✓'
       },
       picked_up: {
         bg: 'rgba(234, 179, 8, 0.1)',
         color: '#ca8a04',
-        label: 'Picked Up',
+        label: getTranslatedText('Picked Up'),
         icon: '📦'
       },
       payment_pending: {
         bg: 'rgba(249, 115, 22, 0.1)',
         color: '#f97316',
-        label: 'Payment Pending',
+        label: getTranslatedText('Payment Pending'),
         icon: '💰'
       },
       payment_done: {
         bg: 'rgba(34, 197, 94, 0.1)',
         color: '#16a34a',
-        label: 'Payment Done',
+        label: getTranslatedText('Payment Done'),
         icon: '✓'
       }
     };
@@ -172,13 +198,13 @@ const MyActiveRequestsPage = () => {
     if (request.preferredTime) {
       return request.preferredTime;
     }
-    return 'Time not specified';
+    return getTranslatedText('Time not specified');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
-        <p style={{ color: '#718096' }}>Loading active requests...</p>
+        <p style={{ color: '#718096' }}>{getTranslatedText("Loading active requests...")}</p>
       </div>
     );
   }
@@ -206,10 +232,12 @@ const MyActiveRequestsPage = () => {
             </button>
             <div>
               <h1 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
-                My Active Requests
+                {getTranslatedText("My Active Requests")}
               </h1>
               <p className="text-xs md:text-sm mt-1" style={{ color: '#718096' }}>
-                {activeRequests.length} {activeRequests.length === 1 ? 'request' : 'requests'} in progress
+                {activeRequests.length === 1
+                  ? getTranslatedText("{count} request in progress", { count: activeRequests.length })
+                  : getTranslatedText("{count} requests in progress", { count: activeRequests.length })}
               </p>
               {error && (
                 <p className="text-[11px] md:text-xs mt-1" style={{ color: '#dc2626' }}>
@@ -224,7 +252,7 @@ const MyActiveRequestsPage = () => {
               className="px-4 py-2 rounded-full text-sm font-semibold transition-colors"
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
-              Go Online
+              {getTranslatedText("Go Online")}
             </button>
           )}
         </div>
@@ -244,17 +272,17 @@ const MyActiveRequestsPage = () => {
               </svg>
             </div>
             <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
-              No Active Requests
+              {getTranslatedText("No Active Requests")}
             </h3>
             <p className="text-sm md:text-base mb-6" style={{ color: '#718096' }}>
-              You don't have any active requests at the moment.
+              {getTranslatedText("You don't have any active requests at the moment.")}
             </p>
             <button
               onClick={() => navigate('/scrapper/active-requests')}
               className="px-6 py-3 rounded-full font-semibold text-sm md:text-base transition-all"
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
-              Go Online to Receive Requests
+              {getTranslatedText("Go Online to Receive Requests")}
             </button>
           </motion.div>
         ) : (
@@ -292,7 +320,7 @@ const MyActiveRequestsPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-base md:text-lg font-bold truncate" style={{ color: '#2d3748' }}>
-                            {request.userName || 'Unknown User'}
+                            {request.userName || getTranslatedText('Unknown User')}
                           </h3>
                           <span
                             className="text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
@@ -302,7 +330,7 @@ const MyActiveRequestsPage = () => {
                           </span>
                         </div>
                         <p className="text-sm md:text-base mb-2" style={{ color: '#718096' }}>
-                          {request.scrapType || 'Scrap'}
+                          {getTranslatedText(request.scrapType) || getTranslatedText('Scrap')}
                         </p>
                         <p className="text-lg md:text-xl font-bold" style={{ color: '#64946e' }}>
                           {request.estimatedEarnings || '₹0'}
@@ -320,7 +348,7 @@ const MyActiveRequestsPage = () => {
                           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
                         </svg>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 mb-0.5">Location</p>
+                          <p className="text-xs text-gray-500 mb-0.5">{getTranslatedText("Location")}</p>
                           <p className="text-sm font-medium truncate" style={{ color: '#2d3748' }}>
                             {request.location.address}
                           </p>
@@ -334,7 +362,7 @@ const MyActiveRequestsPage = () => {
                         <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-gray-500 mb-0.5">Pickup Time</p>
+                        <p className="text-xs text-gray-500 mb-0.5">{getTranslatedText("Pickup Time")}</p>
                         <p className="text-sm font-medium truncate" style={{ color: '#2d3748' }}>
                           {pickupTime}
                         </p>
@@ -348,7 +376,7 @@ const MyActiveRequestsPage = () => {
                           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                         </svg>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 mb-0.5">Distance</p>
+                          <p className="text-xs text-gray-500 mb-0.5">{getTranslatedText("Distance")}</p>
                           <p className="text-sm font-medium" style={{ color: '#2d3748' }}>
                             {request.distance}
                           </p>
@@ -363,7 +391,7 @@ const MyActiveRequestsPage = () => {
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-gray-500 mb-0.5">Accepted</p>
+                          <p className="text-xs text-gray-500 mb-0.5">{getTranslatedText("Accepted")}</p>
                           <p className="text-sm font-medium" style={{ color: '#2d3748' }}>
                             {new Date(request.acceptedAt).toLocaleDateString('en-IN', {
                               day: 'numeric',
@@ -387,7 +415,7 @@ const MyActiveRequestsPage = () => {
                       className="w-full py-3 rounded-xl font-semibold text-sm md:text-base transition-all"
                       style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                     >
-                      View Details & Continue
+                      {getTranslatedText("View Details & Continue")}
                     </button>
                   </div>
                 </motion.div>

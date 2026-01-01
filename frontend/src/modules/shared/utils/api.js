@@ -6,7 +6,7 @@ const getAuthToken = () => {
 };
 
 // Helper function to make API requests
-const apiRequest = async (endpoint, options = {}) => {
+export const apiRequest = async (endpoint, options = {}) => {
   const token = getAuthToken();
 
   const isFormData = options.body instanceof FormData;

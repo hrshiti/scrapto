@@ -1,9 +1,10 @@
 import { GoogleMap, Marker, DirectionsRenderer, Polyline } from '@react-google-maps/api';
 import { useGoogleMaps, mapContainerStyle, defaultCenter, mapOptions } from './RequestMapUtils';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePageTranslation } from '../../../../hooks/usePageTranslation';
 
-// Custom 3D-style marker icons
-const createScrapperIcon = () => ({
+// Custom 3D-style marker icons (Lazy created to avoid window.google access on module load)
+const getScrapperIcon = () => ({
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
         <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
             <!-- Shadow -->
@@ -21,11 +22,11 @@ const createScrapperIcon = () => ({
             <text x="20" y="28" font-size="10" fill="white" font-weight="bold">♻</text>
         </svg>
     `),
-    scaledSize: new window.google.maps.Size(48, 48),
-    anchor: new window.google.maps.Point(24, 44),
+    scaledSize: window.google ? new window.google.maps.Size(48, 48) : null,
+    anchor: window.google ? new window.google.maps.Point(24, 44) : null,
 });
 
-const createUserIcon = () => ({
+const getUserIcon = () => ({
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
         <svg width="40" height="48" viewBox="0 0 40 48" xmlns="http://www.w3.org/2000/svg">
             <!-- Shadow -->
@@ -40,8 +41,8 @@ const createUserIcon = () => ({
             <path d="M16 22 Q20 20 24 22" stroke="#ef4444" stroke-width="1.5" fill="none"/>
         </svg>
     `),
-    scaledSize: new window.google.maps.Size(40, 48),
-    anchor: new window.google.maps.Point(20, 46),
+    scaledSize: window.google ? new window.google.maps.Size(40, 48) : null,
+    anchor: window.google ? new window.google.maps.Point(20, 46) : null,
 });
 
 const ScrapperMap = ({
@@ -52,6 +53,16 @@ const ScrapperMap = ({
     enableTracking = true,
     showTrail = true
 }) => {
+    const staticTexts = [
+        "Error loading map",
+        "Please check your internet connection",
+        "Loading 3D Map...",
+        "Preparing your route",
+        "Pickup Location",
+        "Scrapper (You)",
+        "Arrived! 🎉"
+    ];
+    const { getTranslatedText } = usePageTranslation(staticTexts);
     const { isLoaded, loadError } = useGoogleMaps();
     const [directions, setDirections] = useState(null);
     const [map, setMap] = useState(null);
@@ -188,8 +199,8 @@ const ScrapperMap = ({
         return (
             <div className="w-full h-full flex items-center justify-center bg-gray-200 rounded-xl">
                 <div className="text-center p-6">
-                    <p className="text-red-500 font-semibold mb-2">Error loading map</p>
-                    <p className="text-sm text-gray-600">Please check your internet connection</p>
+                    <p className="text-red-500 font-semibold mb-2">{getTranslatedText("Error loading map")}</p>
+                    <p className="text-sm text-gray-600">{getTranslatedText("Please check your internet connection")}</p>
                 </div>
             </div>
         );
@@ -200,8 +211,8 @@ const ScrapperMap = ({
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50 rounded-xl">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
-                    <p className="text-gray-700 font-semibold">Loading 3D Map...</p>
-                    <p className="text-sm text-gray-500 mt-2">Preparing your route</p>
+                    <p className="text-gray-700 font-semibold">{getTranslatedText("Loading 3D Map...")}</p>
+                    <p className="text-sm text-gray-500 mt-2">{getTranslatedText("Preparing your route")}</p>
                 </div>
             </div>
         );
@@ -251,8 +262,8 @@ const ScrapperMap = ({
             {stage === 'request' && userLocation && (
                 <Marker
                     position={userLocation}
-                    title={userName || "Pickup Location"}
-                    icon={createUserIcon()}
+                    title={userName || getTranslatedText("Pickup Location")}
+                    icon={getUserIcon()}
                     animation={window.google.maps.Animation.DROP}
                 />
             )}
@@ -264,8 +275,8 @@ const ScrapperMap = ({
                     {animatedPosition && (
                         <Marker
                             position={animatedPosition}
-                            title="Scrapper (You)"
-                            icon={createScrapperIcon()}
+                            title={getTranslatedText("Scrapper (You)")}
+                            icon={getScrapperIcon()}
                             zIndex={1000}
                         />
                     )}
@@ -274,8 +285,8 @@ const ScrapperMap = ({
                     {userLocation && (
                         <Marker
                             position={userLocation}
-                            title={userName || "Pickup Location"}
-                            icon={createUserIcon()}
+                            title={userName || getTranslatedText("Pickup Location")}
+                            icon={getUserIcon()}
                             animation={window.google.maps.Animation.BOUNCE}
                         />
                     )}
@@ -312,7 +323,7 @@ const ScrapperMap = ({
             {stage === 'arrived' && userLocation && (
                 <Marker
                     position={userLocation}
-                    title="Arrived! 🎉"
+                    title={getTranslatedText("Arrived! 🎉")}
                     icon={{
                         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                             <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">

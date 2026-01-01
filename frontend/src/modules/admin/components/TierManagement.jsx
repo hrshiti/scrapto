@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaTrophy,
   FaSave,
@@ -23,6 +24,31 @@ const TierManagement = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const staticTexts = [
+    "Error saving tiers",
+    "Delete {name} tier?",
+    "Failed to delete tier",
+    "Tier Management",
+    "Configure referral tier thresholds and bonuses",
+    "Add Tier",
+    "Tier",
+    "Minimum {count} referrals required",
+    "Tier Name",
+    "Color (Hex)",
+    "Min Referrals",
+    "Bonus %",
+    "Monthly Bonus (₹)",
+    "Saving...",
+    "Saved!",
+    "Save All Changes",
+    "bronze",
+    "silver",
+    "gold",
+    "platinum",
+    "New Tier"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadTiers();
@@ -48,10 +74,6 @@ const TierManagement = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // For simplicity in this bulk editor, we'll loop and update/create.
-      // In a real app, might want batch endpoint.
-      // We will check if explicit ID exists to update, else create.
-
       const promises = tiers.map(tier => {
         if (tier._id) {
           return referralAPI.updateTier(tier._id, tier);
@@ -67,7 +89,7 @@ const TierManagement = () => {
       loadTiers(); // Reload to get IDs
     } catch (err) {
       console.error('Error saving tiers:', err);
-      alert('Error saving tiers');
+      alert(getTranslatedText('Error saving tiers'));
     } finally {
       setSaving(false);
     }
@@ -86,20 +108,20 @@ const TierManagement = () => {
   const handleAddTier = () => {
     setTiers([
       ...tiers,
-      { name: 'New Tier', minReferrals: 0, bonusPercent: 0, monthlyBonus: 0, color: '#3b82f6' }
+      { name: getTranslatedText('New Tier'), minReferrals: 0, bonusPercent: 0, monthlyBonus: 0, color: '#3b82f6' }
     ]);
   };
 
   const handleDeleteTier = async (index) => {
     const tier = tiers[index];
     if (tier._id) {
-      if (!window.confirm(`Delete ${tier.name} tier?`)) return;
+      if (!window.confirm(getTranslatedText('Delete {name} tier?', { name: tier.name }))) return;
       try {
         await referralAPI.deleteTier(tier._id);
         const newTiers = tiers.filter((_, i) => i !== index);
         setTiers(newTiers);
       } catch (err) {
-        alert('Failed to delete tier');
+        alert(getTranslatedText('Failed to delete tier'));
       }
     } else {
       // Just remove from local state if not saved
@@ -134,10 +156,10 @@ const TierManagement = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Tier Management
+                {getTranslatedText("Tier Management")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Configure referral tier thresholds and bonuses
+                {getTranslatedText("Configure referral tier thresholds and bonuses")}
               </p>
             </div>
           </div>
@@ -145,7 +167,7 @@ const TierManagement = () => {
             onClick={handleAddTier}
             className="px-4 py-2 bg-blue-500 text-white rounded-xl flex items-center gap-2 font-semibold hover:bg-blue-600 transition-colors"
           >
-            <FaPlus /> Add Tier
+            <FaPlus /> {getTranslatedText("Add Tier")}
           </button>
         </div>
       </motion.div>
@@ -165,7 +187,7 @@ const TierManagement = () => {
               <button
                 onClick={() => handleDeleteTier(index)}
                 className="absolute top-4 right-4 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                title="Delete Tier"
+                title={getTranslatedText("Delete Tier")}
               >
                 <FaTrash />
               </button>
@@ -179,10 +201,10 @@ const TierManagement = () => {
                 </div>
                 <div>
                   <h2 className="text-lg md:text-xl font-bold capitalize" style={{ color: '#2d3748' }}>
-                    {tier.name} Tier
+                    {getTranslatedText(tier.name)} {getTranslatedText("Tier")}
                   </h2>
                   <p className="text-xs" style={{ color: '#718096' }}>
-                    Minimum {tier.minReferrals} referrals required
+                    {getTranslatedText("Minimum {count} referrals required", { count: tier.minReferrals })}
                   </p>
                 </div>
               </div>
@@ -190,11 +212,11 @@ const TierManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="lg:col-span-1">
                   <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Tier Name
+                    {getTranslatedText("Tier Name")}
                   </label>
                   <input
                     type="text"
-                    value={tier.name}
+                    value={getTranslatedText(tier.name)}
                     onChange={(e) => handleChange(index, 'name', e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
                     style={{
@@ -206,7 +228,7 @@ const TierManagement = () => {
                 </div>
                 <div className="lg:col-span-1">
                   <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Color (Hex)
+                    {getTranslatedText("Color (Hex)")}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -225,7 +247,7 @@ const TierManagement = () => {
                 </div>
                 <div className="lg:col-span-1">
                   <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Min Referrals
+                    {getTranslatedText("Min Referrals")}
                   </label>
                   <input
                     type="number"
@@ -242,7 +264,7 @@ const TierManagement = () => {
                 </div>
                 <div className="lg:col-span-1">
                   <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Bonus %
+                    {getTranslatedText("Bonus %")}
                   </label>
                   <div className="relative">
                     <FaPercent className="absolute right-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -264,7 +286,7 @@ const TierManagement = () => {
                 </div>
                 <div className="lg:col-span-1">
                   <label className="block text-xs font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Monthly Bonus (₹)
+                    {getTranslatedText("Monthly Bonus (₹)")}
                   </label>
                   <div className="relative">
                     <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -309,17 +331,17 @@ const TierManagement = () => {
           {saving ? (
             <>
               <FaSpinner className="animate-spin" />
-              Saving...
+              {getTranslatedText("Saving...")}
             </>
           ) : saved ? (
             <>
               <FaSave />
-              Saved!
+              {getTranslatedText("Saved!")}
             </>
           ) : (
             <>
               <FaSave />
-              Save All Changes
+              {getTranslatedText("Save All Changes")}
             </>
           )}
         </motion.button>

@@ -1,38 +1,46 @@
-import { useAuth } from '../shared/context/AuthContext';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Hero from './components/Hero';
-import LoginSignup from './components/LoginSignup';
-import CategorySelectionPage from '../../components/AddScrapFlow/pages/CategorySelectionPage';
-import ImageUploadPage from '../../components/AddScrapFlow/pages/ImageUploadPage';
-import WeightInputPage from '../../components/AddScrapFlow/pages/WeightInputPage';
-import AddressInputPage from '../../components/AddScrapFlow/pages/AddressInputPage';
-import MyProfilePage from './components/MyProfilePage';
-import SavedAddressesPage from './components/SavedAddressesPage';
-import MyRequestsPage from './components/MyRequestsPage';
-import HelpSupport from './components/HelpSupport';
-import PriceConfirmationPage from '../../components/AddScrapFlow/pages/PriceConfirmationPage';
-import RequestStatusPage from '../../components/AddScrapFlow/pages/RequestStatusPage';
-import ChatPage from './components/ChatPage';
-import ChatListPage from './components/ChatListPage';
-import AllCategoriesPage from './components/AllCategoriesPage';
-import ReviewOrderPage from './components/ReviewOrderPage';
-import ReviewListPage from './components/ReviewListPage';
-import ServiceDetailsPage from './components/ServiceBookingFlow/ServiceDetailsPage';
-import ServiceAddressPage from './components/ServiceBookingFlow/ServiceAddressPage';
-import ServiceSchedulePage from './components/ServiceBookingFlow/ServiceSchedulePage';
-import ServiceConfirmationPage from './components/ServiceBookingFlow/ServiceConfirmationPage';
+import { useAuth } from "../shared/context/AuthContext";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { usePageTranslation } from "../../hooks/usePageTranslation";
+import Hero from "./components/Hero";
+import LoginSignup from "./components/LoginSignup";
+import CategorySelectionPage from "../../components/AddScrapFlow/pages/CategorySelectionPage";
+import ImageUploadPage from "../../components/AddScrapFlow/pages/ImageUploadPage";
+import WeightInputPage from "../../components/AddScrapFlow/pages/WeightInputPage";
+import AddressInputPage from "../../components/AddScrapFlow/pages/AddressInputPage";
+import MyProfilePage from "./components/MyProfilePage";
+import SavedAddressesPage from "./components/SavedAddressesPage";
+import MyRequestsPage from "./components/MyRequestsPage";
+import HelpSupport from "./components/HelpSupport";
+import PriceConfirmationPage from "../../components/AddScrapFlow/pages/PriceConfirmationPage";
+import RequestStatusPage from "../../components/AddScrapFlow/pages/RequestStatusPage";
+import ChatPage from "./components/ChatPage";
+import ChatListPage from "./components/ChatListPage";
+import AllCategoriesPage from "./components/AllCategoriesPage";
+import ReviewOrderPage from "./components/ReviewOrderPage";
+import ReviewListPage from "./components/ReviewListPage";
+import ServiceDetailsPage from "./components/ServiceBookingFlow/ServiceDetailsPage";
+import ServiceAddressPage from "./components/ServiceBookingFlow/ServiceAddressPage";
+import ServiceSchedulePage from "./components/ServiceBookingFlow/ServiceSchedulePage";
+import ServiceConfirmationPage from "./components/ServiceBookingFlow/ServiceConfirmationPage";
 
-import { FaHome, FaList, FaRegComments, FaUser } from 'react-icons/fa';
-import WebViewHeader from '../shared/components/WebViewHeader';
+import { FaHome, FaList, FaRegComments, FaUser } from "react-icons/fa";
+import WebViewHeader from "../shared/components/WebViewHeader";
 
 const UserModule = () => {
   const { isAuthenticated } = useAuth();
 
+  const staticTexts = ["Home", "My Requests", "Chats", "Profile"];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
+
   const navItems = [
-    { label: 'Home', path: '/', icon: FaHome },
-    { label: 'My Requests', path: '/my-requests', icon: FaList },
-    { label: 'Chats', path: '/chats', icon: FaRegComments },
-    { label: 'Profile', path: '/my-profile', icon: FaUser },
+    { label: getTranslatedText("Home"), path: "/", icon: FaHome },
+    {
+      label: getTranslatedText("My Requests"),
+      path: "/my-requests",
+      icon: FaList,
+    },
+    { label: getTranslatedText("Chats"), path: "/chats", icon: FaRegComments },
+    { label: getTranslatedText("Profile"), path: "/my-profile", icon: FaUser },
   ];
 
   if (!isAuthenticated) {
@@ -55,8 +63,14 @@ const UserModule = () => {
         {/* Service Booking Flow */}
         <Route path="/book-service/details" element={<ServiceDetailsPage />} />
         <Route path="/book-service/address" element={<ServiceAddressPage />} />
-        <Route path="/book-service/schedule" element={<ServiceSchedulePage />} />
-        <Route path="/book-service/confirm" element={<ServiceConfirmationPage />} />
+        <Route
+          path="/book-service/schedule"
+          element={<ServiceSchedulePage />}
+        />
+        <Route
+          path="/book-service/confirm"
+          element={<ServiceConfirmationPage />}
+        />
         <Route path="/request-status" element={<RequestStatusPage />} />
         <Route path="/chats" element={<ChatListPage />} />
         <Route path="/chat/:chatId" element={<ChatPage />} />
@@ -74,4 +88,3 @@ const UserModule = () => {
 };
 
 export default UserModule;
-

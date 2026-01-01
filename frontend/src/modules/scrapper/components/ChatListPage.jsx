@@ -3,9 +3,30 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
 import { chatAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { FaComments, FaSpinner, FaSearch } from 'react-icons/fa';
 
 const ChatListPage = () => {
+  const staticTexts = [
+    "Messages",
+    "Search chats...",
+    "Active",
+    "Archived",
+    "No chats found",
+    "Try a different search term",
+    "Start a conversation from an active order",
+    "Loading chats...",
+    "Failed to load chats",
+    "Just now",
+    "{minutes}m ago",
+    "{hours}h ago",
+    "{days}d ago",
+    "Unknown User",
+    "No messages yet",
+    "Order:",
+    "U"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const [chats, setChats] = useState([]);
@@ -21,7 +42,7 @@ const ChatListPage = () => {
     }
 
     loadChats();
-    
+
     // Refresh chats every 30 seconds
     const interval = setInterval(() => {
       loadChats();
@@ -35,16 +56,16 @@ const ChatListPage = () => {
       setError(null);
       const query = `status=${filter}&limit=50`;
       const response = await chatAPI.getMyChats(query);
-      
+
       if (response.success && response.data?.chats) {
         setChats(response.data.chats);
       } else {
-        setError('Failed to load chats');
+        setError(getTranslatedText('Failed to load chats'));
         setChats([]);
       }
     } catch (err) {
       console.error('Error loading chats:', err);
-      setError(err.message || 'Failed to load chats');
+      setError(err.message || getTranslatedText('Failed to load chats'));
       setChats([]);
     } finally {
       setLoading(false);
@@ -57,12 +78,12 @@ const ChatListPage = () => {
     const messageDate = new Date(date);
     const diff = now - messageDate;
     const minutes = Math.floor(diff / 60000);
-    
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (minutes < 1440) return `${Math.floor(minutes / 60)}h ago`;
+
+    if (minutes < 1) return getTranslatedText('Just now');
+    if (minutes < 60) return getTranslatedText("{minutes}m ago", { minutes });
+    if (minutes < 1440) return getTranslatedText("{hours}h ago", { hours: Math.floor(minutes / 60) });
     const days = Math.floor(minutes / 1440);
-    if (days < 7) return `${days}d ago`;
+    if (days < 7) return getTranslatedText("{days}d ago", { days });
     return messageDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
@@ -92,7 +113,7 @@ const ChatListPage = () => {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f4ebe2' }}>
         <div className="text-center">
           <FaSpinner className="animate-spin mx-auto mb-4" style={{ color: '#64946e', fontSize: '2rem' }} />
-          <p style={{ color: '#2d3748' }}>Loading chats...</p>
+          <p style={{ color: '#2d3748' }}>{getTranslatedText("Loading chats...")}</p>
         </div>
       </div>
     );
@@ -104,7 +125,7 @@ const ChatListPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl md:text-3xl font-bold" style={{ color: '#2d3748' }}>
-            Messages
+            {getTranslatedText("Messages")}
           </h1>
         </div>
 
@@ -116,7 +137,7 @@ const ChatListPage = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search chats..."
+              placeholder={getTranslatedText("Search chats...")}
               className="w-full pl-12 pr-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2"
               style={{
                 borderColor: 'rgba(100, 148, 110, 0.3)',
@@ -129,25 +150,23 @@ const ChatListPage = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setFilter('active')}
-              className={`px-4 py-2 rounded-xl font-semibold transition-all ${
-                filter === 'active' ? 'text-white' : 'text-gray-700'
-              }`}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all ${filter === 'active' ? 'text-white' : 'text-gray-700'
+                }`}
               style={{
                 backgroundColor: filter === 'active' ? '#64946e' : 'rgba(100, 148, 110, 0.1)'
               }}
             >
-              Active
+              {getTranslatedText("Active")}
             </button>
             <button
               onClick={() => setFilter('archived')}
-              className={`px-4 py-2 rounded-xl font-semibold transition-all ${
-                filter === 'archived' ? 'text-white' : 'text-gray-700'
-              }`}
+              className={`px-4 py-2 rounded-xl font-semibold transition-all ${filter === 'archived' ? 'text-white' : 'text-gray-700'
+                }`}
               style={{
                 backgroundColor: filter === 'archived' ? '#64946e' : 'rgba(100, 148, 110, 0.1)'
               }}
             >
-              Archived
+              {getTranslatedText("Archived")}
             </button>
           </div>
         </div>
@@ -164,10 +183,10 @@ const ChatListPage = () => {
           <div className="text-center py-12">
             <FaComments className="mx-auto mb-4" style={{ color: '#9ca3af', fontSize: '3rem' }} />
             <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-              No chats found
+              {getTranslatedText("No chats found")}
             </p>
             <p className="text-sm" style={{ color: '#718096' }}>
-              {searchQuery ? 'Try a different search term' : 'Start a conversation from an active order'}
+              {searchQuery ? getTranslatedText('Try a different search term') : getTranslatedText('Start a conversation from an active order')}
             </p>
           </div>
         ) : (
@@ -175,8 +194,8 @@ const ChatListPage = () => {
             {filteredChats.map((chat) => {
               const otherUser = getOtherUser(chat);
               const unreadCount = getUnreadCount(chat);
-              const otherUserName = otherUser?.name || 'Unknown User';
-              const otherUserInitials = otherUserName.split(' ').map(n => n[0]).join('') || 'U';
+              const otherUserName = otherUser?.name || getTranslatedText('Unknown User');
+              const otherUserInitials = otherUserName.split(' ').map(n => n[0]).join('') || getTranslatedText('U');
 
               return (
                 <motion.div
@@ -185,21 +204,21 @@ const ChatListPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate(`/scrapper/chat/${chat._id}`, { 
-                    state: { orderId: chat.orderId?._id || chat.orderId } 
+                  onClick={() => navigate(`/scrapper/chat/${chat._id}`, {
+                    state: { orderId: chat.orderId?._id || chat.orderId }
                   })}
                   className="rounded-2xl p-4 shadow-lg cursor-pointer transition-all"
                   style={{ backgroundColor: '#ffffff' }}
                 >
                   <div className="flex items-center gap-3">
                     {/* Avatar */}
-                    <div 
+                    <div
                       className="w-12 h-12 rounded-full flex items-center justify-center text-base font-bold relative flex-shrink-0"
                       style={{ backgroundColor: 'rgba(100, 148, 110, 0.15)', color: '#64946e' }}
                     >
                       {otherUserInitials}
                       {unreadCount > 0 && (
-                        <div 
+                        <div
                           className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white"
                           style={{ backgroundColor: '#ef4444' }}
                         >
@@ -219,11 +238,11 @@ const ChatListPage = () => {
                         </span>
                       </div>
                       <p className="text-sm truncate" style={{ color: '#718096' }}>
-                        {chat.lastMessage || 'No messages yet'}
+                        {chat.lastMessage || getTranslatedText('No messages yet')}
                       </p>
                       {chat.orderId && (
                         <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                          Order: {chat.orderId.status || 'Active'}
+                          {getTranslatedText("Order:")} {getTranslatedText(chat.orderId.status) || getTranslatedText('Active')}
                         </p>
                       )}
                     </div>

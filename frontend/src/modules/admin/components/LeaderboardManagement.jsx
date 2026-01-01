@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import ReferralLeaderboard from '../../shared/components/ReferralLeaderboard';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaTrophy,
   FaUsers,
@@ -13,9 +14,27 @@ const LeaderboardManagement = () => {
   const [selectedType, setSelectedType] = useState('user'); // user, scrapper
   const [selectedPeriod, setSelectedPeriod] = useState('all'); // all, monthly
 
+  const staticTexts = [
+    "Export functionality will be implemented with backend integration",
+    "Referral Leaderboard",
+    "View top referrers and manage leaderboard settings",
+    "Export",
+    "User Type",
+    "Users",
+    "Scrappers",
+    "Period",
+    "All Time",
+    "This Month",
+    "Total Referrers",
+    "Top Referrals",
+    "Total Rewards Paid",
+    "Top {type}"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
+
   const handleExport = () => {
     // In real app, this would export leaderboard data
-    alert('Export functionality will be implemented with backend integration');
+    alert(getTranslatedText('Export functionality will be implemented with backend integration'));
   };
 
   return (
@@ -36,10 +55,10 @@ const LeaderboardManagement = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Referral Leaderboard
+                {getTranslatedText("Referral Leaderboard")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                View top referrers and manage leaderboard settings
+                {getTranslatedText("View top referrers and manage leaderboard settings")}
               </p>
             </div>
           </div>
@@ -51,7 +70,7 @@ const LeaderboardManagement = () => {
             style={{ backgroundColor: '#64946e', color: '#ffffff' }}
           >
             <FaDownload />
-            Export
+            {getTranslatedText("Export")}
           </motion.button>
         </div>
 
@@ -59,65 +78,61 @@ const LeaderboardManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              User Type
+              {getTranslatedText("User Type")}
             </label>
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedType('user')}
-                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                  selectedType === 'user' ? 'shadow-md' : ''
-                }`}
+                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${selectedType === 'user' ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: selectedType === 'user' ? '#64946e' : '#f7fafc',
                   color: selectedType === 'user' ? '#ffffff' : '#2d3748'
                 }}
               >
                 <FaUsers />
-                Users
+                {getTranslatedText("Users")}
               </button>
               <button
                 onClick={() => setSelectedType('scrapper')}
-                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                  selectedType === 'scrapper' ? 'shadow-md' : ''
-                }`}
+                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${selectedType === 'scrapper' ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: selectedType === 'scrapper' ? '#64946e' : '#f7fafc',
                   color: selectedType === 'scrapper' ? '#ffffff' : '#2d3748'
                 }}
               >
                 <FaTruck />
-                Scrappers
+                {getTranslatedText("Scrappers")}
               </button>
             </div>
           </div>
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Period
+              {getTranslatedText("Period")}
             </label>
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedPeriod('all')}
-                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                  selectedPeriod === 'all' ? 'shadow-md' : ''
-                }`}
+                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${selectedPeriod === 'all' ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: selectedPeriod === 'all' ? '#64946e' : '#f7fafc',
                   color: selectedPeriod === 'all' ? '#ffffff' : '#2d3748'
                 }}
               >
-                All Time
+                {getTranslatedText("All Time")}
               </button>
               <button
                 onClick={() => setSelectedPeriod('monthly')}
-                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
-                  selectedPeriod === 'monthly' ? 'shadow-md' : ''
-                }`}
+                className={`flex-1 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${selectedPeriod === 'monthly' ? 'shadow-md' : ''
+                  }`}
                 style={{
                   backgroundColor: selectedPeriod === 'monthly' ? '#64946e' : '#f7fafc',
                   color: selectedPeriod === 'monthly' ? '#ffffff' : '#2d3748'
                 }}
               >
-                This Month
+                {getTranslatedText("This Month")}
               </button>
             </div>
           </div>
@@ -134,7 +149,7 @@ const LeaderboardManagement = () => {
         <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
             <FaUsers className="text-xl" style={{ color: '#64946e' }} />
-            <p className="text-sm" style={{ color: '#718096' }}>Total Referrers</p>
+            <p className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Total Referrers")}</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
             {/* This would be calculated from leaderboard data */}
@@ -144,7 +159,7 @@ const LeaderboardManagement = () => {
         <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
             <FaTrophy className="text-xl" style={{ color: '#64946e' }} />
-            <p className="text-sm" style={{ color: '#718096' }}>Top Referrals</p>
+            <p className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Top Referrals")}</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
             {/* This would be calculated from leaderboard data */}
@@ -154,7 +169,7 @@ const LeaderboardManagement = () => {
         <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
           <div className="flex items-center gap-3 mb-2">
             <FaChartBar className="text-xl" style={{ color: '#64946e' }} />
-            <p className="text-sm" style={{ color: '#718096' }}>Total Rewards Paid</p>
+            <p className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Total Rewards Paid")}</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
             {/* This would be calculated from leaderboard data */}
@@ -177,7 +192,7 @@ const LeaderboardManagement = () => {
             <FaTruck className="text-xl" style={{ color: '#64946e' }} />
           )}
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            Top {selectedType === 'user' ? 'Users' : 'Scrappers'}
+            {getTranslatedText("Top {type}", { type: selectedType === 'user' ? getTranslatedText('Users') : getTranslatedText('Scrappers') })}
           </h2>
         </div>
         <ReferralLeaderboard userType={selectedType} period={selectedPeriod} />

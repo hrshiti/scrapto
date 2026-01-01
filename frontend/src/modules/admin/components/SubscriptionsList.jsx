@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fa';
 
 import { adminAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const SubscriptionsList = () => {
   const navigate = useNavigate();
@@ -14,6 +15,31 @@ const SubscriptionsList = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, active, expired, cancelled
   const [searchQuery, setSearchQuery] = useState('');
+
+  const staticTexts = [
+    "Unknown Scrapper",
+    "N/A",
+    "Unknown Plan",
+    "Subscription Details:\n\nScrapper: {scrapper}\nPlan: {plan}\nPrice: ₹{price}/month\nStatus: {status}",
+    "Subscription extended by {count} days",
+    "Active",
+    "Expired",
+    "Cancelled",
+    "Pending",
+    "Expired on {date}",
+    "{count} days left",
+    "Subscription Management",
+    "Manage all scrapper subscriptions",
+    "Monthly Revenue: ₹{amount}",
+    "Search by scrapper name, phone, or plan...",
+    "All",
+    "Loading subscriptions...",
+    "No subscriptions found",
+    "Try a different search term",
+    "View",
+    "Extend"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadSubscriptions();
@@ -32,10 +58,10 @@ const SubscriptionsList = () => {
           return {
             id: sub._id || `sub_${index}`,
             scrapperId: user.id || user._id,
-            scrapperName: user.name || 'Unknown Scrapper',
-            scrapperPhone: user.phone || 'N/A',
+            scrapperName: user.name || getTranslatedText('Unknown Scrapper'),
+            scrapperPhone: user.phone || getTranslatedText('N/A'),
             planId: plan._id || plan.id || 'unknown',
-            planName: plan.name || 'Unknown Plan',
+            planName: plan.name || getTranslatedText('Unknown Plan'),
             price: plan.price || 0,
             status: sub.status || 'inactive',
             subscribedAt: sub.startDate || sub.createdAt,
@@ -67,7 +93,12 @@ const SubscriptionsList = () => {
     if (sub.scrapperId) {
       navigate(`/admin/scrappers/${sub.scrapperId}`);
     } else {
-      alert(`Subscription Details:\n\nScrapper: ${sub.scrapperName}\nPlan: ${sub.planName}\nPrice: ₹${sub.price}/month\nStatus: ${sub.status}`);
+      alert(getTranslatedText("Subscription Details:\n\nScrapper: {scrapper}\nPlan: {plan}\nPrice: ₹{price}/month\nStatus: {status}", {
+        scrapper: sub.scrapperName,
+        plan: sub.planName,
+        price: sub.price,
+        status: sub.status
+      }));
     }
   };
 
@@ -85,15 +116,15 @@ const SubscriptionsList = () => {
       return sub;
     });
     setSubscriptions(updatedSubs);
-    alert(`Subscription extended by ${days} days`);
+    alert(getTranslatedText("Subscription extended by {count} days", { count: days }));
   };
 
   const getStatusBadge = (status) => {
     const styles = {
-      active: { bg: '#d1fae5', color: '#10b981', icon: FaCheckCircle },
-      expired: { bg: '#fee2e2', color: '#dc2626', icon: FaTimesCircle },
-      cancelled: { bg: '#fee2e2', color: '#dc2626', icon: FaTimesCircle },
-      pending: { bg: '#fef3c7', color: '#f59e0b', icon: FaClock }
+      active: { bg: '#d1fae5', color: '#10b981', icon: FaCheckCircle, label: getTranslatedText('Active') },
+      expired: { bg: '#fee2e2', color: '#dc2626', icon: FaTimesCircle, label: getTranslatedText('Expired') },
+      cancelled: { bg: '#fee2e2', color: '#dc2626', icon: FaTimesCircle, label: getTranslatedText('Cancelled') },
+      pending: { bg: '#fef3c7', color: '#f59e0b', icon: FaClock, label: getTranslatedText('Pending') }
     };
     const style = styles[status] || styles.pending;
     const Icon = style.icon;
@@ -103,8 +134,8 @@ const SubscriptionsList = () => {
         style={{ backgroundColor: style.bg, color: style.color }}
       >
         <Icon className="text-xs" />
-        <span className="hidden sm:inline">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
-        <span className="sm:hidden">{status.charAt(0).toUpperCase()}</span>
+        <span className="hidden sm:inline">{style.label}</span>
+        <span className="sm:hidden">{style.label.charAt(0)}</span>
       </span>
     );
   };
@@ -132,16 +163,16 @@ const SubscriptionsList = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Subscription Management
+              {getTranslatedText("Subscription Management")}
             </h1>
             <p className="text-xs md:text-base" style={{ color: '#718096' }}>
-              Manage all scrapper subscriptions
+              {getTranslatedText("Manage all scrapper subscriptions")}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
               <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                Monthly Revenue: ₹{totalRevenue}
+                {getTranslatedText("Monthly Revenue: ₹{amount}", { amount: totalRevenue })}
               </span>
             </div>
           </div>
@@ -161,7 +192,7 @@ const SubscriptionsList = () => {
             <FaSearch className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-xs md:text-base" style={{ color: '#718096' }} />
             <input
               type="text"
-              placeholder="Search by scrapper name, phone, or plan..."
+              placeholder={getTranslatedText("Search by scrapper name, phone, or plan...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
@@ -186,7 +217,7 @@ const SubscriptionsList = () => {
                   color: filter === status ? '#ffffff' : '#2d3748'
                 }}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'all' ? getTranslatedText('All') : getTranslatedText(status.charAt(0).toUpperCase() + status.slice(1))}
               </button>
             ))}
           </div>
@@ -210,7 +241,7 @@ const SubscriptionsList = () => {
                 style={{ borderColor: '#64946e' }}
               />
               <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                Loading subscriptions...
+                {getTranslatedText("Loading subscriptions...")}
               </p>
             </div>
           ) : filteredSubscriptions.length === 0 ? (
@@ -221,10 +252,10 @@ const SubscriptionsList = () => {
             >
               <FaCreditCard className="mx-auto mb-4" style={{ color: '#cbd5e0', fontSize: '48px' }} />
               <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-                No subscriptions found
+                {getTranslatedText("No subscriptions found")}
               </p>
               <p className="text-sm" style={{ color: '#718096' }}>
-                {searchQuery ? 'Try a different search term' : 'No subscriptions found'}
+                {searchQuery ? getTranslatedText('Try a different search term') : getTranslatedText('No subscriptions found')}
               </p>
             </motion.div>
           ) : (
@@ -266,8 +297,8 @@ const SubscriptionsList = () => {
                           <FaCalendarAlt className="text-xs" />
                           <span className="text-xs">
                             {sub.status === 'active'
-                              ? `${daysRemaining > 0 ? `${daysRemaining} days left` : 'Expired'}`
-                              : `Expired on ${new Date(sub.expiryDate).toLocaleDateString()}`
+                              ? `${daysRemaining > 0 ? getTranslatedText("{count} days left", { count: daysRemaining }) : getTranslatedText('Expired')}`
+                              : getTranslatedText("Expired on {date}", { date: new Date(sub.expiryDate).toLocaleDateString() })
                             }
                           </span>
                         </div>
@@ -284,7 +315,7 @@ const SubscriptionsList = () => {
                         style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                       >
                         <FaEye className="text-xs md:text-sm" />
-                        <span className="hidden sm:inline">View</span>
+                        <span className="hidden sm:inline">{getTranslatedText("View")}</span>
                       </motion.button>
                       {sub.status === 'active' && (
                         <motion.button
@@ -294,7 +325,7 @@ const SubscriptionsList = () => {
                           className="px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-semibold text-xs md:text-sm transition-all"
                           style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                         >
-                          Extend
+                          {getTranslatedText("Extend")}
                         </motion.button>
                       )}
                     </div>
@@ -310,4 +341,3 @@ const SubscriptionsList = () => {
 };
 
 export default SubscriptionsList;
-

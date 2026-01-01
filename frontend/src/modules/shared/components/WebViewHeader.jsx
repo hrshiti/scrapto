@@ -1,9 +1,17 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import { IoLanguageOutline, IoChevronDownOutline } from 'react-icons/io5';
 
 const WebViewHeader = ({ navItems, userRole = 'user' }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const [isLangOpen, setIsLangOpen] = useState(false);
+    const { language, languages, changeLanguage } = useLanguage();
+
+    const { getTranslatedText } = usePageTranslation(navItems.map(item => item.label));
 
     return (
         <motion.header
@@ -40,7 +48,7 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 ${isActive ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:text-emerald-600 hover:bg-gray-50'}
               `}>
                                 <item.icon className={`text-lg ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-600'}`} />
-                                <span className="font-medium text-sm">{item.label}</span>
+                                <span className="font-medium text-sm">{getTranslatedText(item.label)}</span>
                             </div>
 
                             {isActive && (
@@ -54,9 +62,55 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 })}
             </nav>
 
-            {/* Right Side Actions (Profile/Notifications) */}
+            {/* Right Side Actions (Profile/Notifications/Language) */}
             <div className="flex items-center gap-4">
-                {/* We can add notification bell here later if needed */}
+                {/* Language Selector */}
+                <div className="relative">
+                    <button
+                        onClick={() => setIsLangOpen(!isLangOpen)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 transition-all text-sm font-medium"
+                        style={{ color: '#4a5568' }}
+                    >
+                        <IoLanguageOutline className="text-lg" />
+                        <span className="hidden lg:inline">{languages[language]?.label.split(' ')[0]}</span>
+                        <IoChevronDownOutline className={`transition-transform duration-200 ${isLangOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    <AnimatePresence>
+                        {isLangOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setIsLangOpen(false)}
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                    className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden"
+                                >
+                                    <div className="max-h-64 overflow-y-auto">
+                                        {Object.entries(languages).map(([code, { label, flag }]) => (
+                                            <button
+                                                key={code}
+                                                onClick={() => {
+                                                    changeLanguage(code);
+                                                    setIsLangOpen(false);
+                                                }}
+                                                className={`w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-gray-50 transition-colors ${language === code ? 'text-green-600 bg-green-50' : 'text-gray-700'
+                                                    }`}
+                                            >
+                                                <span className="text-lg">{flag}</span>
+                                                <span className="text-sm font-medium">{label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>
+                </div>
+
                 <div
                     className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
                     onClick={() => navigate(userRole === 'scrapper' ? '/scrapper/profile' : '/my-profile')}

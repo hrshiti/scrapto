@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAdminAuth } from '../../shared/context/AdminAuthContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaHome,
   FaUserShield,
@@ -23,6 +24,34 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { admin, logout } = useAdminAuth();
+  const staticTexts = [
+    "Dashboard",
+    "KYC Queue",
+    "Users",
+    "Scrappers",
+    "All Scrappers",
+    "Leads",
+    "Price Feed",
+    "Requests",
+    "Subscriptions",
+    "All Subscriptions",
+    "Manage Plans",
+    "Referrals",
+    "Settings",
+    "Milestone Rewards",
+    "Tier Management",
+    "Leaderboard",
+    "Analytics",
+    "Fraud Detection",
+    "Campaigns",
+    "Reports",
+    "Ad Banners",
+    "Admin Panel",
+    "Scrapto",
+    "Logout",
+    "Administrator"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Close sidebar on mobile when route changes
@@ -36,38 +65,38 @@ const AdminLayout = () => {
   };
 
   const menuItems = [
-    { icon: FaHome, label: 'Dashboard', path: '/admin', exact: true },
-    { icon: FaUserShield, label: 'KYC Queue', path: '/admin/kyc' },
-    { icon: FaUsers, label: 'Users', path: '/admin/users' },
+    { icon: FaHome, label: getTranslatedText('Dashboard'), path: '/admin', exact: true },
+    { icon: FaUserShield, label: getTranslatedText('KYC Queue'), path: '/admin/kyc' },
+    { icon: FaUsers, label: getTranslatedText('Users'), path: '/admin/users' },
     {
-      icon: FaTruck, label: 'Scrappers', path: '/admin/scrappers', submenu: [
-        { label: 'All Scrappers', path: '/admin/scrappers' },
-        { label: 'Leads', path: '/admin/scrappers/leads' }
+      icon: FaTruck, label: getTranslatedText('Scrappers'), path: '/admin/scrappers', submenu: [
+        { label: getTranslatedText('All Scrappers'), path: '/admin/scrappers' },
+        { label: getTranslatedText('Leads'), path: '/admin/scrappers/leads' }
       ]
     },
-    { icon: FaRupeeSign, label: 'Price Feed', path: '/admin/prices' },
-    { icon: FaFileInvoice, label: 'Requests', path: '/admin/requests' },
+    { icon: FaRupeeSign, label: getTranslatedText('Price Feed'), path: '/admin/prices' },
+    { icon: FaFileInvoice, label: getTranslatedText('Requests'), path: '/admin/requests' },
     {
-      icon: FaCreditCard, label: 'Subscriptions', path: '/admin/subscriptions', submenu: [
-        { label: 'All Subscriptions', path: '/admin/subscriptions' },
-        { label: 'Manage Plans', path: '/admin/subscriptions/plans' }
+      icon: FaCreditCard, label: getTranslatedText('Subscriptions'), path: '/admin/subscriptions', submenu: [
+        { label: getTranslatedText('All Subscriptions'), path: '/admin/subscriptions' },
+        { label: getTranslatedText('Manage Plans'), path: '/admin/subscriptions/plans' }
       ]
     },
     {
-      icon: FaGift, label: 'Referrals', path: '/admin/referrals', submenu: [
-        { label: 'All Referrals', path: '/admin/referrals' },
-        { label: 'Settings', path: '/admin/referrals/settings' },
-        { label: 'Milestone Rewards', path: '/admin/referrals/milestones' },
-        { label: 'Tier Management', path: '/admin/referrals/tiers' },
-        { label: 'Leaderboard', path: '/admin/referrals/leaderboard' },
-        { label: 'Analytics', path: '/admin/referrals/analytics' },
-        { label: 'Fraud Detection', path: '/admin/referrals/fraud' },
-        { label: 'Campaigns', path: '/admin/referrals/campaigns' }
+      icon: FaGift, label: getTranslatedText('Referrals'), path: '/admin/referrals', submenu: [
+        { label: getTranslatedText('All Referrals'), path: '/admin/referrals' },
+        { label: getTranslatedText('Settings'), path: '/admin/referrals/settings' },
+        { label: getTranslatedText('Milestone Rewards'), path: '/admin/referrals/milestones' },
+        { label: getTranslatedText('Tier Management'), path: '/admin/referrals/tiers' },
+        { label: getTranslatedText('Leaderboard'), path: '/admin/referrals/leaderboard' },
+        { label: getTranslatedText('Analytics'), path: '/admin/referrals/analytics' },
+        { label: getTranslatedText('Fraud Detection'), path: '/admin/referrals/fraud' },
+        { label: getTranslatedText('Campaigns'), path: '/admin/referrals/campaigns' }
       ]
     },
-    { icon: FaChartBar, label: 'Reports', path: '/admin/reports' },
-    { icon: FaBullhorn, label: 'Ad Banners', path: '/admin/banners' },
-    { icon: FaCog, label: 'Settings', path: '/admin/settings' }
+    { icon: FaChartBar, label: getTranslatedText('Reports'), path: '/admin/reports' },
+    { icon: FaBullhorn, label: getTranslatedText('Ad Banners'), path: '/admin/banners' },
+    { icon: FaCog, label: getTranslatedText('Settings'), path: '/admin/settings' }
   ];
 
   const isActive = (item) => {
@@ -97,8 +126,8 @@ const AdminLayout = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>Admin Panel</h1>
-              <p className="text-xs" style={{ color: '#718096' }}>Scrapto</p>
+              <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Admin Panel")}</h1>
+              <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Scrapto")}</p>
             </div>
           </div>
         </div>
@@ -186,7 +215,7 @@ const AdminLayout = () => {
             style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
           >
             <FaSignOutAlt />
-            <span className="font-medium">Logout</span>
+            <span className="font-medium">{getTranslatedText("Logout")}</span>
           </button>
         </div>
       </motion.aside>
@@ -220,8 +249,8 @@ const AdminLayout = () => {
                     </svg>
                   </div>
                   <div>
-                    <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>Admin Panel</h1>
-                    <p className="text-xs" style={{ color: '#718096' }}>Scrapto</p>
+                    <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Admin Panel")}</h1>
+                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Scrapto")}</p>
                   </div>
                 </div>
                 <button
@@ -314,7 +343,7 @@ const AdminLayout = () => {
                   style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
                 >
                   <FaSignOutAlt />
-                  <span className="font-medium">Logout</span>
+                  <span className="font-medium">{getTranslatedText("Logout")}</span>
                 </button>
               </div>
             </motion.aside>
@@ -334,13 +363,13 @@ const AdminLayout = () => {
           </button>
           <div className="flex-1 md:flex-none">
             <h2 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
-              {menuItems.find(item => isActive(item))?.label || 'Dashboard'}
+              {menuItems.find(item => isActive(item))?.label || getTranslatedText('Dashboard')}
             </h2>
           </div>
           <div className="hidden md:flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{admin?.name || 'Admin'}</p>
-              <p className="text-xs" style={{ color: '#718096' }}>{admin?.role || 'Administrator'}</p>
+              <p className="text-xs" style={{ color: '#718096' }}>{admin?.role || getTranslatedText('Administrator')}</p>
             </div>
             <motion.button
               whileHover={{ scale: 1.05 }}

@@ -1,8 +1,38 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const WeightInputPage = () => {
+  const staticTexts = [
+    "Enter Weight",
+    "Step 3 of 4",
+    "Uploaded Images",
+    "Auto Detect",
+    "Manual Input",
+    "Analyzing Images...",
+    "Detecting weight from your images",
+    "Auto-detected Weight",
+    "Based on image analysis",
+    "Edit",
+    "Click \"Auto Detect\" to analyze your images",
+    "Enter Weight (kg)",
+    "kg",
+    "Quick Select:",
+    "Estimated Payout",
+    "for",
+    "Enter weight to continue",
+    "Continue with",
+    "Plastic",
+    "Metal",
+    "Paper",
+    "Electronics",
+    "Copper",
+    "Aluminium",
+    "Steel",
+    "Brass"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const [uploadedImages, setUploadedImages] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -169,7 +199,7 @@ const WeightInputPage = () => {
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
-          Enter Weight
+          {getTranslatedText("Enter Weight")}
         </h2>
         <div className="w-10"></div> {/* Spacer for centering */}
       </div>
@@ -186,7 +216,7 @@ const WeightInputPage = () => {
               style={{ backgroundColor: '#64946e' }}
             />
           </div>
-          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 3 of 4</span>
+          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 3 of 4")}</span>
         </div>
       </div>
 
@@ -200,7 +230,7 @@ const WeightInputPage = () => {
             className="mb-4 md:mb-6"
           >
             <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-              Uploaded Images ({uploadedImages.length})
+              {getTranslatedText("Uploaded Images")} ({uploadedImages.length})
             </p>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {uploadedImages.slice(0, 3).map((image) => (
@@ -239,7 +269,7 @@ const WeightInputPage = () => {
                 color: weightMode === 'auto' ? '#ffffff' : '#2d3748'
               }}
             >
-              Auto Detect
+              {getTranslatedText("Auto Detect")}
             </button>
             <button
               onClick={() => setWeightMode('manual')}
@@ -251,7 +281,7 @@ const WeightInputPage = () => {
                 color: weightMode === 'manual' ? '#ffffff' : '#2d3748'
               }}
             >
-              Manual Input
+              {getTranslatedText("Manual Input")}
             </button>
           </div>
         </div> */}
@@ -272,24 +302,24 @@ const WeightInputPage = () => {
                   style={{ borderTopColor: '#64946e', borderRightColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: 'transparent' }}
                 />
                 <p className="text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Analyzing Images...
+                  {getTranslatedText("Analyzing Images...")}
                 </p>
                 <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                  Detecting weight from your images
+                  {getTranslatedText("Detecting weight from your images")}
                 </p>
               </div>
             ) : autoDetectedWeight ? (
               <div className="rounded-xl p-4 md:p-6" style={{ backgroundColor: '#ffffff' }}>
                 <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                  Auto-detected Weight
+                  {getTranslatedText("Auto-detected Weight")}
                 </p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <div className="text-3xl md:text-4xl font-bold mb-1" style={{ color: '#64946e' }}>
-                      {autoDetectedWeight} <span className="text-lg md:text-xl" style={{ color: '#718096' }}>kg</span>
+                      {autoDetectedWeight} <span className="text-lg md:text-xl" style={{ color: '#718096' }}>{getTranslatedText("kg")}</span>
                     </div>
                     <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                      Based on image analysis
+                      {getTranslatedText("Based on image analysis")}
                     </p>
                   </div>
                   <button
@@ -303,14 +333,14 @@ const WeightInputPage = () => {
                       e.target.style.backgroundColor = 'transparent';
                     }}
                   >
-                    Edit
+                    {getTranslatedText("Edit")}
                   </button>
                 </div>
               </div>
             ) : (
               <div className="rounded-xl p-6 md:p-8 text-center" style={{ backgroundColor: '#ffffff' }}>
                 <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                  Click "Auto Detect" to analyze your images
+                  {getTranslatedText('Click "Auto Detect" to analyze your images')}
                 </p>
               </div>
             )}
@@ -326,7 +356,7 @@ const WeightInputPage = () => {
           >
             <div className="rounded-xl p-4 md:p-6" style={{ backgroundColor: '#ffffff' }}>
               <label className="block text-xs md:text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                Enter Weight (kg)
+                {getTranslatedText("Enter Weight (kg)")}
               </label>
               <div className="relative">
                 <input
@@ -342,7 +372,7 @@ const WeightInputPage = () => {
                   }}
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg md:text-xl font-semibold" style={{ color: '#718096' }}>
-                  kg
+                  {getTranslatedText("kg")}
                 </span>
               </div>
             </div>
@@ -350,7 +380,7 @@ const WeightInputPage = () => {
             {/* Quick Weight Buttons */}
             <div className="mt-4">
               <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                Quick Select:
+                {getTranslatedText("Quick Select:")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {quickWeights.map((weight) => (
@@ -374,7 +404,7 @@ const WeightInputPage = () => {
                       }
                     }}
                   >
-                    {weight} kg
+                    {weight} {getTranslatedText("kg")}
                   </button>
                 ))}
               </div>
@@ -391,20 +421,20 @@ const WeightInputPage = () => {
             style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}
           >
             <p className="text-xs md:text-sm mb-3" style={{ color: '#718096' }}>
-              Estimated Payout
+              {getTranslatedText("Estimated Payout")}
             </p>
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-2xl md:text-3xl font-bold" style={{ color: '#64946e' }}>
                 ₹{estimatedPayout.toFixed(0)}
               </span>
               <span className="text-sm md:text-base" style={{ color: '#718096' }}>
-                for {currentWeight} kg
+                {getTranslatedText("for")} {currentWeight} {getTranslatedText("kg")}
               </span>
             </div>
             <div className="text-xs md:text-sm" style={{ color: '#718096' }}>
               {selectedCategories.map((cat, idx) => (
                 <span key={cat.id}>
-                  {cat.name} @ ₹{marketPrices[cat.name] || 0}/kg
+                  {getTranslatedText(cat.name)} @ ₹{marketPrices[cat.name] || 0}/{getTranslatedText("kg")}
                   {idx < selectedCategories.length - 1 && ' • '}
                 </span>
               ))}
@@ -432,14 +462,14 @@ const WeightInputPage = () => {
             onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
           >
-            Continue with {currentWeight} kg
+            {getTranslatedText("Continue with")} {currentWeight} {getTranslatedText("kg")}
           </motion.button>
         ) : (
           <p
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >
-            Enter weight to continue
+            {getTranslatedText("Enter weight to continue")}
           </p>
         )}
       </div>

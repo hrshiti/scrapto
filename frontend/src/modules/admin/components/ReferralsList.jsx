@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaGift,
   FaSearch,
@@ -22,6 +23,29 @@ const ReferralsList = () => {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
 
+  const staticTexts = [
+    "No Referrals Found",
+    "Try adjusting your filters",
+    "No referrals have been created yet",
+    "All Referrals",
+    "View and manage all referral relationships",
+    "Total Referrals",
+    "Search by code, referrer, or referee name...",
+    "All Status",
+    "Pending",
+    "Registered",
+    "Verified",
+    "Rejected",
+    "Completed",
+    "Referrer",
+    "Referee",
+    "Date",
+    "Reward",
+    "NO CODE",
+    "Unknown"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
+
   useEffect(() => {
     loadReferrals();
   }, []);
@@ -37,7 +61,6 @@ const ReferralsList = () => {
       }
     } catch (err) {
       console.error('Failed to load referrals:', err);
-      // setReferrals([]); // Don't wipe if error, or maybe yes
     } finally {
       setLoading(false);
     }
@@ -45,10 +68,6 @@ const ReferralsList = () => {
 
   const getFilteredReferrals = () => {
     let filtered = [...referrals];
-
-    // Filter by type - (Assuming backend data might not distinguish user vs scrapper in 'type' field yet, 
-    // maybe infer from populated data if user vs scrapper model, but referral model just has referrer ID.
-    // For now we skip specific type filter unless we extend backend schema to store 'referrerRole')
 
     // Filter by status
     if (filterStatus !== 'all') {
@@ -73,11 +92,11 @@ const ReferralsList = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      registered: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', icon: FaCheckCircle, text: 'Registered' },
-      completed: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', icon: FaCheckCircle, text: 'Completed' },
-      pending: { bg: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', icon: FaClock, text: 'Pending' },
-      rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', icon: FaBan, text: 'Rejected' },
-      verified: { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', icon: FaCheckCircle, text: 'Verified' }
+      registered: { bg: 'rgba(16, 185, 129, 0.1)', color: '#10b981', icon: FaCheckCircle, text: getTranslatedText('Registered') },
+      completed: { bg: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', icon: FaCheckCircle, text: getTranslatedText('Completed') },
+      pending: { bg: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24', icon: FaClock, text: getTranslatedText('Pending') },
+      rejected: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', icon: FaBan, text: getTranslatedText('Rejected') },
+      verified: { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', icon: FaCheckCircle, text: getTranslatedText('Verified') }
     };
     const badge = badges[status] || badges.pending;
     const Icon = badge.icon;
@@ -111,10 +130,10 @@ const ReferralsList = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                All Referrals
+                {getTranslatedText("All Referrals")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                View and manage all referral relationships
+                {getTranslatedText("View and manage all referral relationships")}
               </p>
             </div>
           </div>
@@ -123,7 +142,7 @@ const ReferralsList = () => {
               {referrals.length}
             </p>
             <p className="text-xs" style={{ color: '#718096' }}>
-              Total Referrals
+              {getTranslatedText("Total Referrals")}
             </p>
           </div>
         </div>
@@ -134,7 +153,7 @@ const ReferralsList = () => {
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#718096' }} />
             <input
               type="text"
-              placeholder="Search by code, referrer, or referee name..."
+              placeholder={getTranslatedText("Search by code, referrer, or referee name...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
@@ -155,11 +174,11 @@ const ReferralsList = () => {
               color: '#2d3748'
             }}
           >
-            <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="registered">Registered</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
+            <option value="all">{getTranslatedText("All Status")}</option>
+            <option value="pending">{getTranslatedText("Pending")}</option>
+            <option value="registered">{getTranslatedText("Registered")}</option>
+            <option value="verified">{getTranslatedText("Verified")}</option>
+            <option value="rejected">{getTranslatedText("Rejected")}</option>
           </select>
         </div>
       </motion.div>
@@ -181,12 +200,12 @@ const ReferralsList = () => {
               <div className="p-12 text-center">
                 <FaGift className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
                 <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-                  No Referrals Found
+                  {getTranslatedText("No Referrals Found")}
                 </h3>
                 <p className="text-sm" style={{ color: '#718096' }}>
                   {searchTerm || filterStatus !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'No referrals have been created yet'}
+                    ? getTranslatedText('Try adjusting your filters')
+                    : getTranslatedText('No referrals have been created yet')}
                 </p>
               </div>
             ) : (
@@ -213,26 +232,26 @@ const ReferralsList = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             <h3 className="text-base md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                              {referral.codeUsed || 'NO CODE'}
+                              {referral.codeUsed || getTranslatedText('NO CODE')}
                             </h3>
                             {getStatusBadge(referral.status)}
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs md:text-sm" style={{ color: '#718096' }}>
                             <div className="truncate">
-                              <span className="font-semibold block text-gray-800">Referrer</span>
-                              {referral.referrer?.name ? `${referral.referrer.name}` : (referral.referrer || 'Unknown')}
+                              <span className="font-semibold block text-gray-800">{getTranslatedText("Referrer")}</span>
+                              {referral.referrer?.name ? `${referral.referrer.name}` : (referral.referrer || getTranslatedText('Unknown'))}
                               {referral.referrer?.email && <span className="block text-xs text-gray-400">{referral.referrer.email}</span>}
                             </div>
                             <div className="truncate">
-                              <span className="font-semibold block text-gray-800">Referee</span>
-                              {referral.referee?.name ? `${referral.referee.name}` : (referral.refereeEmail || referral.refereePhone || 'Pending')}
+                              <span className="font-semibold block text-gray-800">{getTranslatedText("Referee")}</span>
+                              {referral.referee?.name ? `${referral.referee.name}` : (referral.refereeEmail || referral.refereePhone || getTranslatedText('Pending'))}
                             </div>
                             <div>
-                              <span className="font-semibold block text-gray-800">Date</span>
+                              <span className="font-semibold block text-gray-800">{getTranslatedText("Date")}</span>
                               {new Date(referral.createdAt).toLocaleDateString()}
                             </div>
                             <div>
-                              <span className="font-semibold block text-gray-800">Reward</span>
+                              <span className="font-semibold block text-gray-800">{getTranslatedText("Reward")}</span>
                               <span className="text-green-600 font-bold">₹{referral.rewardEarned || 0}</span>
                             </div>
                           </div>

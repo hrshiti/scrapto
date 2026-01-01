@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaGift,
   FaSave,
@@ -18,6 +19,45 @@ const ReferralSettings = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+
+  const staticTexts = [
+    "Failed to load referral settings",
+    "Failed to save settings",
+    "Error saving settings",
+    "Failed to load settings",
+    "Referral Settings",
+    "Configure referral system and reward amounts",
+    "Referral System Status",
+    "Enable or disable the referral system globally",
+    "Referral system is active",
+    "Referral system is disabled",
+    "Cross-Referral System",
+    "Allow users to refer scrappers and vice versa",
+    "Cross-referrals are enabled",
+    "Cross-referrals are disabled",
+    "User Referral Rewards",
+    "Signup Bonus (Referrer)",
+    "Amount credited to referrer when referee signs up",
+    "Welcome Bonus (Referee)",
+    "Amount credited to new user when they sign up with referral code",
+    "Scrapper Referral Rewards",
+    "Amount credited to new scrapper when they sign up with referral code",
+    "Cross-Referral Rewards",
+    "User → Scrapper Referrals",
+    "Referrer Bonus (User gets)",
+    "Welcome Bonus (Scrapper gets)",
+    "Scrapper → User Referrals",
+    "Referrer Bonus (Scrapper gets)",
+    "Welcome Bonus (User gets)",
+    "Saving...",
+    "Saved!",
+    "Save Settings",
+    "✓ Referral system is active",
+    "✗ Referral system is disabled",
+    "✓ Cross-referrals are enabled",
+    "✗ Cross-referrals are disabled"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadSettings();
@@ -44,7 +84,7 @@ const ReferralSettings = () => {
       }
     } catch (err) {
       console.error('Failed to load settings', err);
-      setError('Failed to load referral settings');
+      setError(getTranslatedText('Failed to load referral settings'));
     } finally {
       setLoading(false);
     }
@@ -58,11 +98,11 @@ const ReferralSettings = () => {
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
       } else {
-        alert('Failed to save settings');
+        alert(getTranslatedText('Failed to save settings'));
       }
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Error saving settings');
+      alert(getTranslatedText('Error saving settings'));
     } finally {
       setSaving(false);
     }
@@ -101,7 +141,7 @@ const ReferralSettings = () => {
     );
   }
 
-  if (!settings) return <div className="p-4 text-center text-red-500">Failed to load settings</div>;
+  if (!settings) return <div className="p-4 text-center text-red-500">{getTranslatedText("Failed to load settings")}</div>;
 
   return (
     <div className="space-y-6">
@@ -121,10 +161,10 @@ const ReferralSettings = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Referral Settings
+                {getTranslatedText("Referral Settings")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Configure referral system and reward amounts
+                {getTranslatedText("Configure referral system and reward amounts")}
               </p>
             </div>
           </div>
@@ -141,10 +181,10 @@ const ReferralSettings = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg md:text-xl font-bold mb-1" style={{ color: '#2d3748' }}>
-              Referral System Status
+              {getTranslatedText("Referral System Status")}
             </h2>
             <p className="text-sm" style={{ color: '#718096' }}>
-              Enable or disable the referral system globally
+              {getTranslatedText("Enable or disable the referral system globally")}
             </p>
           </div>
           <motion.button
@@ -165,7 +205,7 @@ const ReferralSettings = () => {
             }`}
         >
           <p className="text-sm font-medium" style={{ color: settings.enabled ? '#10b981' : '#718096' }}>
-            {settings.enabled ? '✓ Referral system is active' : '✗ Referral system is disabled'}
+            {settings.enabled ? getTranslatedText('✓ Referral system is active') : getTranslatedText('✗ Referral system is disabled')}
           </p>
         </div>
       </motion.div>
@@ -180,10 +220,10 @@ const ReferralSettings = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg md:text-xl font-bold mb-1" style={{ color: '#2d3748' }}>
-              Cross-Referral System
+              {getTranslatedText("Cross-Referral System")}
             </h2>
             <p className="text-sm" style={{ color: '#718096' }}>
-              Allow users to refer scrappers and vice versa
+              {getTranslatedText("Allow users to refer scrappers and vice versa")}
             </p>
           </div>
           <motion.button
@@ -209,7 +249,7 @@ const ReferralSettings = () => {
             }`}
         >
           <p className="text-sm font-medium" style={{ color: settings.allowCrossReferrals ? '#10b981' : '#718096' }}>
-            {settings.allowCrossReferrals ? '✓ Cross-referrals are enabled' : '✗ Cross-referrals are disabled'}
+            {settings.allowCrossReferrals ? getTranslatedText('✓ Cross-referrals are enabled') : getTranslatedText('✗ Cross-referrals are disabled')}
           </p>
         </div>
       </motion.div>
@@ -224,17 +264,17 @@ const ReferralSettings = () => {
         <div className="flex items-center gap-3 mb-4">
           <FaUsers className="text-2xl" style={{ color: '#64946e' }} />
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            User Referral Rewards
+            {getTranslatedText("User Referral Rewards")}
           </h2>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Signup Bonus (Referrer)
+              {getTranslatedText("Signup Bonus (Referrer)")}
             </label>
             <p className="text-xs mb-2" style={{ color: '#718096' }}>
-              Amount credited to referrer when referee signs up
+              {getTranslatedText("Amount credited to referrer when referee signs up")}
             </p>
             <div className="relative">
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -256,10 +296,10 @@ const ReferralSettings = () => {
 
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Welcome Bonus (Referee)
+              {getTranslatedText("Welcome Bonus (Referee)")}
             </label>
             <p className="text-xs mb-2" style={{ color: '#718096' }}>
-              Amount credited to new user when they sign up with referral code
+              {getTranslatedText("Amount credited to new user when they sign up with referral code")}
             </p>
             <div className="relative">
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -291,17 +331,17 @@ const ReferralSettings = () => {
         <div className="flex items-center gap-3 mb-4">
           <FaTruck className="text-2xl" style={{ color: '#64946e' }} />
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            Scrapper Referral Rewards
+            {getTranslatedText("Scrapper Referral Rewards")}
           </h2>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Signup Bonus (Referrer)
+              {getTranslatedText("Signup Bonus (Referrer)")}
             </label>
             <p className="text-xs mb-2" style={{ color: '#718096' }}>
-              Amount credited to referrer when referee signs up
+              {getTranslatedText("Amount credited to referrer when referee signs up")}
             </p>
             <div className="relative">
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -323,10 +363,10 @@ const ReferralSettings = () => {
 
           <div>
             <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Welcome Bonus (Referee)
+              {getTranslatedText("Welcome Bonus (Referee)")}
             </label>
             <p className="text-xs mb-2" style={{ color: '#718096' }}>
-              Amount credited to new scrapper when they sign up with referral code
+              {getTranslatedText("Amount credited to new scrapper when they sign up with referral code")}
             </p>
             <div className="relative">
               <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -359,7 +399,7 @@ const ReferralSettings = () => {
           <div className="flex items-center gap-3 mb-4">
             <FaGift className="text-2xl" style={{ color: '#3b82f6' }} />
             <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-              Cross-Referral Rewards
+              {getTranslatedText("Cross-Referral Rewards")}
             </h2>
           </div>
 
@@ -367,12 +407,12 @@ const ReferralSettings = () => {
             {/* User to Scrapper */}
             <div>
               <h3 className="text-base font-semibold mb-3" style={{ color: '#2d3748' }}>
-                User → Scrapper Referrals
+                {getTranslatedText("User → Scrapper Referrals")}
               </h3>
               <div className="space-y-4 pl-4 border-l-2" style={{ borderColor: '#e2e8f0' }}>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Referrer Bonus (User gets)
+                    {getTranslatedText("Referrer Bonus (User gets)")}
                   </label>
                   <div className="relative">
                     <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -393,7 +433,7 @@ const ReferralSettings = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Welcome Bonus (Scrapper gets)
+                    {getTranslatedText("Welcome Bonus (Scrapper gets)")}
                   </label>
                   <div className="relative">
                     <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -418,12 +458,12 @@ const ReferralSettings = () => {
             {/* Scrapper to User */}
             <div>
               <h3 className="text-base font-semibold mb-3" style={{ color: '#2d3748' }}>
-                Scrapper → User Referrals
+                {getTranslatedText("Scrapper → User Referrals")}
               </h3>
               <div className="space-y-4 pl-4 border-l-2" style={{ borderColor: '#e2e8f0' }}>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Referrer Bonus (Scrapper gets)
+                    {getTranslatedText("Referrer Bonus (Scrapper gets)")}
                   </label>
                   <div className="relative">
                     <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -444,7 +484,7 @@ const ReferralSettings = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Welcome Bonus (User gets)
+                    {getTranslatedText("Welcome Bonus (User gets)")}
                   </label>
                   <div className="relative">
                     <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -490,17 +530,17 @@ const ReferralSettings = () => {
           {saving ? (
             <>
               <FaSpinner className="animate-spin" />
-              Saving...
+              {getTranslatedText("Saving...")}
             </>
           ) : saved ? (
             <>
               <FaSave />
-              Saved!
+              {getTranslatedText("Saved!")}
             </>
           ) : (
             <>
               <FaSave />
-              Save Settings
+              {getTranslatedText("Save Settings")}
             </>
           )}
         </motion.button>
