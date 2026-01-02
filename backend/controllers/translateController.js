@@ -9,9 +9,87 @@ const translationCache = new Map();
  */
 export const translateText = async (req, res) => {
     try {
-        let { text, texts, targetLanguage, targetLang } = req.body;
+        let { text, texts, targetLanguage, targetLang, obj } = req.body;
 
-        // Normalize inputs
+        // Handle object translation format
+        if (obj && typeof obj === 'object') {
+            const target = targetLanguage || targetLang;
+
+            if (!target) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Target language is required for object translation'
+                });
+            }
+
+            // Return original if target is English
+            if (target === 'en') {
+                return res.status(200).json({
+                    success: true,
+                    translatedObject: obj,
+                    data: { translatedObject: obj }
+                });
+            }
+
+            // Extract all values from object
+            const values = Object.values(obj);
+            const keys = Object.keys(obj);
+
+            if (values.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    translatedObject: obj,
+                    data: { translatedObject: obj }
+                });
+            }
+
+            const API_KEY = process.env.GOOGLE_CLOUD_TRANSLATE_API_KEY;
+
+            // Mock translation for objects
+            if (!API_KEY) {
+                const translatedObj = {};
+                keys.forEach((key, index) => {
+                    translatedObj[key] = `[${target}] ${values[index]}`;
+                });
+                return res.status(200).json({
+                    success: true,
+                    translatedObject: translatedObj,
+                    data: { translatedObject: translatedObj }
+                });
+            }
+
+            // Real translation for objects
+            try {
+                const url = `https://translation.googleapis.com/language/translate/v2?key=${API_KEY}`;
+                const response = await axios.post(url, {
+                    q: values,
+                    target: target,
+                    format: 'text'
+                });
+
+                const translatedValues = response.data.data.translations.map(t => t.translatedText);
+                const translatedObj = {};
+                keys.forEach((key, index) => {
+                    translatedObj[key] = translatedValues[index];
+                });
+
+                return res.status(200).json({
+                    success: true,
+                    translatedObject: translatedObj,
+                    data: { translatedObject: translatedObj }
+                });
+            } catch (error) {
+                console.error('Object translation error:', error.message);
+                // Fallback to original object
+                return res.status(200).json({
+                    success: true,
+                    translatedObject: obj,
+                    data: { translatedObject: obj }
+                });
+            }
+        }
+
+        // Original text/texts handling
         const inputTexts = texts || text;
         const target = targetLanguage || targetLang;
 
