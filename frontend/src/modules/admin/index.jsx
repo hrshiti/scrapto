@@ -109,4 +109,12 @@ const AdminModuleRoutes = () => {
   );
 };
 
-export default AdminModuleRoutes;
+const AdminModule = () => {
+  return (
+    <AdminAuthProvider>
+      <AdminModuleRoutes />
+    </AdminAuthProvider>
+  );
+};
+
+export default AdminModule;
