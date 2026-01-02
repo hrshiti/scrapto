@@ -6,7 +6,7 @@ import {
     getWalletTransactions,
     payOrderViaWallet
 } from '../controllers/walletController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 

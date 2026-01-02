@@ -3,8 +3,53 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { orderAPI, paymentAPI } from '../../../modules/shared/utils/api';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const RequestStatusPage = () => {
+  const staticTexts = [
+    "Request Status",
+    "Pending",
+    "Waiting for scrapper to accept",
+    "Accepted",
+    "Scrapper has accepted your request",
+    "On the Way",
+    "Scrapper is coming to your location",
+    "Arrived",
+    "Scrapper has arrived at your location",
+    "Completed",
+    "Pickup completed successfully",
+    "Progress",
+    "Request ID:",
+    "Payment",
+    "Complete payment after scrapper confirms your request.",
+    "Processing...",
+    "Pay Now",
+    "Status: Pending",
+    "Status: Failed — please retry payment.",
+    "Timeline",
+    "Request Sent",
+    "In progress...",
+    "Assigned Scrapper",
+    "ETA:",
+    "Request Details",
+    "Service Type:",
+    "Categories:",
+    "Weight:",
+    "kg",
+    "Images:",
+    "photos",
+    "Service Slot:",
+    "Pickup Slot:",
+    "Service Fee:",
+    "Estimated Payout:",
+    "Chat with Scrapper",
+    "Back to Home",
+    "Payment will be available once the request is confirmed by scrapper.",
+    "Failed to initiate payment. Please try again.",
+    "Payment verification failed. Please contact support.",
+    "Plastic", "Metal", "Paper", "Electronics", "Glass", "Other"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -99,7 +144,7 @@ const RequestStatusPage = () => {
     // Only allow when backend status is confirmed/in_progress
     const backendStatus = requestData.status;
     if (!['confirmed', 'in_progress'].includes(backendStatus)) {
-      alert('Payment will be available once the request is confirmed by scrapper.');
+      alert(getTranslatedText('Payment will be available once the request is confirmed by scrapper.'));
       return;
     }
 
@@ -145,7 +190,7 @@ const RequestStatusPage = () => {
             }
           } catch (err) {
             console.error('Payment verify failed', err);
-            alert(err.message || 'Payment verification failed. Please contact support.');
+            alert(getTranslatedText(err.message || 'Payment verification failed. Please contact support.'));
           } finally {
             setIsPaying(false);
           }
@@ -162,7 +207,7 @@ const RequestStatusPage = () => {
       rzp.open();
     } catch (error) {
       console.error('Payment error:', error);
-      alert(error.message || 'Failed to initiate payment. Please try again.');
+      alert(getTranslatedText(error.message || 'Failed to initiate payment. Please try again.'));
       setIsPaying(false);
     }
   };
@@ -275,7 +320,7 @@ const RequestStatusPage = () => {
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
-          Request Status
+          {getTranslatedText("Request Status")}
         </h2>
         <div className="w-10"></div> {/* Spacer for centering */}
       </div>
@@ -313,10 +358,10 @@ const RequestStatusPage = () => {
                   className="text-xl md:text-2xl font-bold mb-1"
                   style={{ color: currentStatus.color }}
                 >
-                  {currentStatus.label}
+                  {getTranslatedText(currentStatus.label)}
                 </h3>
                 <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                  {currentStatus.description}
+                  {getTranslatedText(currentStatus.description)}
                 </p>
               </div>
             </div>
@@ -325,7 +370,7 @@ const RequestStatusPage = () => {
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs md:text-sm font-medium" style={{ color: '#718096' }}>
-                  Progress
+                  {getTranslatedText("Progress")}
                 </span>
                 <span className="text-xs md:text-sm font-bold" style={{ color: currentStatus.color }}>
                   {currentStatus.progress}%
@@ -345,7 +390,7 @@ const RequestStatusPage = () => {
             {/* Request ID */}
             <div className="pt-4 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
               <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                Request ID: <span className="font-semibold" style={{ color: '#2d3748' }}>#{Date.now().toString().slice(-8)}</span>
+                {getTranslatedText("Request ID:")} <span className="font-semibold" style={{ color: '#2d3748' }}>#{Date.now().toString().slice(-8)}</span>
               </p>
             </div>
           </div>
@@ -362,9 +407,9 @@ const RequestStatusPage = () => {
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>Payment</p>
+                <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>{getTranslatedText("Payment")}</p>
                 <p className="text-xs" style={{ color: '#718096' }}>
-                  Complete payment after scrapper confirms your request.
+                  {getTranslatedText("Complete payment after scrapper confirms your request.")}
                 </p>
               </div>
               <button
@@ -374,17 +419,17 @@ const RequestStatusPage = () => {
                 className="px-4 py-2 rounded-full text-sm font-semibold shadow-md transition-all duration-300 disabled:opacity-50"
                 style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               >
-                {isPaying ? 'Processing...' : 'Pay Now'}
+                {isPaying ? getTranslatedText('Processing...') : getTranslatedText('Pay Now')}
               </button>
             </div>
             {requestData.paymentStatus === 'pending' && (
               <p className="mt-2 text-xs" style={{ color: '#f59e0b' }}>
-                Status: Pending
+                {getTranslatedText("Status: Pending")}
               </p>
             )}
             {requestData.paymentStatus === 'failed' && (
               <p className="mt-2 text-xs" style={{ color: '#dc2626' }}>
-                Status: Failed — please retry payment.
+                {getTranslatedText("Status: Failed — please retry payment.")}
               </p>
             )}
           </motion.div>
@@ -399,7 +444,7 @@ const RequestStatusPage = () => {
           style={{ backgroundColor: '#ffffff' }}
         >
           <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
-            Timeline
+            {getTranslatedText("Timeline")}
           </h3>
           <div className="space-y-4">
             {timelineSteps.map((step, index) => (
@@ -436,7 +481,7 @@ const RequestStatusPage = () => {
                       }`}
                     style={{ color: step.completed ? '#2d3748' : '#718096' }}
                   >
-                    {step.label}
+                    {getTranslatedText(step.label)}
                   </p>
                   {step.id === status && (
                     <motion.p
@@ -445,7 +490,7 @@ const RequestStatusPage = () => {
                       className="text-xs md:text-sm"
                       style={{ color: '#64946e' }}
                     >
-                      In progress...
+                      {getTranslatedText("In progress...")}
                     </motion.p>
                   )}
                 </div>
@@ -464,7 +509,7 @@ const RequestStatusPage = () => {
             style={{ backgroundColor: '#ffffff' }}
           >
             <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
-              Assigned Scrapper
+              {getTranslatedText("Assigned Scrapper")}
             </h3>
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center text-xl md:text-2xl font-bold"
@@ -509,7 +554,7 @@ const RequestStatusPage = () => {
                       <path d="M12 6v6l4 2" stroke="#64946e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <p className="text-xs md:text-sm font-semibold" style={{ color: '#64946e' }}>
-                      ETA: {eta}
+                      {getTranslatedText("ETA:")} {eta}
                     </p>
                   </motion.div>
                 )}
@@ -528,49 +573,49 @@ const RequestStatusPage = () => {
             style={{ backgroundColor: '#ffffff' }}
           >
             <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
-              Request Details
+              {getTranslatedText("Request Details")}
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                  {requestData.orderType === 'cleaning_service' ? 'Service Type:' : 'Categories:'}
+                  {requestData.orderType === 'cleaning_service' ? getTranslatedText('Service Type:') : getTranslatedText('Categories:')}
                 </span>
                 <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
                   {requestData.orderType === 'cleaning_service'
-                    ? requestData.serviceDetails?.serviceType
-                    : requestData.categories?.map(c => c.name).join(', ')}
+                    ? getTranslatedText(requestData.serviceDetails?.serviceType)
+                    : requestData.categories?.map(c => getTranslatedText(c.name)).join(', ')}
                 </span>
               </div>
               {requestData.orderType !== 'cleaning_service' && (
                 <div className="flex justify-between items-center">
-                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Weight:</span>
+                  <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Weight:")}</span>
                   <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    {requestData.weight} kg
+                    {requestData.weight} {getTranslatedText("kg")}
                   </span>
                 </div>
               )}
               <div className="flex justify-between items-center">
-                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Images:</span>
+                <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Images:")}</span>
                 <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                  {requestData.images?.length || 0} photos
+                  {requestData.images?.length || 0} {getTranslatedText("photos")}
                 </span>
               </div>
               {(requestData.pickupSlot || requestData.preferredTime) && (
                 <div className="flex justify-between items-center">
                   <span className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                    {requestData.orderType === 'cleaning_service' ? 'Service Slot:' : 'Pickup Slot:'}
+                    {requestData.orderType === 'cleaning_service' ? getTranslatedText('Service Slot:') : getTranslatedText('Pickup Slot:')}
                   </span>
                   <span className="text-xs md:text-sm font-semibold text-right" style={{ color: '#2d3748' }}>
                     {requestData.pickupSlot
-                      ? `${requestData.pickupSlot.dayName}, ${requestData.pickupSlot.date} • ${requestData.pickupSlot.slot}`
-                      : requestData.preferredTime}
+                      ? `${getTranslatedText(requestData.pickupSlot.dayName)}, ${requestData.pickupSlot.date} • ${getTranslatedText(requestData.pickupSlot.slot)}`
+                      : getTranslatedText(requestData.preferredTime)}
                   </span>
                 </div>
               )}
               <div className="pt-3 border-t" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
                 <div className="flex justify-between items-center">
                   <span className="text-base md:text-lg font-bold" style={{ color: '#2d3748' }}>
-                    {requestData.orderType === 'cleaning_service' ? 'Service Fee:' : 'Estimated Payout:'}
+                    {requestData.orderType === 'cleaning_service' ? getTranslatedText('Service Fee:') : getTranslatedText('Estimated Payout:')}
                   </span>
                   <span className="text-xl md:text-2xl font-bold" style={{ color: '#64946e' }}>
                     {requestData.orderType === 'cleaning_service'
@@ -597,10 +642,10 @@ const RequestStatusPage = () => {
               onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
               onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: '#ffffff' }}>
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Chat with Scrapper
+              {getTranslatedText("Chat with Scrapper")}
             </motion.button>
           )}
 
@@ -618,7 +663,7 @@ const RequestStatusPage = () => {
               e.target.style.backgroundColor = 'transparent';
             }}
           >
-            Back to Home
+            {getTranslatedText("Back to Home")}
           </motion.button>
         </div>
       </div>

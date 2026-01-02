@@ -854,7 +854,7 @@ export const getAllPrices = asyncHandler(async (req, res) => {
 // @access  Private (Admin)
 export const createPrice = asyncHandler(async (req, res) => {
   try {
-    const { category, pricePerKg, regionCode, effectiveDate, isActive } = req.body;
+    const { category, pricePerKg, regionCode, effectiveDate, isActive, image } = req.body;
 
     if (!category || !pricePerKg) {
       return sendError(res, 'Category and price per kg are required', 400);
@@ -874,7 +874,8 @@ export const createPrice = asyncHandler(async (req, res) => {
       regionCode: regionCode || 'IN-DL',
       effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
       isActive: isActive !== undefined ? isActive : true,
-      updatedBy: req.user.id
+      updatedBy: req.user.id,
+      image
     });
 
     sendSuccess(res, 'Price created successfully', { price });
@@ -889,7 +890,7 @@ export const createPrice = asyncHandler(async (req, res) => {
 // @access  Private (Admin)
 export const updatePrice = asyncHandler(async (req, res) => {
   try {
-    const { pricePerKg, effectiveDate, isActive } = req.body;
+    const { pricePerKg, effectiveDate, isActive, image } = req.body;
     const priceId = req.params.id;
 
     const price = await Price.findById(priceId);
@@ -900,6 +901,8 @@ export const updatePrice = asyncHandler(async (req, res) => {
     if (pricePerKg) price.pricePerKg = pricePerKg;
     if (effectiveDate) price.effectiveDate = new Date(effectiveDate);
     if (isActive !== undefined) price.isActive = isActive;
+    if (isActive !== undefined) price.isActive = isActive;
+    if (image !== undefined) price.image = image;
     price.updatedBy = req.user.id;
 
     await price.save();

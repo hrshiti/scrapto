@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaGift,
   FaPlus,
@@ -36,6 +37,41 @@ const CampaignManagement = () => {
     },
     status: 'active'
   });
+  const staticTexts = [
+    "Campaign created successfully",
+    "Failed to create campaign",
+    "Campaign updated successfully",
+    "Failed to update campaign",
+    "Are you sure you want to delete this campaign?",
+    "Failed to delete campaign",
+    "Active",
+    "Inactive",
+    "Campaign Management",
+    "Create and manage referral campaigns",
+    "Create Campaign",
+    "No Campaigns Yet",
+    "Create your first referral campaign to boost growth",
+    "{bonus} bonus",
+    "Edit",
+    "Delete",
+    "Edit Campaign",
+    "Campaign Name",
+    "e.g., Summer Referral Boost",
+    "Campaign Code (Optional)",
+    "e.g., SUMMER2024 (Auto-generated if empty)",
+    "Description",
+    "Campaign description...",
+    "Start Date",
+    "End Date",
+    "Target Audience",
+    "Both Users & Scrappers",
+    "Users Only",
+    "Scrappers Only",
+    "Signup Bonus (₹)",
+    "Welcome Bonus (₹)",
+    "Update"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadCampaigns();
@@ -69,13 +105,13 @@ const CampaignManagement = () => {
         loadCampaigns();
         setShowCreateModal(false);
         resetForm();
-        alert('Campaign created successfully');
+        alert(getTranslatedText('Campaign created successfully'));
       } else {
-        alert(response.message || 'Failed to create campaign');
+        alert(response.message || getTranslatedText('Failed to create campaign'));
       }
     } catch (err) {
       console.error('Error creating campaign:', err);
-      alert('Failed to create campaign');
+      alert(getTranslatedText('Failed to create campaign'));
     } finally {
       setFormLoading(false);
     }
@@ -90,26 +126,26 @@ const CampaignManagement = () => {
         setEditingCampaign(null);
         setShowCreateModal(false);
         resetForm();
-        alert('Campaign updated successfully');
+        alert(getTranslatedText('Campaign updated successfully'));
       } else {
-        alert(response.message || 'Failed to update campaign');
+        alert(response.message || getTranslatedText('Failed to update campaign'));
       }
     } catch (err) {
       console.error('Error updating campaign:', err);
-      alert('Failed to update campaign');
+      alert(getTranslatedText('Failed to update campaign'));
     } finally {
       setFormLoading(false);
     }
   };
 
   const handleDelete = async (campaignId) => {
-    if (window.confirm('Are you sure you want to delete this campaign?')) {
+    if (window.confirm(getTranslatedText('Are you sure you want to delete this campaign?'))) {
       try {
         const response = await referralAPI.deleteCampaign(campaignId);
         if (response.success) {
           loadCampaigns();
         } else {
-          alert('Failed to delete campaign');
+          alert(getTranslatedText('Failed to delete campaign'));
         }
       } catch (err) {
         console.error('Error deleting campaign:', err);
@@ -171,7 +207,7 @@ const CampaignManagement = () => {
           className="px-3 py-1 rounded-full text-xs font-semibold"
           style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}
         >
-          Active
+          {getTranslatedText("Active")}
         </span>
       );
     }
@@ -180,7 +216,7 @@ const CampaignManagement = () => {
         className="px-3 py-1 rounded-full text-xs font-semibold"
         style={{ backgroundColor: 'rgba(107, 114, 128, 0.1)', color: '#6b7280' }}
       >
-        Inactive
+        {getTranslatedText("Inactive")}
       </span>
     );
   };
@@ -203,10 +239,10 @@ const CampaignManagement = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Campaign Management
+                {getTranslatedText("Campaign Management")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Create and manage referral campaigns
+                {getTranslatedText("Create and manage referral campaigns")}
               </p>
             </div>
           </div>
@@ -222,7 +258,7 @@ const CampaignManagement = () => {
             style={{ backgroundColor: '#64946e', color: '#ffffff' }}
           >
             <FaPlus />
-            Create Campaign
+            {getTranslatedText("Create Campaign")}
           </motion.button>
         </div>
       </motion.div>
@@ -242,10 +278,10 @@ const CampaignManagement = () => {
           <div className="p-12 text-center">
             <FaGift className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
             <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-              No Campaigns Yet
+              {getTranslatedText("No Campaigns Yet")}
             </h3>
             <p className="text-sm mb-4" style={{ color: '#718096' }}>
-              Create your first referral campaign to boost growth
+              {getTranslatedText("Create your first referral campaign to boost growth")}
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -259,7 +295,7 @@ const CampaignManagement = () => {
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
               <FaPlus className="inline mr-2" />
-              Create Campaign
+              {getTranslatedText("Create Campaign")}
             </motion.button>
           </div>
         ) : (
@@ -298,11 +334,11 @@ const CampaignManagement = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       <FaUsers />
-                      <span className="capitalize">{campaign.targetAudience}</span>
+                      <span className="capitalize">{getTranslatedText(campaign.targetAudience)}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <FaRupeeSign />
-                      <span>₹{campaign.customRewards?.signupBonus || 0} bonus</span>
+                      <span>{getTranslatedText("{bonus} bonus", { bonus: campaign.customRewards?.signupBonus || 0 })}</span>
                     </div>
                   </div>
                 </div>
@@ -328,7 +364,7 @@ const CampaignManagement = () => {
                     style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
                     <FaEdit />
-                    Edit
+                    {getTranslatedText("Edit")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -338,7 +374,7 @@ const CampaignManagement = () => {
                     style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}
                   >
                     <FaTrash />
-                    Delete
+                    {getTranslatedText("Delete")}
                   </motion.button>
                 </div>
               </div>
@@ -371,7 +407,7 @@ const CampaignManagement = () => {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
-                    {editingCampaign ? 'Edit Campaign' : 'Create Campaign'}
+                    {editingCampaign ? getTranslatedText('Edit Campaign') : getTranslatedText('Create Campaign')}
                   </h2>
                   <button
                     onClick={() => {
@@ -388,7 +424,7 @@ const CampaignManagement = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Campaign Name
+                      {getTranslatedText("Campaign Name")}
                     </label>
                     <input
                       type="text"
@@ -400,13 +436,13 @@ const CampaignManagement = () => {
                         backgroundColor: '#f7fafc',
                         color: '#2d3748'
                       }}
-                      placeholder="e.g., Summer Referral Boost"
+                      placeholder={getTranslatedText("e.g., Summer Referral Boost")}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Campaign Code (Optional)
+                      {getTranslatedText("Campaign Code (Optional)")}
                     </label>
                     <input
                       type="text"
@@ -418,13 +454,13 @@ const CampaignManagement = () => {
                         backgroundColor: '#f7fafc',
                         color: '#2d3748'
                       }}
-                      placeholder="e.g., SUMMER2024 (Auto-generated if empty)"
+                      placeholder={getTranslatedText("e.g., SUMMER2024 (Auto-generated if empty)")}
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Description
+                      {getTranslatedText("Description")}
                     </label>
                     <textarea
                       value={formData.description}
@@ -436,14 +472,14 @@ const CampaignManagement = () => {
                         color: '#2d3748'
                       }}
                       rows="3"
-                      placeholder="Campaign description..."
+                      placeholder={getTranslatedText("Campaign description...")}
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Start Date
+                        {getTranslatedText("Start Date")}
                       </label>
                       <input
                         type="date"
@@ -459,7 +495,7 @@ const CampaignManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        End Date
+                        {getTranslatedText("End Date")}
                       </label>
                       <input
                         type="date"
@@ -477,7 +513,7 @@ const CampaignManagement = () => {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Target Audience
+                      {getTranslatedText("Target Audience")}
                     </label>
                     <select
                       value={formData.targetAudience}
@@ -489,16 +525,16 @@ const CampaignManagement = () => {
                         color: '#2d3748'
                       }}
                     >
-                      <option value="both">Both Users & Scrappers</option>
-                      <option value="user">Users Only</option>
-                      <option value="scrapper">Scrappers Only</option>
+                      <option value="both">{getTranslatedText("Both Users & Scrappers")}</option>
+                      <option value="user">{getTranslatedText("Users Only")}</option>
+                      <option value="scrapper">{getTranslatedText("Scrappers Only")}</option>
                     </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Signup Bonus (₹)
+                        {getTranslatedText("Signup Bonus (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -525,7 +561,7 @@ const CampaignManagement = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Welcome Bonus (₹)
+                        {getTranslatedText("Welcome Bonus (₹)")}
                       </label>
                       <div className="relative">
                         <FaRupeeSign className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: '#64946e' }} />
@@ -564,7 +600,7 @@ const CampaignManagement = () => {
                   >
                     {formLoading && <FaSpinner className="animate-spin" />}
                     <FaSave />
-                    {editingCampaign ? 'Update' : 'Create'} Campaign
+                    {editingCampaign ? getTranslatedText('Update') : getTranslatedText('Create')} {getTranslatedText('Campaign')}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -577,7 +613,7 @@ const CampaignManagement = () => {
                     className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
                     style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                   >
-                    Cancel
+                    {getTranslatedText("Cancel")}
                   </motion.button>
                 </div>
               </div>

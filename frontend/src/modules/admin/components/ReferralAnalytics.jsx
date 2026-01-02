@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { referralAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaChartBar,
   FaUsers,
@@ -27,6 +28,34 @@ const ReferralAnalytics = () => {
   });
   const [topReferrers, setTopReferrers] = useState([]);
   const [rawReferrals, setRawReferrals] = useState([]);
+
+  const staticTexts = [
+    "Export functionality will be implemented with backend integration",
+    "Referral Analytics",
+    "Comprehensive referral system insights",
+    "Export",
+    "All Time",
+    "Today",
+    "Week",
+    "Month",
+    "Total Referrals",
+    "Active Referrals",
+    "Total Rewards Paid",
+    "Conversion Rate",
+    "User Referrals",
+    "Scrapper Referrals",
+    "Cross-Referrals",
+    "Top 10 Referrers",
+    "No referrers yet",
+    "User",
+    "Scrapper",
+    "referrals",
+    "Earnings",
+    "{percentage}% of total",
+    "Unknown",
+    "0% of total"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadData();
@@ -111,7 +140,7 @@ const ReferralAnalytics = () => {
       if (!referrerMap[id]) {
         referrerMap[id] = {
           id,
-          name: ref.referrer.name || 'Unknown',
+          name: ref.referrer.name || getTranslatedText('Unknown'),
           role: ref.referrer.role || 'user',
           count: 0,
           earnings: 0
@@ -129,7 +158,7 @@ const ReferralAnalytics = () => {
   };
 
   const handleExport = () => {
-    alert('Export functionality will be implemented with backend integration');
+    alert(getTranslatedText('Export functionality will be implemented with backend integration'));
   };
 
   if (loading) {
@@ -158,10 +187,10 @@ const ReferralAnalytics = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Referral Analytics
+                {getTranslatedText("Referral Analytics")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Comprehensive referral system insights
+                {getTranslatedText("Comprehensive referral system insights")}
               </p>
             </div>
           </div>
@@ -173,7 +202,7 @@ const ReferralAnalytics = () => {
             style={{ backgroundColor: '#64946e', color: '#ffffff' }}
           >
             <FaDownload />
-            Export
+            {getTranslatedText("Export")}
           </motion.button>
         </div>
 
@@ -190,7 +219,7 @@ const ReferralAnalytics = () => {
                 color: period === p ? '#ffffff' : '#2d3748'
               }}
             >
-              {p === 'all' ? 'All Time' : p}
+              {p === 'all' ? getTranslatedText('All Time') : getTranslatedText(p.charAt(0).toUpperCase() + p.slice(1))}
             </button>
           ))}
         </div>
@@ -211,7 +240,7 @@ const ReferralAnalytics = () => {
           <p className="text-2xl font-bold mb-1" style={{ color: '#2d3748' }}>
             {analytics.totalReferrals}
           </p>
-          <p className="text-xs" style={{ color: '#718096' }}>Total Referrals</p>
+          <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Total Referrals")}</p>
         </motion.div>
 
         <motion.div
@@ -227,7 +256,7 @@ const ReferralAnalytics = () => {
           <p className="text-2xl font-bold mb-1" style={{ color: '#2d3748' }}>
             {analytics.activeReferrals}
           </p>
-          <p className="text-xs" style={{ color: '#718096' }}>Active Referrals</p>
+          <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Active Referrals")}</p>
         </motion.div>
 
         <motion.div
@@ -243,7 +272,7 @@ const ReferralAnalytics = () => {
           <p className="text-2xl font-bold mb-1" style={{ color: '#2d3748' }}>
             ₹{analytics.totalRewardsPaid.toLocaleString()}
           </p>
-          <p className="text-xs" style={{ color: '#718096' }}>Total Rewards Paid</p>
+          <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Total Rewards Paid")}</p>
         </motion.div>
 
         <motion.div
@@ -259,7 +288,7 @@ const ReferralAnalytics = () => {
           <p className="text-2xl font-bold mb-1" style={{ color: '#2d3748' }}>
             {analytics.conversionRate}%
           </p>
-          <p className="text-xs" style={{ color: '#718096' }}>Conversion Rate</p>
+          <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Conversion Rate")}</p>
         </motion.div>
       </div>
 
@@ -273,15 +302,15 @@ const ReferralAnalytics = () => {
         >
           <div className="flex items-center gap-3 mb-4">
             <FaUsers className="text-xl" style={{ color: '#64946e' }} />
-            <h3 className="font-bold" style={{ color: '#2d3748' }}>User Referrals</h3>
+            <h3 className="font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("User Referrals")}</h3>
           </div>
           <p className="text-3xl font-bold mb-1" style={{ color: '#64946e' }}>
             {analytics.userReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
             {analytics.totalReferrals > 0
-              ? `${((analytics.userReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
-              : '0% of total'}
+              ? getTranslatedText("{percentage}% of total", { percentage: ((analytics.userReferrals / analytics.totalReferrals) * 100).toFixed(1) })
+              : getTranslatedText("0% of total")}
           </p>
         </motion.div>
 
@@ -293,15 +322,15 @@ const ReferralAnalytics = () => {
         >
           <div className="flex items-center gap-3 mb-4">
             <FaTruck className="text-xl" style={{ color: '#64946e' }} />
-            <h3 className="font-bold" style={{ color: '#2d3748' }}>Scrapper Referrals</h3>
+            <h3 className="font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Scrapper Referrals")}</h3>
           </div>
           <p className="text-3xl font-bold mb-1" style={{ color: '#64946e' }}>
             {analytics.scrapperReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
             {analytics.totalReferrals > 0
-              ? `${((analytics.scrapperReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
-              : '0% of total'}
+              ? getTranslatedText("{percentage}% of total", { percentage: ((analytics.scrapperReferrals / analytics.totalReferrals) * 100).toFixed(1) })
+              : getTranslatedText("0% of total")}
           </p>
         </motion.div>
 
@@ -313,15 +342,15 @@ const ReferralAnalytics = () => {
         >
           <div className="flex items-center gap-3 mb-4">
             <FaUsers className="text-xl" style={{ color: '#3b82f6' }} />
-            <h3 className="font-bold" style={{ color: '#2d3748' }}>Cross-Referrals</h3>
+            <h3 className="font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Cross-Referrals")}</h3>
           </div>
           <p className="text-3xl font-bold mb-1" style={{ color: '#3b82f6' }}>
             {analytics.crossReferrals}
           </p>
           <p className="text-xs" style={{ color: '#718096' }}>
             {analytics.totalReferrals > 0
-              ? `${((analytics.crossReferrals / analytics.totalReferrals) * 100).toFixed(1)}% of total`
-              : '0% of total'}
+              ? getTranslatedText("{percentage}% of total", { percentage: ((analytics.crossReferrals / analytics.totalReferrals) * 100).toFixed(1) })
+              : getTranslatedText("0% of total")}
           </p>
         </motion.div>
       </div>
@@ -336,13 +365,13 @@ const ReferralAnalytics = () => {
         <div className="flex items-center gap-3 mb-4">
           <FaTrophy className="text-xl" style={{ color: '#64946e' }} />
           <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-            Top 10 Referrers
+            {getTranslatedText("Top 10 Referrers")}
           </h2>
         </div>
         <div className="space-y-3">
           {topReferrers.length === 0 ? (
             <p className="text-center py-8 text-sm" style={{ color: '#718096' }}>
-              No referrers yet
+              {getTranslatedText("No referrers yet")}
             </p>
           ) : (
             topReferrers.map((referrer, index) => (
@@ -363,10 +392,10 @@ const ReferralAnalytics = () => {
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                      {referrer.role === 'user' ? 'User' : 'Scrapper'} - {referrer.name}
+                      {referrer.role === 'user' ? getTranslatedText('User') : getTranslatedText('Scrapper')} - {referrer.name}
                     </p>
                     <p className="text-xs" style={{ color: '#718096' }}>
-                      {referrer.count} referrals
+                      {referrer.count} {getTranslatedText("referrals")}
                     </p>
                   </div>
                 </div>
@@ -375,7 +404,7 @@ const ReferralAnalytics = () => {
                     ₹{referrer.earnings.toLocaleString()}
                   </p>
                   <p className="text-xs" style={{ color: '#718096' }}>
-                    Earnings
+                    {getTranslatedText("Earnings")}
                   </p>
                 </div>
               </div>

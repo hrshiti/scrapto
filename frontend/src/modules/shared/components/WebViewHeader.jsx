@@ -1,9 +1,18 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import { IoLanguageOutline, IoChevronDownOutline } from 'react-icons/io5';
+import LanguageSelector from './LanguageSelector';
 
 const WebViewHeader = ({ navItems, userRole = 'user' }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const [isLangOpen, setIsLangOpen] = useState(false);
+    const { language, languages, changeLanguage } = useLanguage();
+
+    const { getTranslatedText } = usePageTranslation(navItems.map(item => item.label));
 
     return (
         <motion.header
@@ -40,7 +49,7 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 ${isActive ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:text-emerald-600 hover:bg-gray-50'}
               `}>
                                 <item.icon className={`text-lg ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-600'}`} />
-                                <span className="font-medium text-sm">{item.label}</span>
+                                <span className="font-medium text-sm">{getTranslatedText(item.label)}</span>
                             </div>
 
                             {isActive && (
@@ -54,9 +63,12 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 })}
             </nav>
 
-            {/* Right Side Actions (Profile/Notifications) */}
+            {/* Right Side Actions (Profile/Notifications/Language) */}
             <div className="flex items-center gap-4">
-                {/* We can add notification bell here later if needed */}
+                {/* Language Selector */}
+                {/* Language Selector */}
+                <LanguageSelector />
+
                 <div
                     className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
                     onClick={() => navigate(userRole === 'scrapper' ? '/scrapper/profile' : '/my-profile')}

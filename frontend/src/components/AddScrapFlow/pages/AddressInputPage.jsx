@@ -2,8 +2,39 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaMapMarkerAlt, FaLocationArrow } from 'react-icons/fa';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const AddressInputPage = () => {
+    const staticTexts = [
+        "Pickup Address",
+        "Step 4 of 5",
+        "Getting Location...",
+        "Get My Current Location",
+        "Location Detected",
+        "Latitude:",
+        "Longitude:",
+        "Pickup Address *",
+        "Enter your complete pickup address (House/Flat No, Street, Landmark, City, Pincode)",
+        "Please provide a detailed address so the scrapper can easily find your location",
+        "Request Summary",
+        "Categories:",
+        "selected",
+        "Images:",
+        "uploaded",
+        "Weight:",
+        "kg",
+        "Continue to Confirmation",
+        "Please allow location access or enter manually",
+        "Enter your pickup address to continue",
+        "Geolocation is not supported by your browser",
+        "Location permission denied. Please enable location access in your browser settings.",
+        "Location information is unavailable.",
+        "Location request timed out.",
+        "An unknown error occurred.",
+        "Please enter your pickup address",
+        "Please allow location access or enter your location manually"
+    ];
+    const { getTranslatedText } = usePageTranslation(staticTexts);
     const navigate = useNavigate();
     const [address, setAddress] = useState('');
     const [coordinates, setCoordinates] = useState(null);
@@ -39,7 +70,7 @@ const AddressInputPage = () => {
 
     const getCurrentLocation = () => {
         if (!navigator.geolocation) {
-            setLocationError('Geolocation is not supported by your browser');
+            setLocationError(getTranslatedText('Geolocation is not supported by your browser'));
             return;
         }
 
@@ -63,16 +94,16 @@ const AddressInputPage = () => {
                 setIsGettingLocation(false);
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        setLocationError('Location permission denied. Please enable location access in your browser settings.');
+                        setLocationError(getTranslatedText('Location permission denied. Please enable location access in your browser settings.'));
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        setLocationError('Location information is unavailable.');
+                        setLocationError(getTranslatedText('Location information is unavailable.'));
                         break;
                     case error.TIMEOUT:
-                        setLocationError('Location request timed out.');
+                        setLocationError(getTranslatedText('Location request timed out.'));
                         break;
                     default:
-                        setLocationError('An unknown error occurred.');
+                        setLocationError(getTranslatedText('An unknown error occurred.'));
                         break;
                 }
             },
@@ -86,12 +117,12 @@ const AddressInputPage = () => {
 
     const handleContinue = () => {
         if (!address.trim()) {
-            alert('Please enter your pickup address');
+            alert(getTranslatedText('Please enter your pickup address'));
             return;
         }
 
         if (!coordinates) {
-            alert('Please allow location access or enter your location manually');
+            alert(getTranslatedText('Please allow location access or enter your location manually'));
             return;
         }
 
@@ -131,7 +162,7 @@ const AddressInputPage = () => {
                     className="text-lg md:text-2xl font-bold"
                     style={{ color: '#2d3748' }}
                 >
-                    Pickup Address
+                    {getTranslatedText("Pickup Address")}
                 </h2>
                 <div className="w-10"></div> {/* Spacer for centering */}
             </div>
@@ -148,7 +179,7 @@ const AddressInputPage = () => {
                             style={{ backgroundColor: '#64946e' }}
                         />
                     </div>
-                    <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 4 of 5</span>
+                    <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 4 of 5")}</span>
                 </div>
             </div>
 
@@ -173,12 +204,12 @@ const AddressInputPage = () => {
                                     transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                                     className="w-5 h-5 rounded-full border-2 border-white border-t-transparent"
                                 />
-                                Getting Location...
+                                {getTranslatedText("Getting Location...")}
                             </>
                         ) : (
                             <>
                                 <FaLocationArrow />
-                                Get My Current Location
+                                {getTranslatedText("Get My Current Location")}
                             </>
                         )}
                     </button>
@@ -209,14 +240,14 @@ const AddressInputPage = () => {
                         <div className="flex items-center gap-2 mb-2">
                             <FaMapMarkerAlt style={{ color: '#64946e' }} />
                             <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                                Location Detected
+                                {getTranslatedText("Location Detected")}
                             </p>
                         </div>
                         <p className="text-xs" style={{ color: '#718096' }}>
-                            Latitude: {coordinates.lat.toFixed(6)}
+                            {getTranslatedText("Latitude:")} {coordinates.lat.toFixed(6)}
                         </p>
                         <p className="text-xs" style={{ color: '#718096' }}>
-                            Longitude: {coordinates.lng.toFixed(6)}
+                            {getTranslatedText("Longitude:")} {coordinates.lng.toFixed(6)}
                         </p>
                     </motion.div>
                 )}
@@ -230,12 +261,12 @@ const AddressInputPage = () => {
                     style={{ backgroundColor: '#ffffff' }}
                 >
                     <label className="block text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Pickup Address *
+                        {getTranslatedText("Pickup Address *")}
                     </label>
                     <textarea
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Enter your complete pickup address (House/Flat No, Street, Landmark, City, Pincode)"
+                        placeholder={getTranslatedText("Enter your complete pickup address (House/Flat No, Street, Landmark, City, Pincode)")}
                         rows={5}
                         className="w-full py-3 px-4 rounded-lg border-2 focus:outline-none focus:ring-2 transition-all resize-none text-sm md:text-base"
                         style={{
@@ -245,7 +276,7 @@ const AddressInputPage = () => {
                         }}
                     />
                     <p className="text-xs mt-2" style={{ color: '#718096' }}>
-                        Please provide a detailed address so the scrapper can easily find your location
+                        {getTranslatedText("Please provide a detailed address so the scrapper can easily find your location")}
                     </p>
                 </motion.div>
 
@@ -258,25 +289,25 @@ const AddressInputPage = () => {
                     style={{ backgroundColor: '#ffffff' }}
                 >
                     <h3 className="text-base font-bold mb-3" style={{ color: '#2d3748' }}>
-                        Request Summary
+                        {getTranslatedText("Request Summary")}
                     </h3>
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span style={{ color: '#718096' }}>Categories:</span>
+                            <span style={{ color: '#718096' }}>{getTranslatedText("Categories:")}</span>
                             <span className="font-semibold" style={{ color: '#2d3748' }}>
-                                {selectedCategories.length} selected
+                                {selectedCategories.length} {getTranslatedText("selected")}
                             </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span style={{ color: '#718096' }}>Images:</span>
+                            <span style={{ color: '#718096' }}>{getTranslatedText("Images:")}</span>
                             <span className="font-semibold" style={{ color: '#2d3748' }}>
-                                {uploadedImages.length} uploaded
+                                {uploadedImages.length} {getTranslatedText("uploaded")}
                             </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span style={{ color: '#718096' }}>Weight:</span>
+                            <span style={{ color: '#718096' }}>{getTranslatedText("Weight:")}</span>
                             <span className="font-semibold" style={{ color: '#2d3748' }}>
-                                {weightData?.weight || 0} kg
+                                {weightData?.weight || 0} {getTranslatedText("kg")}
                             </span>
                         </div>
                     </div>
@@ -302,7 +333,7 @@ const AddressInputPage = () => {
                         onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
                         onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
                     >
-                        Continue to Confirmation
+                        {getTranslatedText("Continue to Confirmation")}
                     </motion.button>
                 ) : (
                     <p
@@ -310,8 +341,8 @@ const AddressInputPage = () => {
                         style={{ color: '#718096' }}
                     >
                         {!coordinates
-                            ? 'Please allow location access or enter manually'
-                            : 'Enter your pickup address to continue'}
+                            ? getTranslatedText('Please allow location access or enter manually')
+                            : getTranslatedText('Enter your pickup address to continue')}
                     </p>
                 )}
             </div>

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useCallback } from 'react';
 import { adminAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaUserPlus,
   FaSearch,
@@ -26,20 +27,6 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-const STATUS_LABELS = {
-  new: 'New',
-  invited: 'Invited',
-  converted: 'Converted',
-  rejected: 'Rejected'
-};
-
-const STATUS_COLORS = {
-  new: { bg: 'rgba(59, 130, 246, 0.08)', color: '#2563eb' },
-  invited: { bg: 'rgba(234, 179, 8, 0.08)', color: '#ca8a04' },
-  converted: { bg: 'rgba(16, 185, 129, 0.08)', color: '#10b981' },
-  rejected: { bg: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }
-};
-
 const ScrapperLeads = () => {
   const [leads, setLeads] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +36,67 @@ const ScrapperLeads = () => {
   const [editingLead, setEditingLead] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const staticTexts = [
+    "New",
+    "Invited",
+    "Converted",
+    "Rejected",
+    "Failed to load leads",
+    "Please enter a valid phone number",
+    "Lead updated successfully",
+    "Lead created successfully",
+    "Operation failed",
+    "Failed to save lead",
+    "Delete this lead? This cannot be undone.",
+    "Lead deleted successfully",
+    "Failed to delete lead",
+    "Failed to update status",
+    "Scrapper Leads",
+    "Add and track potential scrappers before they join the platform",
+    "Add Lead",
+    "Search by name, phone, or area...",
+    "All Status",
+    "No Leads Found",
+    "Try adjusting filters",
+    "Create a new scrapper lead",
+    "Admin",
+    "Edit",
+    "Delete",
+    "Mark Invited",
+    "Mark Converted",
+    "Edit Scrapper Lead",
+    "Add Scrapper Lead",
+    "Name",
+    "Scrapper name",
+    "Phone Number *",
+    "10-digit phone",
+    "Area / Locality",
+    "e.g., Andheri West",
+    "Vehicle Info",
+    "e.g., Truck",
+    "Status",
+    "Notes",
+    "Any important details (availability, preferences, etc.)",
+    "Save Changes",
+    "Create Lead",
+    "Cancel"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
+
+  const STATUS_LABELS = {
+    new: getTranslatedText('New'),
+    invited: getTranslatedText('Invited'),
+    converted: getTranslatedText('Converted'),
+    rejected: getTranslatedText('Rejected')
+  };
+
+  const STATUS_COLORS = {
+    new: { bg: 'rgba(59, 130, 246, 0.08)', color: '#2563eb' },
+    invited: { bg: 'rgba(234, 179, 8, 0.08)', color: '#ca8a04' },
+    converted: { bg: 'rgba(16, 185, 129, 0.08)', color: '#10b981' },
+    rejected: { bg: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }
+  };
 
   const [formData, setFormData] = useState({
     name: '',
@@ -79,12 +127,12 @@ const ScrapperLeads = () => {
       }
     } catch (err) {
       console.error('Failed to load leads:', err);
-      setError('Failed to load leads');
+      setError(getTranslatedText('Failed to load leads'));
       setLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, debouncedSearch]);
+  }, [statusFilter, debouncedSearch, getTranslatedText]);
 
   useEffect(() => {
     loadLeads();
@@ -124,7 +172,7 @@ const ScrapperLeads = () => {
     };
 
     if (!payload.phone || payload.phone.length < 10) {
-      alert('Please enter a valid phone number');
+      alert(getTranslatedText('Please enter a valid phone number'));
       return;
     }
 
@@ -140,29 +188,29 @@ const ScrapperLeads = () => {
         setShowForm(false);
         setEditingLead(null);
         loadLeads(); // Reload list
-        alert(editingLead ? 'Lead updated successfully' : 'Lead created successfully');
+        alert(editingLead ? getTranslatedText('Lead updated successfully') : getTranslatedText('Lead created successfully'));
       } else {
-        throw new Error(response.message || 'Operation failed');
+        throw new Error(response.message || getTranslatedText('Operation failed'));
       }
     } catch (err) {
       console.error('Error saving lead:', err);
-      alert(err.message || 'Failed to save lead');
+      alert(err.message || getTranslatedText('Failed to save lead'));
     }
   };
 
   const handleDelete = async (leadId) => {
-    if (!window.confirm('Delete this lead? This cannot be undone.')) return;
+    if (!window.confirm(getTranslatedText('Delete this lead? This cannot be undone.'))) return;
     try {
       const response = await adminAPI.deleteLead(leadId);
       if (response.success) {
         setLeads((prev) => prev.filter((l) => (l._id || l.id) !== leadId));
-        alert('Lead deleted successfully');
+        alert(getTranslatedText('Lead deleted successfully'));
       } else {
-        throw new Error(response.message || 'Failed to delete lead');
+        throw new Error(response.message || getTranslatedText('Failed to delete lead'));
       }
     } catch (err) {
       console.error('Error deleting lead:', err);
-      alert(err.message || 'Failed to delete lead');
+      alert(err.message || getTranslatedText('Failed to delete lead'));
     }
   };
 
@@ -173,11 +221,11 @@ const ScrapperLeads = () => {
         // Optimistic update or reload
         setLeads((prev) => prev.map((l) => (l._id === leadId || l.id === leadId ? { ...l, status } : l)));
       } else {
-        alert('Failed to update status');
+        alert(getTranslatedText('Failed to update status'));
       }
     } catch (err) {
       console.error('Error updating status:', err);
-      alert('Failed to update status');
+      alert(getTranslatedText('Failed to update status'));
     }
   };
 
@@ -211,10 +259,10 @@ const ScrapperLeads = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-                Scrapper Leads
+                {getTranslatedText("Scrapper Leads")}
               </h1>
               <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-                Add and track potential scrappers before they join the platform
+                {getTranslatedText("Add and track potential scrappers before they join the platform")}
               </p>
             </div>
           </div>
@@ -226,7 +274,7 @@ const ScrapperLeads = () => {
             style={{ backgroundColor: '#64946e', color: '#ffffff' }}
           >
             <FaUserPlus />
-            Add Lead
+            {getTranslatedText("Add Lead")}
           </motion.button>
         </div>
 
@@ -239,7 +287,7 @@ const ScrapperLeads = () => {
             />
             <input
               type="text"
-              placeholder="Search by name, phone, or area..."
+              placeholder={getTranslatedText("Search by name, phone, or area...")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 text-sm"
@@ -262,11 +310,11 @@ const ScrapperLeads = () => {
                 color: '#2d3748'
               }}
             >
-              <option value="all">All Status</option>
-              <option value="new">New</option>
-              <option value="invited">Invited</option>
-              <option value="converted">Converted</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">{getTranslatedText("All Status")}</option>
+              <option value="new">{getTranslatedText("New")}</option>
+              <option value="invited">{getTranslatedText("Invited")}</option>
+              <option value="converted">{getTranslatedText("Converted")}</option>
+              <option value="rejected">{getTranslatedText("Rejected")}</option>
             </select>
           </div>
         </div>
@@ -291,10 +339,10 @@ const ScrapperLeads = () => {
           <div className="p-12 text-center">
             <FaInbox className="text-5xl mx-auto mb-4" style={{ color: '#cbd5e0' }} />
             <h3 className="text-lg font-bold mb-2" style={{ color: '#2d3748' }}>
-              No Leads Found
+              {getTranslatedText("No Leads Found")}
             </h3>
             <p className="text-sm mb-4" style={{ color: '#718096' }}>
-              {debouncedSearch || statusFilter !== 'all' ? 'Try adjusting filters' : 'Create a new scrapper lead'}
+              {debouncedSearch || statusFilter !== 'all' ? getTranslatedText('Try adjusting filters') : getTranslatedText('Create a new scrapper lead')}
             </p>
           </div>
         ) : (
@@ -320,7 +368,7 @@ const ScrapperLeads = () => {
                           color: '#64748b'
                         }}
                       >
-                        {lead.source === 'admin_manual' ? 'Admin' : lead.source}
+                        {lead.source === 'admin_manual' ? getTranslatedText('Admin') : lead.source}
                       </span>
                     )}
                   </div>
@@ -356,9 +404,9 @@ const ScrapperLeads = () => {
                     </p>
                   )}
                   <p className="mt-2 text-xs" style={{ color: '#a0aec0' }}>
-                    Created {new Date(lead.createdAt).toLocaleDateString()}{' '}
+                    {getTranslatedText("Created {date}", { date: new Date(lead.createdAt).toLocaleDateString() })}{' '}
                     {lead.updatedAt && (
-                      <>· Updated {new Date(lead.updatedAt).toLocaleDateString()}</>
+                      <>· {getTranslatedText("Updated {date}", { date: new Date(lead.updatedAt).toLocaleDateString() })}</>
                     )}
                   </p>
                 </div>
@@ -373,7 +421,7 @@ const ScrapperLeads = () => {
                       style={{ backgroundColor: '#edf2f7', color: '#2d3748' }}
                     >
                       <FaEdit />
-                      Edit
+                      {getTranslatedText("Edit")}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -383,7 +431,7 @@ const ScrapperLeads = () => {
                       style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}
                     >
                       <FaTrash />
-                      Delete
+                      {getTranslatedText("Delete")}
                     </motion.button>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -396,7 +444,7 @@ const ScrapperLeads = () => {
                           color: '#b45309'
                         }}
                       >
-                        Mark Invited
+                        {getTranslatedText("Mark Invited")}
                       </button>
                     )}
                     {lead.status !== 'converted' && (
@@ -408,7 +456,7 @@ const ScrapperLeads = () => {
                           color: '#047857'
                         }}
                       >
-                        Mark Converted
+                        {getTranslatedText("Mark Converted")}
                       </button>
                     )}
                   </div>
@@ -441,7 +489,7 @@ const ScrapperLeads = () => {
             >
               <div className="p-6">
                 <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-                  {editingLead ? 'Edit Scrapper Lead' : 'Add Scrapper Lead'}
+                  {editingLead ? getTranslatedText('Edit Scrapper Lead') : getTranslatedText('Add Scrapper Lead')}
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -449,7 +497,7 @@ const ScrapperLeads = () => {
                       className="block text-sm font-semibold mb-1"
                       style={{ color: '#2d3748' }}
                     >
-                      Name
+                      {getTranslatedText("Name")}
                     </label>
                     <input
                       type="text"
@@ -461,7 +509,7 @@ const ScrapperLeads = () => {
                         backgroundColor: '#f7fafc',
                         color: '#2d3748'
                       }}
-                      placeholder="Scrapper name"
+                      placeholder={getTranslatedText("Scrapper name")}
                     />
                   </div>
                   <div>
@@ -469,7 +517,7 @@ const ScrapperLeads = () => {
                       className="block text-sm font-semibold mb-1"
                       style={{ color: '#2d3748' }}
                     >
-                      Phone Number *
+                      {getTranslatedText("Phone Number *")}
                     </label>
                     <input
                       type="tel"
@@ -486,7 +534,7 @@ const ScrapperLeads = () => {
                         backgroundColor: '#f7fafc',
                         color: '#2d3748'
                       }}
-                      placeholder="10-digit phone"
+                      placeholder={getTranslatedText("10-digit phone")}
                       maxLength={10}
                       required
                     />
@@ -497,7 +545,7 @@ const ScrapperLeads = () => {
                         className="block text-sm font-semibold mb-1"
                         style={{ color: '#2d3748' }}
                       >
-                        Area / Locality
+                        {getTranslatedText("Area / Locality")}
                       </label>
                       <input
                         type="text"
@@ -509,7 +557,7 @@ const ScrapperLeads = () => {
                           backgroundColor: '#f7fafc',
                           color: '#2d3748'
                         }}
-                        placeholder="e.g., Andheri West"
+                        placeholder={getTranslatedText("e.g., Andheri West")}
                       />
                     </div>
                     <div>
@@ -517,7 +565,7 @@ const ScrapperLeads = () => {
                         className="block text-sm font-semibold mb-1"
                         style={{ color: '#2d3748' }}
                       >
-                        Vehicle Info
+                        {getTranslatedText("Vehicle Info")}
                       </label>
                       <input
                         type="text"
@@ -531,7 +579,7 @@ const ScrapperLeads = () => {
                           backgroundColor: '#f7fafc',
                           color: '#2d3748'
                         }}
-                        placeholder="e.g., Truck"
+                        placeholder={getTranslatedText("e.g., Truck")}
                       />
                     </div>
                   </div>
@@ -540,7 +588,7 @@ const ScrapperLeads = () => {
                       className="block text-sm font-semibold mb-1"
                       style={{ color: '#2d3748' }}
                     >
-                      Status
+                      {getTranslatedText("Status")}
                     </label>
                     <select
                       value={formData.status}
@@ -552,10 +600,10 @@ const ScrapperLeads = () => {
                         color: '#2d3748'
                       }}
                     >
-                      <option value="new">New</option>
-                      <option value="invited">Invited</option>
-                      <option value="converted">Converted</option>
-                      <option value="rejected">Rejected</option>
+                      <option value="new">{getTranslatedText("New")}</option>
+                      <option value="invited">{getTranslatedText("Invited")}</option>
+                      <option value="converted">{getTranslatedText("Converted")}</option>
+                      <option value="rejected">{getTranslatedText("Rejected")}</option>
                     </select>
                   </div>
                   <div>
@@ -563,7 +611,7 @@ const ScrapperLeads = () => {
                       className="block text-sm font-semibold mb-1"
                       style={{ color: '#2d3748' }}
                     >
-                      Notes
+                      {getTranslatedText("Notes")}
                     </label>
                     <textarea
                       value={formData.notes}
@@ -575,7 +623,7 @@ const ScrapperLeads = () => {
                         color: '#2d3748'
                       }}
                       rows={3}
-                      placeholder="Any important details (availability, preferences, etc.)"
+                      placeholder={getTranslatedText("Any important details (availability, preferences, etc.)")}
                     />
                   </div>
                   <div className="flex gap-3 mt-4">
@@ -586,7 +634,7 @@ const ScrapperLeads = () => {
                       className="flex-1 px-4 py-2 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all"
                       style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                     >
-                      {editingLead ? 'Save Changes' : 'Create Lead'}
+                      {editingLead ? getTranslatedText('Save Changes') : getTranslatedText('Create Lead')}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -599,7 +647,7 @@ const ScrapperLeads = () => {
                       className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
                       style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                     >
-                      Cancel
+                      {getTranslatedText("Cancel")}
                     </motion.button>
                   </div>
                 </form>

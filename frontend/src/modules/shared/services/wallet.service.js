@@ -1,4 +1,4 @@
-import { walletAPI } from '../../utils/api';
+import { walletAPI } from '../utils/api';
 
 export const walletService = {
   // Get wallet balance and transactions

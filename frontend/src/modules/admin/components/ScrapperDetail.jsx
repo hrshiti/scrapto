@@ -6,6 +6,7 @@ import {
   FaCheckCircle, FaTimesCircle, FaClock, FaUserTimes, FaCar, FaCreditCard, FaChartLine
 } from 'react-icons/fa';
 import { adminAPI, earningsAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ScrapperDetail = () => {
   const { scrapperId } = useParams();
@@ -15,6 +16,58 @@ const ScrapperDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const staticTexts = [
+    "Scrapper not found",
+    "Failed to load scrapper data",
+    "Are you sure you want to verify this KYC?",
+    "KYC Verified successfully",
+    "Failed to verify KYC: ",
+    "Please enter a reason for rejection:",
+    "Rejection reason is required.",
+    "KYC Rejected successfully",
+    "Failed to reject KYC: ",
+    "Verified",
+    "Pending",
+    "Rejected",
+    "Loading scrapper details...",
+    "Back to Scrappers List",
+    "Back to Scrappers",
+    "Phone",
+    "Aadhaar",
+    "Rating",
+    "Vehicle",
+    "Not provided",
+    "Total Pickups",
+    "Total Earnings",
+    "This Month",
+    "KYC Information",
+    "Status: ",
+    "Aadhaar Number",
+    "Verified On",
+    "Rejection Reason",
+    "Documents",
+    "Aadhaar Photo",
+    "Driving License",
+    "Selfie",
+    "No documents uploaded.",
+    "Subscription Details",
+    "Plan",
+    "Price",
+    "Expires On",
+    "/month",
+    "Completed Orders ({count})",
+    "No completed orders yet",
+    "User: ",
+    "Categories: ",
+    "Weight: ",
+    " kg • Amount Paid: ₹",
+    "Location: ",
+    "Completed: ",
+    "N/A",
+    "User"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadScrapperData();
@@ -27,7 +80,7 @@ const ScrapperDetail = () => {
       // Load scrapper details from backend
       const scrapperResponse = await adminAPI.getScrapperById(scrapperId);
       if (!scrapperResponse.success || !scrapperResponse.data?.scrapper) {
-        throw new Error(scrapperResponse.message || 'Scrapper not found');
+        throw new Error(scrapperResponse.message || getTranslatedText('Scrapper not found'));
       }
 
       const backendScrapper = scrapperResponse.data.scrapper;
@@ -51,8 +104,8 @@ const ScrapperDetail = () => {
       // Transform backend data to frontend format
       const transformedScrapper = {
         id: backendScrapper._id || backendScrapper.id,
-        name: backendScrapper.name || 'N/A',
-        phone: backendScrapper.phone || 'N/A',
+        name: backendScrapper.name || getTranslatedText('N/A'),
+        phone: backendScrapper.phone || getTranslatedText('N/A'),
         profilePic: backendScrapper.profilePic || null,
         kycStatus: backendScrapper.kyc?.status || 'not_submitted',
         kycData: backendScrapper.kyc || null,
@@ -68,7 +121,7 @@ const ScrapperDetail = () => {
         totalEarnings: earningsData.total,
         vehicleInfo: backendScrapper.vehicleInfo
           ? `${backendScrapper.vehicleInfo.type || ''} - ${backendScrapper.vehicleInfo.number || ''}`
-          : 'Not provided',
+          : getTranslatedText('Not provided'),
         joinedAt: backendScrapper.createdAt || new Date().toISOString(),
         earnings: earningsData,
         status: backendScrapper.status || 'active'
@@ -81,12 +134,12 @@ const ScrapperDetail = () => {
         const transformedOrders = earningsResponse.data.summary.orders.map((order) => ({
           id: order.id || order._id,
           orderId: order.orderId || order.id || order._id,
-          userName: order.userName || 'User',
+          userName: order.userName || getTranslatedText('User'),
           categories: order.scrapType ? order.scrapType.split(', ') : [],
           weight: order.weight || 0,
           paidAmount: order.amount || 0,
           completedAt: order.completedAt || order.createdAt,
-          location: order.location || 'N/A'
+          location: order.location || getTranslatedText('N/A')
         }));
         setOrders(transformedOrders);
       } else {
@@ -95,34 +148,34 @@ const ScrapperDetail = () => {
       }
     } catch (err) {
       console.error('Error loading scrapper data:', err);
-      setError(err.message || 'Failed to load scrapper data');
+      setError(err.message || getTranslatedText('Failed to load scrapper data'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyKYC = async () => {
-    if (!window.confirm('Are you sure you want to verify this KYC?')) return;
+    if (!window.confirm(getTranslatedText('Are you sure you want to verify this KYC?'))) return;
 
     setActionLoading(true);
     try {
       await adminAPI.verifyKyc(scrapperId);
       // Reload data to reflect changes
       await loadScrapperData();
-      alert('KYC Verified successfully');
+      alert(getTranslatedText('KYC Verified successfully'));
     } catch (err) {
       console.error('Error verifying KYC:', err);
-      alert('Failed to verify KYC: ' + (err.message || 'Unknown error'));
+      alert(getTranslatedText('Failed to verify KYC: ') + (err.message || getTranslatedText('Unknown error')));
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleRejectKYC = async () => {
-    const reason = window.prompt('Please enter a reason for rejection:');
+    const reason = window.prompt(getTranslatedText('Please enter a reason for rejection:'));
     if (reason === null) return; // User cancelled
     if (!reason.trim()) {
-      alert('Rejection reason is required.');
+      alert(getTranslatedText('Rejection reason is required.'));
       return;
     }
 
@@ -131,10 +184,10 @@ const ScrapperDetail = () => {
       await adminAPI.rejectKyc(scrapperId, reason);
       // Reload data to reflect changes
       await loadScrapperData();
-      alert('KYC Rejected successfully');
+      alert(getTranslatedText('KYC Rejected successfully'));
     } catch (err) {
       console.error('Error rejecting KYC:', err);
-      alert('Failed to reject KYC: ' + (err.message || 'Unknown error'));
+      alert(getTranslatedText('Failed to reject KYC: ') + (err.message || getTranslatedText('Unknown error')));
     } finally {
       setActionLoading(false);
     }
@@ -145,7 +198,7 @@ const ScrapperDetail = () => {
       return (
         <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
           <FaCheckCircle className="text-xs" />
-          Verified
+          {getTranslatedText("Verified")}
         </span>
       );
     }
@@ -153,14 +206,14 @@ const ScrapperDetail = () => {
       return (
         <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#fef3c7', color: '#f59e0b' }}>
           <FaClock className="text-xs" />
-          Pending
+          {getTranslatedText("Pending")}
         </span>
       );
     }
     return (
       <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
         <FaUserTimes className="text-xs" />
-        Rejected
+        {getTranslatedText("Rejected")}
       </span>
     );
   };
@@ -170,7 +223,7 @@ const ScrapperDetail = () => {
       <div className="flex items-center justify-center min-h-64">
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
-          <p style={{ color: '#718096' }}>Loading scrapper details...</p>
+          <p style={{ color: '#718096' }}>{getTranslatedText("Loading scrapper details...")}</p>
         </div>
       </div>
     );
@@ -180,14 +233,14 @@ const ScrapperDetail = () => {
     return (
       <div className="text-center py-12">
         <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-          {error || 'Scrapper not found'}
+          {error || getTranslatedText('Scrapper not found')}
         </p>
         <button
           onClick={() => navigate('/admin/scrappers')}
           className="text-sm px-4 py-2 rounded-lg font-semibold text-white"
           style={{ backgroundColor: '#64946e' }}
         >
-          Back to Scrappers List
+          {getTranslatedText("Back to Scrappers List")}
         </button>
       </div>
     );
@@ -204,7 +257,7 @@ const ScrapperDetail = () => {
         style={{ color: '#64946e' }}
       >
         <FaArrowLeft />
-        Back to Scrappers
+        {getTranslatedText("Back to Scrappers")}
       </motion.button>
 
       {/* Scrapper Profile Card */}
@@ -243,35 +296,35 @@ const ScrapperDetail = () => {
               <div className="flex items-center gap-3">
                 <FaPhone style={{ color: '#64946e' }} />
                 <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Phone</p>
+                  <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Phone")}</p>
                   <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.phone}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <FaIdCard style={{ color: '#64946e' }} />
                 <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Aadhaar</p>
+                  <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Aadhaar")}</p>
                   <p className="font-semibold" style={{ color: '#2d3748' }}>
                     {scrapper.kycData?.aadhaarNumber
                       ? `${scrapper.kycData.aadhaarNumber.substring(0, 4)}-****-${scrapper.kycData.aadhaarNumber.substring(8)}`
-                      : 'N/A'}
+                      : getTranslatedText('N/A')}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <FaStar style={{ color: '#fbbf24' }} />
                 <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Rating</p>
+                  <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Rating")}</p>
                   <p className="font-semibold" style={{ color: '#2d3748' }}>
-                    {scrapper.rating > 0 ? scrapper.rating.toFixed(1) : 'N/A'} {scrapper.rating > 0 ? '⭐' : ''}
+                    {scrapper.rating > 0 ? scrapper.rating.toFixed(1) : getTranslatedText('N/A')} {scrapper.rating > 0 ? '⭐' : ''}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <FaCar style={{ color: '#64946e' }} />
                 <div>
-                  <p className="text-xs" style={{ color: '#718096' }}>Vehicle</p>
-                  <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.vehicleInfo}</p>
+                  <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Vehicle")}</p>
+                  <p className="font-semibold" style={{ color: '#2d3748' }}>{getTranslatedText(scrapper.vehicleInfo)}</p>
                 </div>
               </div>
             </div>
@@ -282,10 +335,10 @@ const ScrapperDetail = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Pickups', value: scrapper.totalPickups || 0, icon: FaCheckCircle, color: '#10b981' },
-          { label: 'Total Earnings', value: `₹${((scrapper.totalEarnings || 0) / 1000).toFixed(0)}k`, icon: FaRupeeSign, color: '#8b5cf6' },
-          { label: 'Rating', value: scrapper.rating > 0 ? scrapper.rating.toFixed(1) : 'N/A', icon: FaStar, color: '#fbbf24' },
-          { label: 'This Month', value: `₹${((scrapper.earnings?.month || 0) / 1000).toFixed(0)}k`, icon: FaChartLine, color: '#06b6d4' }
+          { label: getTranslatedText('Total Pickups'), value: scrapper.totalPickups || 0, icon: FaCheckCircle, color: '#10b981' },
+          { label: getTranslatedText('Total Earnings'), value: `₹${((scrapper.totalEarnings || 0) / 1000).toFixed(0)}k`, icon: FaRupeeSign, color: '#8b5cf6' },
+          { label: getTranslatedText('Rating'), value: scrapper.rating > 0 ? scrapper.rating.toFixed(1) : getTranslatedText('N/A'), icon: FaStar, color: '#fbbf24' },
+          { label: getTranslatedText('This Month'), value: `₹${((scrapper.earnings?.month || 0) / 1000).toFixed(0)}k`, icon: FaChartLine, color: '#06b6d4' }
         ].map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -322,11 +375,11 @@ const ScrapperDetail = () => {
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
-              KYC Information
+              {getTranslatedText("KYC Information")}
             </h2>
             <div className="flex items-center gap-3">
               <span className="text-sm px-2 py-1 bg-gray-100 rounded text-gray-600">
-                Status: {scrapper.kycStatus.toUpperCase()}
+                {getTranslatedText("Status: ")}{getTranslatedText(scrapper.kycStatus.charAt(0).toUpperCase() + scrapper.kycStatus.slice(1))}
               </span>
 
               {/* KYC Action Buttons */}
@@ -339,7 +392,7 @@ const ScrapperDetail = () => {
                     style={{ backgroundColor: '#ef4444', opacity: actionLoading ? 0.7 : 1 }}
                   >
                     <FaTimesCircle />
-                    Reject
+                    {getTranslatedText("Reject")}
                   </button>
                   <button
                     onClick={handleVerifyKYC}
@@ -348,7 +401,7 @@ const ScrapperDetail = () => {
                     style={{ backgroundColor: '#10b981', opacity: actionLoading ? 0.7 : 1 }}
                   >
                     <FaCheckCircle />
-                    Verify
+                    {getTranslatedText("Verify")}
                   </button>
                 </>
               )}
@@ -357,31 +410,31 @@ const ScrapperDetail = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Aadhaar Number</p>
-              <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.kycData.aadhaarNumber || 'Not provided'}</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Aadhaar Number")}</p>
+              <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.kycData.aadhaarNumber || getTranslatedText('Not provided')}</p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Verified On</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Verified On")}</p>
               <p className="font-semibold" style={{ color: '#2d3748' }}>
-                {scrapper.kycData.verifiedAt ? new Date(scrapper.kycData.verifiedAt).toLocaleDateString() : 'N/A'}
+                {scrapper.kycData.verifiedAt ? new Date(scrapper.kycData.verifiedAt).toLocaleDateString() : getTranslatedText('N/A')}
               </p>
             </div>
             {scrapper.kycData.rejectionReason && (
               <div className="md:col-span-2 bg-red-50 p-3 rounded-lg border border-red-100">
-                <p className="text-xs mb-1 text-red-600 font-semibold">Rejection Reason</p>
+                <p className="text-xs mb-1 text-red-600 font-semibold">{getTranslatedText("Rejection Reason")}</p>
                 <p className="text-sm text-red-800">{scrapper.kycData.rejectionReason}</p>
               </div>
             )}
           </div>
 
           {/* KYC Documents */}
-          <h3 className="text-md font-semibold mb-3 border-t pt-4" style={{ color: '#4a5568' }}>Documents</h3>
+          <h3 className="text-md font-semibold mb-3 border-t pt-4" style={{ color: '#4a5568' }}>{getTranslatedText("Documents")}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {scrapper.kycData.aadhaarPhotoUrl && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Aadhaar Photo</p>
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>{getTranslatedText("Aadhaar Photo")}</p>
                 <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
-                  <img src={scrapper.kycData.aadhaarPhotoUrl} alt="Aadhaar" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                  <img src={scrapper.kycData.aadhaarPhotoUrl} alt={getTranslatedText("Aadhaar Photo")} className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => window.open(scrapper.kycData.aadhaarPhotoUrl, '_blank')}
                   />
                 </div>
@@ -389,9 +442,9 @@ const ScrapperDetail = () => {
             )}
             {scrapper.kycData.licenseUrl && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Driving License</p>
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>{getTranslatedText("Driving License")}</p>
                 <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
-                  <img src={scrapper.kycData.licenseUrl} alt="License" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                  <img src={scrapper.kycData.licenseUrl} alt={getTranslatedText("Driving License")} className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => window.open(scrapper.kycData.licenseUrl, '_blank')}
                   />
                 </div>
@@ -399,16 +452,16 @@ const ScrapperDetail = () => {
             )}
             {scrapper.kycData.selfieUrl && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold" style={{ color: '#718096' }}>Selfie</p>
+                <p className="text-xs font-semibold" style={{ color: '#718096' }}>{getTranslatedText("Selfie")}</p>
                 <div className="border rounded-lg overflow-hidden h-40 bg-gray-50 flex items-center justify-center">
-                  <img src={scrapper.kycData.selfieUrl} alt="Selfie" className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                  <img src={scrapper.kycData.selfieUrl} alt={getTranslatedText("Selfie")} className="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => window.open(scrapper.kycData.selfieUrl, '_blank')}
                   />
                 </div>
               </div>
             )}
             {!scrapper.kycData.aadhaarPhotoUrl && !scrapper.kycData.licenseUrl && !scrapper.kycData.selfieUrl && (
-              <p className="text-sm text-gray-500 italic">No documents uploaded.</p>
+              <p className="text-sm text-gray-500 italic">{getTranslatedText("No documents uploaded.")}</p>
             )}
           </div>
         </motion.div>
@@ -423,26 +476,26 @@ const ScrapperDetail = () => {
           className="bg-white rounded-2xl shadow-lg p-6"
         >
           <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-            Subscription Details
+            {getTranslatedText("Subscription Details")}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Plan</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Plan")}</p>
               <p className="font-semibold" style={{ color: '#2d3748' }}>{scrapper.subscription.plan}</p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Status</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Status")}</p>
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold inline-block" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
                 <FaCheckCircle className="text-xs" />
-                {scrapper.subscription.status.charAt(0).toUpperCase() + scrapper.subscription.status.slice(1)}
+                {getTranslatedText(scrapper.subscription.status.charAt(0).toUpperCase() + scrapper.subscription.status.slice(1))}
               </span>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Price</p>
-              <p className="font-semibold" style={{ color: '#2d3748' }}>₹{scrapper.subscription.price}/month</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Price")}</p>
+              <p className="font-semibold" style={{ color: '#2d3748' }}>₹{scrapper.subscription.price}{getTranslatedText("/month")}</p>
             </div>
             <div>
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Expires On</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Expires On")}</p>
               <p className="font-semibold" style={{ color: '#2d3748' }}>
                 {new Date(scrapper.subscription.expiryDate).toLocaleDateString()}
               </p>
@@ -459,12 +512,12 @@ const ScrapperDetail = () => {
         className="bg-white rounded-2xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Completed Orders ({orders.length})
+          {getTranslatedText("Completed Orders ({count})", { count: orders.length })}
         </h2>
         <div className="space-y-4">
           {orders.length === 0 ? (
             <p className="text-center py-8 text-sm" style={{ color: '#718096' }}>
-              No completed orders yet
+              {getTranslatedText("No completed orders yet")}
             </p>
           ) : (
             orders.map((order, index) => (
@@ -481,13 +534,13 @@ const ScrapperDetail = () => {
                       <span className="font-semibold" style={{ color: '#2d3748' }}>{order.orderId || order.id}</span>
                     </div>
                     <div className="space-y-1 text-sm" style={{ color: '#718096' }}>
-                      <p>User: {order.userName || 'User'}</p>
-                      <p>Categories: {order.categories?.join(', ') || 'N/A'}</p>
-                      <p>Weight: {order.weight || 'N/A'} kg • Amount Paid: ₹{order.paidAmount || 0}</p>
-                      <p>Location: {order.location || 'N/A'}</p>
+                      <p>{getTranslatedText("User: ")}{order.userName || getTranslatedText('User')}</p>
+                      <p>{getTranslatedText("Categories: ")}{order.categories?.join(', ') || getTranslatedText('N/A')}</p>
+                      <p>{getTranslatedText("Weight: ")}{order.weight || getTranslatedText('N/A')}{getTranslatedText(" kg • Amount Paid: ₹")}{order.paidAmount || 0}</p>
+                      <p>{getTranslatedText("Location: ")}{order.location || getTranslatedText('N/A')}</p>
                       {order.completedAt && (
                         <p className="text-xs">
-                          Completed: {new Date(order.completedAt).toLocaleString()}
+                          {getTranslatedText("Completed: ")}{new Date(order.completedAt).toLocaleString()}
                         </p>
                       )}
                     </div>
@@ -503,4 +556,3 @@ const ScrapperDetail = () => {
 };
 
 export default ScrapperDetail;
-

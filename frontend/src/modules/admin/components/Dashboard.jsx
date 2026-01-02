@@ -12,6 +12,7 @@ import {
   FaUserShield
 } from 'react-icons/fa';
 import { adminAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -26,6 +27,35 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const staticTexts = [
+    "Failed to load dashboard stats",
+    "Failed to load dashboard data",
+    "{count} KYC submissions pending review",
+    "{count} pickup requests pending",
+    "{count} orders completed",
+    "{count} scrappers registered",
+    "New KYC submission pending review",
+    "New pickup request created",
+    "Order completed successfully",
+    "New scrapper registered",
+    "Total Users",
+    "Total Scrappers",
+    "Active Requests",
+    "KYC Pending",
+    "Total Revenue",
+    "Today's Pickups",
+    "Welcome back, Admin! 👋",
+    "Here's what's happening with your platform today",
+    "Request Trends",
+    "Chart visualization will be added here",
+    "Recent Activity",
+    "Quick Actions",
+    "Review KYC",
+    "Manage Users",
+    "View Requests",
+    "Update Prices"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   // Load dashboard data from backend
   useEffect(() => {
@@ -37,10 +67,10 @@ const Dashboard = () => {
     setError(null);
     try {
       const response = await adminAPI.getDashboardStats();
-      
+
       if (response.success && response.data?.stats) {
         const backendStats = response.data.stats;
-        
+
         setStats({
           totalUsers: backendStats.users?.total || 0,
           totalScrappers: backendStats.scrappers?.total || 0,
@@ -52,19 +82,19 @@ const Dashboard = () => {
 
         // Mock recent activity (can be replaced with backend activity feed later)
         const activity = [
-          { id: 1, type: 'kyc', message: `${backendStats.scrappers?.pendingKyc || 0} KYC submissions pending review`, time: 'Just now', icon: FaClock },
-          { id: 2, type: 'request', message: `${backendStats.orders?.pending || 0} pickup requests pending`, time: 'Just now', icon: FaFileInvoice },
-          { id: 3, type: 'order', message: `${backendStats.orders?.completed || 0} orders completed`, time: 'Just now', icon: FaCheckCircle },
-          { id: 4, type: 'scrapper', message: `${backendStats.scrappers?.total || 0} scrappers registered`, time: 'Just now', icon: FaTruck }
+          { id: 1, type: 'kyc', message: getTranslatedText("{count} KYC submissions pending review", { count: backendStats.scrappers?.pendingKyc || 0 }), time: 'Just now', icon: FaClock },
+          { id: 2, type: 'request', message: getTranslatedText("{count} pickup requests pending", { count: backendStats.orders?.pending || 0 }), time: 'Just now', icon: FaFileInvoice },
+          { id: 3, type: 'order', message: getTranslatedText("{count} orders completed", { count: backendStats.orders?.completed || 0 }), time: 'Just now', icon: FaCheckCircle },
+          { id: 4, type: 'scrapper', message: getTranslatedText("{count} scrappers registered", { count: backendStats.scrappers?.total || 0 }), time: 'Just now', icon: FaTruck }
         ];
         setRecentActivity(activity);
       } else {
-        throw new Error(response.message || 'Failed to load dashboard stats');
+        throw new Error(response.message || getTranslatedText('Failed to load dashboard stats'));
       }
     } catch (err) {
       console.error('Error loading dashboard data:', err);
       setError(err.message || 'Failed to load dashboard data');
-      
+
       // Fallback to localStorage if backend fails
       const userAuth = localStorage.getItem('isAuthenticated');
       const userData = localStorage.getItem('user');
@@ -98,10 +128,10 @@ const Dashboard = () => {
       });
 
       const activity = [
-        { id: 1, type: 'kyc', message: 'New KYC submission pending review', time: '2 minutes ago', icon: FaClock },
-        { id: 2, type: 'request', message: 'New pickup request created', time: '15 minutes ago', icon: FaFileInvoice },
-        { id: 3, type: 'order', message: 'Order completed successfully', time: '1 hour ago', icon: FaCheckCircle },
-        { id: 4, type: 'scrapper', message: 'New scrapper registered', time: '2 hours ago', icon: FaTruck }
+        { id: 1, type: 'kyc', message: getTranslatedText('New KYC submission pending review'), time: '2 minutes ago', icon: FaClock },
+        { id: 2, type: 'request', message: getTranslatedText('New pickup request created'), time: '15 minutes ago', icon: FaFileInvoice },
+        { id: 3, type: 'order', message: getTranslatedText('Order completed successfully'), time: '1 hour ago', icon: FaCheckCircle },
+        { id: 4, type: 'scrapper', message: getTranslatedText('New scrapper registered'), time: '2 hours ago', icon: FaTruck }
       ];
       setRecentActivity(activity);
     } finally {
@@ -111,7 +141,7 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: 'Total Users',
+      title: getTranslatedText('Total Users'),
       value: stats.totalUsers,
       icon: FaUsers,
       color: '#3b82f6',
@@ -120,7 +150,7 @@ const Dashboard = () => {
       trend: 'up'
     },
     {
-      title: 'Total Scrappers',
+      title: getTranslatedText('Total Scrappers'),
       value: stats.totalScrappers,
       icon: FaTruck,
       color: '#10b981',
@@ -129,7 +159,7 @@ const Dashboard = () => {
       trend: 'up'
     },
     {
-      title: 'Active Requests',
+      title: getTranslatedText('Active Requests'),
       value: stats.activeRequests,
       icon: FaClock,
       color: '#f59e0b',
@@ -138,7 +168,7 @@ const Dashboard = () => {
       trend: 'down'
     },
     {
-      title: 'KYC Pending',
+      title: getTranslatedText('KYC Pending'),
       value: stats.kycPending,
       icon: FaUserShield,
       color: '#ef4444',
@@ -147,7 +177,7 @@ const Dashboard = () => {
       trend: 'up'
     },
     {
-      title: 'Total Revenue',
+      title: getTranslatedText('Total Revenue'),
       value: `₹${(stats.revenue / 1000).toFixed(1)}k`,
       icon: FaRupeeSign,
       color: '#8b5cf6',
@@ -156,7 +186,7 @@ const Dashboard = () => {
       trend: 'up'
     },
     {
-      title: "Today's Pickups",
+      title: getTranslatedText("Today's Pickups"),
       value: stats.todayPickups,
       icon: FaCheckCircle,
       color: '#06b6d4',
@@ -175,10 +205,10 @@ const Dashboard = () => {
         className="bg-white rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6"
       >
         <h1 className="text-lg md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-          Welcome back, Admin! 👋
+          {getTranslatedText("Welcome back, Admin! 👋")}
         </h1>
         <p className="text-xs md:text-sm lg:text-base" style={{ color: '#718096' }}>
-          Here's what's happening with your platform today
+          {getTranslatedText("Here's what's happening with your platform today")}
         </p>
       </motion.div>
 
@@ -202,9 +232,8 @@ const Dashboard = () => {
                 >
                   <Icon style={{ color: card.color, fontSize: '16px' }} className="md:text-2xl" />
                 </div>
-                <div className={`flex items-center gap-0.5 md:gap-1 text-xs md:text-sm font-semibold ${
-                  card.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div className={`flex items-center gap-0.5 md:gap-1 text-xs md:text-sm font-semibold ${card.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {card.trend === 'up' ? <FaArrowUp className="text-xs" /> : <FaArrowDown className="text-xs" />}
                   <span className="text-[10px] md:text-sm">{card.change}</span>
                 </div>
@@ -230,11 +259,11 @@ const Dashboard = () => {
           className="bg-white rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6"
         >
           <h2 className="text-base md:text-xl font-bold mb-2 md:mb-4" style={{ color: '#2d3748' }}>
-            Request Trends
+            {getTranslatedText("Request Trends")}
           </h2>
           <div className="h-32 md:h-64 flex items-center justify-center" style={{ backgroundColor: '#f7fafc', borderRadius: '8px' }}>
             <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-              Chart visualization will be added here
+              {getTranslatedText("Chart visualization will be added here")}
             </p>
           </div>
         </motion.div>
@@ -247,7 +276,7 @@ const Dashboard = () => {
           className="bg-white rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6"
         >
           <h2 className="text-base md:text-xl font-bold mb-2 md:mb-4" style={{ color: '#2d3748' }}>
-            Recent Activity
+            {getTranslatedText("Recent Activity")}
           </h2>
           <div className="space-y-2 md:space-y-4">
             {recentActivity.map((activity, index) => {
@@ -290,7 +319,7 @@ const Dashboard = () => {
         className="bg-white rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6"
       >
         <h2 className="text-base md:text-xl font-bold mb-2 md:mb-4" style={{ color: '#2d3748' }}>
-          Quick Actions
+          {getTranslatedText("Quick Actions")}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
           {[
@@ -311,7 +340,7 @@ const Dashboard = () => {
               >
                 <Icon style={{ color: '#64946e', fontSize: '18px' }} className="md:text-2xl" />
                 <span className="text-[10px] md:text-sm font-medium text-center leading-tight" style={{ color: '#2d3748' }}>
-                  {action.label}
+                  {getTranslatedText(action.label)}
                 </span>
               </motion.button>
             );

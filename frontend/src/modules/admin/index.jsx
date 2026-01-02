@@ -27,6 +27,7 @@ import ReferralAnalytics from './components/ReferralAnalytics';
 import CampaignManagement from './components/CampaignManagement';
 import HelpSupport from './components/HelpSupport';
 import BannerManagement from './components/BannerManagement';
+import { usePageTranslation } from '../../hooks/usePageTranslation';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -42,6 +43,7 @@ const ProtectedRoute = ({ children }) => {
 // Admin Module Routes
 const AdminModuleRoutes = () => {
   const { isAuthenticated } = useAdminAuth();
+  const { getTranslatedText } = usePageTranslation(["App Settings - Coming Soon"]);
 
   // If not authenticated, show login
   if (!isAuthenticated) {
@@ -99,7 +101,8 @@ const AdminModuleRoutes = () => {
         {/* Profile */}
         <Route path="profile" element={<AdminProfile />} />
         {/* Placeholder routes for future pages */}
-        <Route path="settings" element={<div className="p-6 text-center">App Settings - Coming Soon</div>} />
+        <Route path="settings" element={<div className="p-6 text-center">{getTranslatedText("App Settings - Coming Soon")}</div>} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>

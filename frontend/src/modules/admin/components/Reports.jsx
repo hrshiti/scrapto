@@ -6,6 +6,7 @@ import {
   FaSpinner
 } from 'react-icons/fa';
 import { adminAPI, adminOrdersAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const Reports = () => {
   const [stats, setStats] = useState(null);
@@ -13,6 +14,31 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [dateRange, setDateRange] = useState('month'); // today, week, month, year
+
+  const staticTexts = [
+    "Failed to export report",
+    "Total Users",
+    "Total Scrappers",
+    "Total Orders",
+    "Completed Orders",
+    "Total Revenue",
+    "Daily Revenue",
+    "Reports & Analytics",
+    "View platform statistics and generate reports",
+    "Today",
+    "This Week",
+    "This Month",
+    "This Year",
+    "Export Reports",
+    "Users Report",
+    "Scrappers Report",
+    "Orders Report",
+    "Revenue Report",
+    "Revenue Trends ({range})",
+    "No revenue data for this period",
+    "Try adjusting your filters"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadData();
@@ -149,7 +175,7 @@ const Reports = () => {
 
     } catch (err) {
       console.error('Export failed:', err);
-      alert('Failed to export report');
+      alert(getTranslatedText('Failed to export report'));
     } finally {
       setExportLoading(false);
     }
@@ -157,42 +183,42 @@ const Reports = () => {
 
   const statsCards = [
     {
-      title: 'Total Users',
+      title: getTranslatedText('Total Users'),
       value: stats?.users?.total || 0,
       icon: FaUsers,
       color: '#3b82f6',
       bg: '#dbeafe'
     },
     {
-      title: 'Total Scrappers',
+      title: getTranslatedText('Total Scrappers'),
       value: stats?.scrappers?.total || 0,
       icon: FaTruck,
       color: '#10b981',
       bg: '#d1fae5'
     },
     {
-      title: 'Total Orders',
+      title: getTranslatedText('Total Orders'),
       value: stats?.orders?.total || 0,
       icon: FaFileInvoice,
       color: '#f59e0b',
       bg: '#fef3c7'
     },
     {
-      title: 'Completed Orders',
+      title: getTranslatedText('Completed Orders'),
       value: stats?.orders?.completed || 0,
       icon: FaCheckCircle,
       color: '#8b5cf6',
       bg: '#ede9fe'
     },
     {
-      title: 'Total Revenue',
+      title: getTranslatedText('Total Revenue'),
       value: `₹${((revenueStats?.totalRevenue || 0) / 1000).toFixed(1)}k`,
       icon: FaRupeeSign,
       color: '#06b6d4',
       bg: '#cffafe'
     },
     {
-      title: 'Daily Revenue', // Using dashboard specific stat or derived
+      title: getTranslatedText('Daily Revenue'), // Using dashboard specific stat or derived
       value: `₹${stats?.payments?.todayRevenue || 0}`,
       icon: FaCreditCard,
       color: '#ef4444',
@@ -219,10 +245,10 @@ const Reports = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-lg md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Reports & Analytics
+              {getTranslatedText("Reports & Analytics")}
             </h1>
             <p className="text-xs md:text-sm lg:text-base" style={{ color: '#718096' }}>
-              View platform statistics and generate reports
+              {getTranslatedText("View platform statistics and generate reports")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -235,10 +261,10 @@ const Reports = () => {
                 focusBorderColor: '#64946e'
               }}
             >
-              <option value="today">Today</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
+              <option value="today">{getTranslatedText("Today")}</option>
+              <option value="week">{getTranslatedText("This Week")}</option>
+              <option value="month">{getTranslatedText("This Month")}</option>
+              <option value="year">{getTranslatedText("This Year")}</option>
             </select>
           </div>
         </div>
@@ -283,14 +309,14 @@ const Reports = () => {
         className="bg-white rounded-2xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Export Reports
+          {getTranslatedText("Export Reports")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Users Report', type: 'users', icon: FaUsers },
-            { label: 'Scrappers Report', type: 'scrappers', icon: FaTruck },
-            { label: 'Orders Report', type: 'orders', icon: FaFileInvoice },
-            { label: 'Revenue Report', type: 'revenue', icon: FaRupeeSign }
+            { label: getTranslatedText('Users Report'), type: 'users', icon: FaUsers },
+            { label: getTranslatedText('Scrappers Report'), type: 'scrappers', icon: FaTruck },
+            { label: getTranslatedText('Orders Report'), type: 'orders', icon: FaFileInvoice },
+            { label: getTranslatedText('Revenue Report'), type: 'revenue', icon: FaRupeeSign }
           ].map((report, index) => {
             const Icon = report.icon;
             return (
@@ -329,7 +355,7 @@ const Reports = () => {
         className="bg-white rounded-2xl shadow-lg p-6"
       >
         <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Revenue Trends ({dateRange})
+          {getTranslatedText("Revenue Trends ({range})", { range: getTranslatedText(dateRange.charAt(0).toUpperCase() + dateRange.slice(1)) })}
         </h2>
         <div className="h-64 flex items-end justify-center gap-2 md:gap-4 p-4" style={{ backgroundColor: '#f7fafc', borderRadius: '12px' }}>
           {/* Simple CSS Bar Chart for visualization */}
@@ -351,7 +377,7 @@ const Reports = () => {
               );
             })
           ) : (
-            <p className="text-gray-400">No revenue data for this period</p>
+            <p className="text-gray-400">{getTranslatedText("No revenue data for this period")}</p>
           )}
         </div>
       </motion.div>

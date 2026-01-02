@@ -5,8 +5,75 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { validateReferralCode, createReferral, processSignupBonus, getReferralSettings } from '../../shared/utils/referralUtils';
 import { linkLeadToScrapper } from '../../shared/utils/leadUtils';
 import { authAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const ScrapperLogin = () => {
+  const staticTexts = [
+    "Join Scrapto Scrapper Network",
+    "Earn more from",
+    "every scrap pickup.",
+    "Get verified leads, transparent pricing, and on‑time payments. Designed for serious scrap collectors.",
+    "Real‑time market price updates linked with your dashboard.",
+    "Priority access to high‑value pickups near your area.",
+    "Simple OTP login – no passwords, no complications.",
+    "Login to continue pickups",
+    "New to Scrapto? Register now",
+    "Scrapper Login",
+    "Create Scrapper Account",
+    "Enter your phone number to receive a one‑time OTP.",
+    "Quick signup – just your basic details and phone number.",
+    "Login",
+    "Register",
+    "Full Name",
+    "Enter your full name",
+    "Email Address",
+    "Enter your email address",
+    "How did you hear about Scrapto?",
+    "Select an option",
+    "YouTube",
+    "Instagram",
+    "Facebook",
+    "Google Search",
+    "Friends / Family",
+    "WhatsApp",
+    "Other",
+    "Please specify (e.g., association, poster)",
+    "Vehicle Information",
+    "e.g., Truck - MH-12-AB-1234",
+    "Have a referral code?",
+    "Hide",
+    "Enter referral code (e.g., SCRAP-ABC123)",
+    "This code is for users only. Please use a scrapper referral code.",
+    "User Friend",
+    "Scrapper Friend",
+    "You were referred by ",
+    "Phone Number",
+    "Enter 10-digit phone number",
+    "Remember me",
+    "Processing...",
+    "Send OTP",
+    "Register & Send OTP",
+    "Enter OTP",
+    "We've sent a 6-digit OTP to ",
+    "Sending...",
+    "Resend OTP",
+    "Verifying...",
+    "Verify & Continue",
+    "By continuing, you agree to our Terms of Service and Privacy Policy.",
+    "Please enter a valid 10-digit phone number",
+    "Your scrapper account has been blocked by admin. Please contact support.",
+    "Please fill in all required fields",
+    "Please enter a valid email address",
+    "Failed to send OTP. Please try again.",
+    "Failed to resend OTP. Please try again.",
+    "Invalid OTP. Please try again.",
+    "Verifying authentication...",
+    "Terms of Service",
+    "Privacy Policy",
+    "✓ You were referred by {name}",
+    "By continuing, you agree to our Terms & Conditions"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
@@ -48,14 +115,14 @@ const ScrapperLogin = () => {
       // Check if cross-referrals are allowed
       const settings = getReferralSettings();
       if (!settings.allowCrossReferrals && validation.referrerType !== 'scrapper') {
-        setReferralCodeError('This code is for users only. Please use a scrapper referral code.');
+        setReferralCodeError(getTranslatedText('This code is for users only. Please use a scrapper referral code.'));
         setReferrerName('');
       } else {
         setReferralCodeError('');
         if (validation.referrerType === 'user') {
-          setReferrerName('User Friend'); // Cross-referral
+          setReferrerName(getTranslatedText('User Friend')); // Cross-referral
         } else {
-          setReferrerName('Scrapper Friend');
+          setReferrerName(getTranslatedText('Scrapper Friend'));
         }
       }
     }
@@ -154,24 +221,24 @@ const ScrapperLogin = () => {
     setError('');
 
     if (phone.length !== 10) {
-      setError('Please enter a valid 10-digit phone number');
+      setError(getTranslatedText('Please enter a valid 10-digit phone number'));
       return;
     }
 
     // Check if scrapper is blocked
     const scrapperStatus = localStorage.getItem('scrapperStatus');
     if (scrapperStatus === 'blocked') {
-      setError('Your scrapper account has been blocked by admin. Please contact support.');
+      setError(getTranslatedText('Your scrapper account has been blocked by admin. Please contact support.'));
       return;
     }
 
     if (!isLogin && (!name.trim() || !email.trim() || !vehicleInfo.trim())) {
-      setError('Please fill in all required fields');
+      setError(getTranslatedText('Please fill in all required fields'));
       return;
     }
 
     if (!isLogin && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('Please enter a valid email address');
+      setError(getTranslatedText('Please enter a valid email address'));
       return;
     }
 
@@ -208,7 +275,7 @@ const ScrapperLogin = () => {
         }
       }
     } catch (err) {
-      setError(err.message || 'Failed to send OTP. Please try again.');
+      setError(err.message || getTranslatedText('Failed to send OTP. Please try again.'));
       console.error('Error:', err);
     } finally {
       setLoading(false);
@@ -254,7 +321,7 @@ const ScrapperLogin = () => {
         }, 100);
       }
     } catch (err) {
-      setError(err.message || 'Failed to resend OTP. Please try again.');
+      setError(err.message || getTranslatedText('Failed to resend OTP. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -319,7 +386,7 @@ const ScrapperLogin = () => {
         setShouldRedirect(true);
       }
     } catch (err) {
-      setError(err.message || 'Invalid OTP. Please try again.');
+      setError(err.message || getTranslatedText('Invalid OTP. Please try again.'));
       console.error('OTP verification error:', err);
       // Clear OTP on error
       setOtp(['', '', '', '', '', '']);
@@ -353,15 +420,15 @@ const ScrapperLogin = () => {
           <div>
             <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur">
               <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-              Join Scrapto Scrapper Network
+              {getTranslatedText("Join Scrapto Scrapper Network")}
             </p>
             <h2 className="mt-4 text-3xl lg:text-4xl font-extrabold leading-tight">
-              Earn more from
+              {getTranslatedText("Earn more from")}
               <br />
-              every scrap pickup.
+              {getTranslatedText("every scrap pickup.")}
             </h2>
             <p className="mt-3 text-sm lg:text-base text-emerald-100/90">
-              Get verified leads, transparent pricing, and on‑time payments. Designed for serious scrap collectors.
+              {getTranslatedText("Get verified leads, transparent pricing, and on‑time payments. Designed for serious scrap collectors.")}
             </p>
           </div>
 
@@ -370,19 +437,19 @@ const ScrapperLogin = () => {
               <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
                 <span className="w-2 h-2 rounded-full bg-emerald-300" />
               </div>
-              <p>Real‑time market price updates linked with your dashboard.</p>
+              <p>{getTranslatedText("Real‑time market price updates linked with your dashboard.")}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
                 <span className="w-2 h-2 rounded-full bg-emerald-300" />
               </div>
-              <p>Priority access to high‑value pickups near your area.</p>
+              <p>{getTranslatedText("Priority access to high‑value pickups near your area.")}</p>
             </div>
             <div className="flex items-start gap-3">
               <div className="mt-1 w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
                 <span className="w-2 h-2 rounded-full bg-emerald-300" />
               </div>
-              <p>Simple OTP login – no passwords, no complications.</p>
+              <p>{getTranslatedText("Simple OTP login – no passwords, no complications.")}</p>
             </div>
           </div>
         </div>
@@ -403,15 +470,15 @@ const ScrapperLogin = () => {
           >
             <div className="inline-flex items-center gap-3 px-3 py-2 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold mb-3">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {isLogin ? 'Login to continue pickups' : 'New to Scrapto? Register now'}
+              {isLogin ? getTranslatedText('Login to continue pickups') : getTranslatedText('New to Scrapto? Register now')}
             </div>
             <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#1f2933' }}>
-              {isLogin ? 'Scrapper Login' : 'Create Scrapper Account'}
+              {isLogin ? getTranslatedText('Scrapper Login') : getTranslatedText('Create Scrapper Account')}
             </h1>
             <p className="text-xs md:text-sm" style={{ color: '#6b7280' }}>
               {isLogin
-                ? 'Enter your phone number to receive a one‑time OTP.'
-                : 'Quick signup – just your basic details and phone number.'}
+                ? getTranslatedText('Enter your phone number to receive a one‑time OTP.')
+                : getTranslatedText('Quick signup – just your basic details and phone number.')}
             </p>
           </motion.div>
 
@@ -432,11 +499,11 @@ const ScrapperLogin = () => {
                 setVehicleInfo('');
               }}
               className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${isLogin
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
             >
-              Login
+              {getTranslatedText("Login")}
             </button>
             <button
               onClick={() => {
@@ -448,11 +515,11 @@ const ScrapperLogin = () => {
                 setVehicleInfo('');
               }}
               className={`px-5 py-2.5 rounded-full font-semibold text-xs md:text-sm transition-all duration-300 ${!isLogin
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                 }`}
             >
-              Register
+              {getTranslatedText("Register")}
             </button>
           </motion.div>
 
@@ -481,13 +548,13 @@ const ScrapperLogin = () => {
                       transition={{ duration: 0.3 }}
                     >
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Full Name
+                        {getTranslatedText("Full Name")}
                       </label>
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter your full name"
+                        placeholder={getTranslatedText("Enter your full name")}
                         className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                         style={{
                           borderColor: name ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
@@ -506,13 +573,13 @@ const ScrapperLogin = () => {
                       transition={{ duration: 0.3, delay: 0.05 }}
                     >
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Email Address
+                        {getTranslatedText("Email Address")}
                       </label>
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email address"
+                        placeholder={getTranslatedText("Enter your email address")}
                         className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                         style={{
                           borderColor: email ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
@@ -532,7 +599,7 @@ const ScrapperLogin = () => {
                       transition={{ duration: 0.3, delay: 0.2 }}
                     >
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        How did you hear about Scrapto?
+                        {getTranslatedText("How did you hear about Scrapto?")}
                       </label>
                       <select
                         value={heardFrom}
@@ -544,21 +611,21 @@ const ScrapperLogin = () => {
                           backgroundColor: '#f9f9f9'
                         }}
                       >
-                        <option value="">Select an option</option>
-                        <option value="youtube">YouTube</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="google_search">Google Search</option>
-                        <option value="friend_family">Friends / Family</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="other">Other</option>
+                        <option value="">{getTranslatedText("Select an option")}</option>
+                        <option value="youtube">{getTranslatedText("YouTube")}</option>
+                        <option value="instagram">{getTranslatedText("Instagram")}</option>
+                        <option value="facebook">{getTranslatedText("Facebook")}</option>
+                        <option value="google_search">{getTranslatedText("Google Search")}</option>
+                        <option value="friend_family">{getTranslatedText("Friends / Family")}</option>
+                        <option value="whatsapp">{getTranslatedText("WhatsApp")}</option>
+                        <option value="other">{getTranslatedText("Other")}</option>
                       </select>
                       {heardFrom === 'other' && (
                         <input
                           type="text"
                           value={heardFromOther}
                           onChange={(e) => setHeardFromOther(e.target.value)}
-                          placeholder="Please specify (e.g., association, poster)"
+                          placeholder={getTranslatedText("Please specify (e.g., association, poster)")}
                           className="mt-2 w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                           style={{
                             borderColor: heardFromOther ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
@@ -577,13 +644,13 @@ const ScrapperLogin = () => {
                       transition={{ duration: 0.3, delay: 0.1 }}
                     >
                       <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                        Vehicle Information
+                        {getTranslatedText("Vehicle Information")}
                       </label>
                       <input
                         type="text"
                         value={vehicleInfo}
                         onChange={(e) => setVehicleInfo(e.target.value)}
-                        placeholder="e.g., Truck - MH-12-AB-1234"
+                        placeholder={getTranslatedText("e.g., Truck - MH-12-AB-1234")}
                         className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                         style={{
                           borderColor: vehicleInfo ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
@@ -609,7 +676,7 @@ const ScrapperLogin = () => {
                           className="text-sm font-medium flex items-center gap-1"
                           style={{ color: '#64946e' }}
                         >
-                          {showReferralCode ? 'Hide' : 'Have a referral code?'}
+                          {showReferralCode ? getTranslatedText('Hide') : getTranslatedText('Have a referral code?')}
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <polyline points={showReferralCode ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
                           </svg>
@@ -621,7 +688,7 @@ const ScrapperLogin = () => {
                             type="text"
                             value={referralCode}
                             onChange={handleReferralCodeChange}
-                            placeholder="Enter referral code (e.g., SCRAP-ABC123)"
+                            placeholder={getTranslatedText("Enter referral code (e.g., SCRAP-ABC123)")}
                             className={`w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base uppercase ${referralCodeError ? 'border-red-400' : referrerName ? 'border-green-400' : ''
                               }`}
                             style={{
@@ -638,7 +705,7 @@ const ScrapperLogin = () => {
                           )}
                           {referrerName && !referralCodeError && (
                             <p className="text-xs mt-1" style={{ color: '#10b981' }}>
-                              ✓ You were referred by {referrerName}
+                              {getTranslatedText("✓ You were referred by {name}", { name: referrerName })}
                             </p>
                           )}
                         </div>
@@ -648,7 +715,7 @@ const ScrapperLogin = () => {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Phone Number
+                      {getTranslatedText("Phone Number")}
                     </label>
                     <input
                       type="tel"
@@ -657,7 +724,7 @@ const ScrapperLogin = () => {
                         const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setPhone(value);
                       }}
-                      placeholder="Enter 10-digit phone number"
+                      placeholder={getTranslatedText("Enter 10-digit phone number")}
                       className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
                       style={{
                         borderColor: phone.length === 10 ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
@@ -680,7 +747,7 @@ const ScrapperLogin = () => {
                         style={{ accentColor: '#64946e' }}
                       />
                       <label htmlFor="remember" className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                        Remember me
+                        {getTranslatedText("Remember me")}
                       </label>
                     </div>
                   )}
@@ -704,7 +771,7 @@ const ScrapperLogin = () => {
                     className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
-                    {loading ? 'Processing...' : (isLogin ? 'Send OTP' : 'Register & Send OTP')}
+                    {loading ? getTranslatedText('Processing...') : (isLogin ? getTranslatedText('Send OTP') : getTranslatedText('Register & Send OTP'))}
                   </motion.button>
                 </motion.form>
               ) : (
@@ -718,10 +785,10 @@ const ScrapperLogin = () => {
                 >
                   <div className="text-center">
                     <h3 className="text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
-                      Enter OTP
+                      {getTranslatedText("Enter OTP")}
                     </h3>
                     <p className="text-sm" style={{ color: '#718096' }}>
-                      We've sent a 6-digit OTP to <span className="font-semibold">+91 {phone}</span>
+                      {getTranslatedText("We've sent a 6-digit OTP to ")}<span className="font-semibold">+91 {phone}</span>
                     </p>
                   </div>
 
@@ -767,7 +834,7 @@ const ScrapperLogin = () => {
                       className="text-sm font-semibold transition-colors disabled:opacity-50"
                       style={{ color: '#64946e' }}
                     >
-                      {loading ? 'Sending...' : 'Resend OTP'}
+                      {loading ? getTranslatedText('Sending...') : getTranslatedText('Resend OTP')}
                     </button>
                   </div>
 
@@ -786,7 +853,7 @@ const ScrapperLogin = () => {
                     className="w-full py-3 md:py-4 rounded-xl font-bold text-base md:text-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
-                    {loading ? 'Verifying...' : 'Verify & Continue'}
+                    {loading ? getTranslatedText('Verifying...') : getTranslatedText('Verify & Continue')}
                   </motion.button>
                 </motion.div>
               )}
@@ -800,10 +867,7 @@ const ScrapperLogin = () => {
             transition={{ delay: 0.5 }}
             className="text-center mt-4 text-xs md:text-sm text-gray-500"
           >
-            By continuing, you agree to our{' '}
-            <span className="font-semibold text-emerald-600">
-              Terms &amp; Conditions
-            </span>
+            {getTranslatedText("By continuing, you agree to our Terms & Conditions")}
           </motion.div>
         </motion.div>
       </motion.div>

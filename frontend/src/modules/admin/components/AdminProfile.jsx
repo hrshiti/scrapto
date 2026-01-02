@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useAdminAuth } from '../../shared/context/AdminAuthContext';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import {
   FaUser,
   FaEnvelope,
@@ -40,6 +41,44 @@ const AdminProfile = () => {
     push: true
   });
   const [language, setLanguage] = useState('en');
+  const staticTexts = [
+    "Profile updated successfully!",
+    "New passwords do not match!",
+    "Password must be at least 6 characters long!",
+    "Password changed successfully!",
+    "Loading...",
+    "My Profile",
+    "Manage your account settings and preferences",
+    "Edit Profile",
+    "Full Name",
+    "Email",
+    "Phone",
+    "Role",
+    "Department",
+    "Member Since",
+    "Bio",
+    "Save Changes",
+    "Cancel",
+    "Change Password",
+    "Change",
+    "Current Password",
+    "New Password",
+    "Confirm New Password",
+    "Update Password",
+    "Notifications",
+    "Email Notifications",
+    "Sms Notifications",
+    "Push Notifications",
+    "Preferences",
+    "Language",
+    "English",
+    "Hindi",
+    "Marathi",
+    "Account Statistics",
+    "Total Actions",
+    "Last Login"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     if (admin) {
@@ -78,20 +117,20 @@ const AdminProfile = () => {
     };
     login(updatedAdmin);
     setIsEditing(false);
-    alert('Profile updated successfully!');
+    alert(getTranslatedText('Profile updated successfully!'));
   };
 
   const handleChangePassword = () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('New passwords do not match!');
+      alert(getTranslatedText('New passwords do not match!'));
       return;
     }
     if (passwordData.newPassword.length < 6) {
-      alert('Password must be at least 6 characters long!');
+      alert(getTranslatedText('Password must be at least 6 characters long!'));
       return;
     }
     // In real app, this would call API
-    alert('Password changed successfully!');
+    alert(getTranslatedText('Password changed successfully!'));
     setPasswordData({
       currentPassword: '',
       newPassword: '',
@@ -108,7 +147,7 @@ const AdminProfile = () => {
   };
 
   if (!admin) {
-    return <div>Loading...</div>;
+    return <div>{getTranslatedText("Loading...")}</div>;
   }
 
   return (
@@ -122,10 +161,10 @@ const AdminProfile = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
-              My Profile
+              {getTranslatedText("My Profile")}
             </h1>
             <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-              Manage your account settings and preferences
+              {getTranslatedText("Manage your account settings and preferences")}
             </p>
           </div>
           {!isEditing && (
@@ -137,7 +176,7 @@ const AdminProfile = () => {
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
               <FaEdit />
-              Edit Profile
+              {getTranslatedText("Edit Profile")}
             </motion.button>
           )}
         </div>
@@ -182,7 +221,7 @@ const AdminProfile = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                       <FaUser className="inline mr-2" />
-                      Full Name
+                      {getTranslatedText("Full Name")}
                     </label>
                     {isEditing ? (
                       <input
@@ -207,7 +246,7 @@ const AdminProfile = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                       <FaEnvelope className="inline mr-2" />
-                      Email
+                      {getTranslatedText("Email")}
                     </label>
                     {isEditing ? (
                       <input
@@ -232,7 +271,7 @@ const AdminProfile = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                       <FaPhone className="inline mr-2" />
-                      Phone
+                      {getTranslatedText("Phone")}
                     </label>
                     {isEditing ? (
                       <input
@@ -257,7 +296,7 @@ const AdminProfile = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                       <FaShieldAlt className="inline mr-2" />
-                      Role
+                      {getTranslatedText("Role")}
                     </label>
                     {isEditing ? (
                       <input
@@ -281,7 +320,7 @@ const AdminProfile = () => {
 
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                      Department
+                      {getTranslatedText("Department")}
                     </label>
                     {isEditing ? (
                       <input
@@ -306,7 +345,7 @@ const AdminProfile = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                       <FaCalendarAlt className="inline mr-2" />
-                      Member Since
+                      {getTranslatedText("Member Since")}
                     </label>
                     <p className="px-4 py-2 rounded-xl" style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}>
                       {new Date(admin.createdAt || Date.now()).toLocaleDateString()}
@@ -316,7 +355,7 @@ const AdminProfile = () => {
 
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Bio
+                    {getTranslatedText("Bio")}
                   </label>
                   {isEditing ? (
                     <textarea
@@ -348,7 +387,7 @@ const AdminProfile = () => {
                       style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                     >
                       <FaSave />
-                      Save Changes
+                      {getTranslatedText("Save Changes")}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -371,7 +410,7 @@ const AdminProfile = () => {
                       style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                     >
                       <FaTimes />
-                      Cancel
+                      {getTranslatedText("Cancel")}
                     </motion.button>
                   </div>
                 )}
@@ -389,7 +428,7 @@ const AdminProfile = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold" style={{ color: '#2d3748' }}>
                 <FaLock className="inline mr-2" />
-                Change Password
+                {getTranslatedText("Change Password")}
               </h2>
               {!isChangingPassword && (
                 <motion.button
@@ -399,7 +438,7 @@ const AdminProfile = () => {
                   className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
                   style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                 >
-                  Change
+                  {getTranslatedText("Change")}
                 </motion.button>
               )}
             </div>
@@ -408,7 +447,7 @@ const AdminProfile = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Current Password
+                    {getTranslatedText("Current Password")}
                   </label>
                   <input
                     type="password"
@@ -425,7 +464,7 @@ const AdminProfile = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    New Password
+                    {getTranslatedText("New Password")}
                   </label>
                   <input
                     type="password"
@@ -442,7 +481,7 @@ const AdminProfile = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                    Confirm New Password
+                    {getTranslatedText("Confirm New Password")}
                   </label>
                   <input
                     type="password"
@@ -466,7 +505,7 @@ const AdminProfile = () => {
                     style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                   >
                     <FaKey />
-                    Update Password
+                    {getTranslatedText("Update Password")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -483,7 +522,7 @@ const AdminProfile = () => {
                     style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                   >
                     <FaTimes />
-                    Cancel
+                    {getTranslatedText("Cancel")}
                   </motion.button>
                 </div>
               </div>
@@ -502,27 +541,25 @@ const AdminProfile = () => {
           >
             <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
               <FaBell className="inline mr-2" />
-              Notifications
+              {getTranslatedText("Notifications")}
             </h2>
             <div className="space-y-3">
               {Object.entries(notifications).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-sm font-medium" style={{ color: '#2d3748' }}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)} Notifications
+                    {getTranslatedText(key.charAt(0).toUpperCase() + key.slice(1) + " Notifications")}
                   </span>
                   <button
                     onClick={() => handleNotificationToggle(key)}
-                    className={`w-12 h-6 rounded-full transition-all relative ${
-                      value ? '' : ''
-                    }`}
+                    className={`w-12 h-6 rounded-full transition-all relative ${value ? '' : ''
+                      }`}
                     style={{
                       backgroundColor: value ? '#64946e' : '#cbd5e0'
                     }}
                   >
                     <span
-                      className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all ${
-                        value ? 'translate-x-6' : ''
-                      }`}
+                      className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all ${value ? 'translate-x-6' : ''
+                        }`}
                     />
                   </button>
                 </div>
@@ -539,12 +576,12 @@ const AdminProfile = () => {
           >
             <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
               <FaGlobe className="inline mr-2" />
-              Preferences
+              {getTranslatedText("Preferences")}
             </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  Language
+                  {getTranslatedText("Language")}
                 </label>
                 <select
                   value={language}
@@ -556,9 +593,9 @@ const AdminProfile = () => {
                     focusRingColor: '#64946e'
                   }}
                 >
-                  <option value="en">English</option>
-                  <option value="hi">Hindi</option>
-                  <option value="mr">Marathi</option>
+                  <option value="en">{getTranslatedText("English")}</option>
+                  <option value="hi">{getTranslatedText("Hindi")}</option>
+                  <option value="mr">{getTranslatedText("Marathi")}</option>
                 </select>
               </div>
             </div>
@@ -572,15 +609,15 @@ const AdminProfile = () => {
             className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
           >
             <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-              Account Statistics
+              {getTranslatedText("Account Statistics")}
             </h2>
             <div className="space-y-3">
               <div className="p-3 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
-                <p className="text-xs" style={{ color: '#718096' }}>Total Actions</p>
+                <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Total Actions")}</p>
                 <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>1,234</p>
               </div>
               <div className="p-3 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
-                <p className="text-xs" style={{ color: '#718096' }}>Last Login</p>
+                <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Last Login")}</p>
                 <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
                   {new Date().toLocaleString()}
                 </p>

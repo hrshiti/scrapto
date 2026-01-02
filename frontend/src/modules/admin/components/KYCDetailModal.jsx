@@ -1,11 +1,38 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { FaTimes, FaCheckCircle, FaTimesCircle, FaUserShield, FaPhone, FaIdCard, FaCar } from 'react-icons/fa';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const staticTexts = [
+    "Error: Scrapper ID is missing",
+    "Please provide a reason for rejection",
+    "Are you sure you want to reject this KYC?",
+    "KYC Verification Details",
+    "Review all documents before making a decision",
+    "Scrapper Information",
+    "Name",
+    "Phone",
+    "Aadhaar Number",
+    "Vehicle Info",
+    "Documents",
+    "Aadhaar Card Photo",
+    "Selfie Photo",
+    "Rejection Reason *",
+    "Please provide a reason for rejection...",
+    "✓ Verified on {date}",
+    "✗ Rejected on {date}",
+    "Reason: {reason}",
+    "Reject",
+    "Approve",
+    "Cancel",
+    "Confirm Rejection",
+    "Close"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   const handleApprove = () => {
     // Add logging
@@ -14,7 +41,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
     console.log('Scrapper ID:', scrapperId);
 
     if (!scrapperId) {
-      alert('Error: Scrapper ID is missing');
+      alert(getTranslatedText('Error: Scrapper ID is missing'));
       return;
     }
 
@@ -27,10 +54,10 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
 
   const handleReject = () => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a reason for rejection');
+      alert(getTranslatedText('Please provide a reason for rejection'));
       return;
     }
-    if (window.confirm('Are you sure you want to reject this KYC?')) {
+    if (window.confirm(getTranslatedText('Are you sure you want to reject this KYC?'))) {
       setIsProcessing(true);
       // Use scrapperId if available, otherwise fallback to id
       const scrapperId = kyc.scrapperId || kyc.id;
@@ -67,10 +94,10 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
               </div>
               <div>
                 <h2 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
-                  KYC Verification Details
+                  {getTranslatedText("KYC Verification Details")}
                 </h2>
                 <p className="text-sm" style={{ color: '#718096' }}>
-                  Review all documents before making a decision
+                  {getTranslatedText("Review all documents before making a decision")}
                 </p>
               </div>
             </div>
@@ -87,34 +114,34 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
             {/* Scrapper Information */}
             <div className="bg-gray-50 rounded-xl p-4 md:p-6 space-y-4">
               <h3 className="text-lg font-bold" style={{ color: '#2d3748' }}>
-                Scrapper Information
+                {getTranslatedText("Scrapper Information")}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <FaUserShield style={{ color: '#64946e' }} />
                   <div>
-                    <p className="text-xs" style={{ color: '#718096' }}>Name</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Name")}</p>
                     <p className="font-semibold" style={{ color: '#2d3748' }}>{kyc.scrapperName}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <FaPhone style={{ color: '#64946e' }} />
                   <div>
-                    <p className="text-xs" style={{ color: '#718096' }}>Phone</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Phone")}</p>
                     <p className="font-semibold" style={{ color: '#2d3748' }}>{kyc.scrapperPhone}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <FaIdCard style={{ color: '#64946e' }} />
                   <div>
-                    <p className="text-xs" style={{ color: '#718096' }}>Aadhaar Number</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Aadhaar Number")}</p>
                     <p className="font-semibold" style={{ color: '#2d3748' }}>{kyc.aadhaarNumber}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <FaCar style={{ color: '#64946e' }} />
                   <div>
-                    <p className="text-xs" style={{ color: '#718096' }}>Vehicle Info</p>
+                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Vehicle Info")}</p>
                     <p className="font-semibold" style={{ color: '#2d3748' }}>{kyc.vehicleInfo}</p>
                   </div>
                 </div>
@@ -124,13 +151,13 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
             {/* Documents */}
             <div className="space-y-4">
               <h3 className="text-lg font-bold" style={{ color: '#2d3748' }}>
-                Documents
+                {getTranslatedText("Documents")}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Aadhaar Photo */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Aadhaar Card Photo
+                    {getTranslatedText("Aadhaar Card Photo")}
                   </label>
                   <div className="relative rounded-xl overflow-hidden border-2" style={{ borderColor: '#e2e8f0' }}>
                     <img
@@ -147,7 +174,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                 {/* Selfie Photo */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Selfie Photo
+                    {getTranslatedText("Selfie Photo")}
                   </label>
                   <div className="relative rounded-xl overflow-hidden border-2" style={{ borderColor: '#e2e8f0' }}>
                     <img
@@ -173,12 +200,12 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                   className="space-y-2"
                 >
                   <label className="block text-sm font-semibold" style={{ color: '#2d3748' }}>
-                    Rejection Reason *
+                    {getTranslatedText("Rejection Reason *")}
                   </label>
                   <textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="Please provide a reason for rejection..."
+                    placeholder={getTranslatedText("Please provide a reason for rejection...")}
                     rows={3}
                     className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
                     style={{
@@ -195,18 +222,18 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
             {kyc.verifiedAt && (
               <div className="bg-green-50 rounded-xl p-4">
                 <p className="text-sm" style={{ color: '#059669' }}>
-                  ✓ Verified on {new Date(kyc.verifiedAt).toLocaleString()}
+                  {getTranslatedText("✓ Verified on {date}", { date: new Date(kyc.verifiedAt).toLocaleString() })}
                 </p>
               </div>
             )}
             {kyc.rejectedAt && (
               <div className="bg-red-50 rounded-xl p-4">
                 <p className="text-sm font-semibold mb-1" style={{ color: '#dc2626' }}>
-                  ✗ Rejected on {new Date(kyc.rejectedAt).toLocaleString()}
+                  {getTranslatedText("✗ Rejected on {date}", { date: new Date(kyc.rejectedAt).toLocaleString() })}
                 </p>
                 {kyc.rejectionReason && (
                   <p className="text-sm" style={{ color: '#991b1b' }}>
-                    Reason: {kyc.rejectionReason}
+                    {getTranslatedText("Reason: {reason}", { reason: kyc.rejectionReason })}
                   </p>
                 )}
               </div>
@@ -228,7 +255,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                       disabled={isProcessing}
                     >
                       <FaTimesCircle />
-                      Reject
+                      {getTranslatedText("Reject")}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -239,7 +266,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                       disabled={isProcessing}
                     >
                       <FaCheckCircle />
-                      Approve
+                      {getTranslatedText("Approve")}
                     </motion.button>
                   </>
                 ) : (
@@ -255,7 +282,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                       style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                       disabled={isProcessing}
                     >
-                      Cancel
+                      {getTranslatedText("Cancel")}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -266,7 +293,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                       disabled={isProcessing || !rejectionReason.trim()}
                     >
                       <FaTimesCircle />
-                      Confirm Rejection
+                      {getTranslatedText("Confirm Rejection")}
                     </motion.button>
                   </>
                 )}
@@ -280,7 +307,7 @@ const KYCDetailModal = ({ kyc, onClose, onApprove, onReject }) => {
                 className="px-6 py-3 rounded-xl font-semibold transition-all"
                 style={{ backgroundColor: '#64946e', color: '#ffffff' }}
               >
-                Close
+                {getTranslatedText("Close")}
               </motion.button>
             )}
           </div>

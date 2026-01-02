@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '../../shared/context/AdminAuthContext';
 import { authAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -12,6 +13,22 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated } = useAdminAuth();
+  const staticTexts = [
+    "Please enter a valid email address",
+    "Access denied. Admin access only.",
+    "Invalid email or password",
+    "Invalid email or password. Please try again.",
+    "Admin Portal",
+    "Sign in to manage the platform",
+    "Email",
+    "Enter email address",
+    "Password",
+    "Enter password",
+    "Signing in...",
+    "Sign In",
+    "Secure admin access only"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -27,7 +44,7 @@ const AdminLogin = () => {
 
     // Validate email format
     if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
+      setError(getTranslatedText('Please enter a valid email address'));
       setLoading(false);
       return;
     }
@@ -42,7 +59,7 @@ const AdminLogin = () => {
 
         // Verify user is admin
         if (userData.role !== 'admin') {
-          setError('Access denied. Admin access only.');
+          setError(getTranslatedText('Access denied. Admin access only.'));
           setLoading(false);
           return;
         }
@@ -63,11 +80,11 @@ const AdminLogin = () => {
         login(adminData);
         navigate('/admin', { replace: true });
       } else {
-        setError('Invalid email or password');
+        setError(getTranslatedText('Invalid email or password'));
       }
     } catch (err) {
       console.error('Admin login error:', err);
-      setError(err.message || 'Invalid email or password. Please try again.');
+      setError(err.message || getTranslatedText('Invalid email or password. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -90,16 +107,16 @@ const AdminLogin = () => {
         >
           <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: '#64946e' }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2"/>
-              <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2"/>
-              <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2"/>
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2" />
+              <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2" />
+              <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="white" fillOpacity="0.2" />
             </svg>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ color: '#2d3748' }}>
-            Admin Portal
+            {getTranslatedText("Admin Portal")}
           </h1>
           <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-            Sign in to manage the platform
+            {getTranslatedText("Sign in to manage the platform")}
           </p>
         </motion.div>
 
@@ -130,13 +147,13 @@ const AdminLogin = () => {
 
             <div>
               <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                Email
+                {getTranslatedText("Email")}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter email address"
+                placeholder={getTranslatedText("Enter email address")}
                 className="w-full px-4 py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
                 style={{
                   borderColor: error ? '#dc2626' : '#e2e8f0',
@@ -150,14 +167,14 @@ const AdminLogin = () => {
 
             <div>
               <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                Password
+                {getTranslatedText("Password")}
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
+                  placeholder={getTranslatedText("Enter password")}
                   className="w-full px-4 py-3 pr-12 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all"
                   style={{
                     borderColor: error ? '#dc2626' : '#e2e8f0',
@@ -194,7 +211,7 @@ const AdminLogin = () => {
               style={{ backgroundColor: '#64946e' }}
               disabled={!email || !password || loading}
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? getTranslatedText('Signing in...') : getTranslatedText('Sign In')}
             </motion.button>
           </motion.form>
         </motion.div>
@@ -207,7 +224,7 @@ const AdminLogin = () => {
           className="text-center mt-6 text-sm"
           style={{ color: '#718096' }}
         >
-          <p>Secure admin access only</p>
+          <p>{getTranslatedText("Secure admin access only")}</p>
         </motion.div>
       </motion.div>
     </div>

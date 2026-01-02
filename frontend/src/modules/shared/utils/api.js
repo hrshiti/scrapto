@@ -6,7 +6,7 @@ const getAuthToken = () => {
 };
 
 // Helper function to make API requests
-const apiRequest = async (endpoint, options = {}) => {
+export const apiRequest = async (endpoint, options = {}) => {
   const token = getAuthToken();
 
   const isFormData = options.body instanceof FormData;
@@ -653,3 +653,14 @@ export const referralAPI = {
     });
   },
 };
+
+// Public API (no auth required)
+export const publicAPI = {
+  getPrices: async () => {
+    return apiRequest('/public/prices', { method: 'GET' });
+  },
+  getActivePrices: async () => {
+    return apiRequest('/public/prices/active', { method: 'GET' });
+  },
+};
+

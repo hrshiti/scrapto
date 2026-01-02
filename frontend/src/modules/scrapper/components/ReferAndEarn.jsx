@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../shared/context/AuthContext';
-import { 
-  getOrGenerateReferralCode, 
+import {
+  getOrGenerateReferralCode,
   getUserReferralStats,
   getReferralSettings,
   getUserTier,
   processMonthlyTierBonus
 } from '../../shared/utils/referralUtils';
 import QRCodeGenerator from '../../shared/components/QRCodeGenerator';
+import usePageTranslation from '../../../hooks/usePageTranslation';
+// Trigger rebuild for ReferenceError: usePageTranslation
 import {
   FaGift,
   FaCopy,
@@ -27,6 +29,54 @@ import {
 } from 'react-icons/fa';
 
 const ReferAndEarn = () => {
+  const staticTexts = [
+    "Refer & Earn",
+    "Invite other scrappers and earn rewards",
+    "{count} more referrals to reach {tierName}",
+    "Your Referral Code",
+    "Referral Code",
+    "Copied!",
+    "Copy",
+    "Share Link",
+    "Hide",
+    "Show",
+    "QR Code",
+    "WhatsApp",
+    "SMS",
+    "Email",
+    "Facebook",
+    "Twitter",
+    "Instagram",
+    "Monthly Tier Bonus",
+    "You're eligible for ₹{amount} monthly bonus as {tierName} tier member",
+    "Claim Bonus",
+    "Total Referrals",
+    "Total Earnings",
+    "{tierName} Tier Benefits",
+    "{percent}% bonus on all referral rewards",
+    "₹{amount} monthly tier bonus",
+    "How It Works",
+    "Share Your Code",
+    "Share your referral code or link with other scrappers",
+    "They Join & Complete KYC",
+    "Your referral signs up and completes KYC verification",
+    "You Both Earn",
+    "You get ₹{signupBonus} when they sign up, ₹{kycBonus} when KYC verified, and more when they subscribe!",
+    "Your Referrals",
+    "Referred Scrapper",
+    "Active",
+    "Pending",
+    "Milestones:",
+    "Registered",
+    "KYC Verified",
+    "Subscribed",
+    "First Pickup",
+    "Message copied! Paste it in your Instagram story or post.",
+    "Join ScrapConnect as a Scrapper and earn money! Use my referral code: {code}\n{link}",
+    "Monthly tier bonus of ₹{amount} credited!",
+    "Unable to process monthly bonus"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const { user } = useAuth();
   const [referralCode, setReferralCode] = useState('');
   const [stats, setStats] = useState({
@@ -45,10 +95,10 @@ const ReferAndEarn = () => {
       const code = getOrGenerateReferralCode(scrapperUser.phone || scrapperUser.id, 'scrapper');
       setReferralCode(code);
       setShareLink(`${window.location.origin}/scrapper/login?ref=${code}`);
-      
+
       const referralStats = getUserReferralStats(scrapperUser.phone || scrapperUser.id, 'scrapper');
       setStats(referralStats);
-      
+
       const tier = getUserTier(scrapperUser.phone || scrapperUser.id, 'scrapper');
       setTierInfo(tier);
     }
@@ -67,8 +117,8 @@ const ReferAndEarn = () => {
   };
 
   const handleShare = (method) => {
-    const message = `Join ScrapConnect as a Scrapper and earn money! Use my referral code: ${referralCode}\n${shareLink}`;
-    
+    const message = getTranslatedText('Join ScrapConnect as a Scrapper and earn money! Use my referral code: {code}\n{link}', { code: referralCode, link: shareLink });
+
     switch (method) {
       case 'whatsapp':
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
@@ -87,7 +137,7 @@ const ReferAndEarn = () => {
         break;
       case 'instagram':
         navigator.clipboard.writeText(`${message}\n\nCopy this message and share on Instagram!`);
-        alert('Message copied! Paste it in your Instagram story or post.');
+        alert(getTranslatedText('Message copied! Paste it in your Instagram story or post.'));
         break;
       default:
         break;
@@ -113,10 +163,10 @@ const ReferAndEarn = () => {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl md:text-3xl font-bold mb-1" style={{ color: '#2d3748' }}>
-              Refer & Earn
+              {getTranslatedText("Refer & Earn")}
             </h1>
             <p className="text-sm md:text-base" style={{ color: '#718096' }}>
-              Invite other scrappers and earn rewards
+              {getTranslatedText("Invite other scrappers and earn rewards")}
             </p>
           </div>
           {tierInfo && (
@@ -131,13 +181,13 @@ const ReferAndEarn = () => {
             </div>
           )}
         </div>
-        
+
         {/* Tier Progress */}
         {tierInfo && tierInfo.nextTier && (
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs mb-2">
               <span style={{ color: '#718096' }}>
-                {tierInfo.nextTier.referralsNeeded} more referrals to reach {tierInfo.nextTier.name}
+                {getTranslatedText("{count} more referrals to reach {tierName}", { count: tierInfo.nextTier.referralsNeeded, tierName: tierInfo.nextTier.name })}
               </span>
               <span className="font-semibold" style={{ color: '#2d3748' }}>
                 {tierInfo.totalReferrals}/{tierInfo.nextTier.minReferrals}
@@ -163,9 +213,9 @@ const ReferAndEarn = () => {
         className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
       >
         <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          Your Referral Code
+          {getTranslatedText("Your Referral Code")}
         </h2>
-        
+
         {/* Code Display */}
         <div className="mb-4">
           <div
@@ -176,7 +226,7 @@ const ReferAndEarn = () => {
             }}
           >
             <div className="flex-1">
-              <p className="text-xs mb-1" style={{ color: '#718096' }}>Referral Code</p>
+              <p className="text-xs mb-1" style={{ color: '#718096' }}>{getTranslatedText("Referral Code")}</p>
               <p className="text-2xl md:text-3xl font-bold" style={{ color: '#64946e' }}>
                 {referralCode}
               </p>
@@ -191,12 +241,12 @@ const ReferAndEarn = () => {
               {copied ? (
                 <>
                   <FaCheckCircle />
-                  Copied!
+                  {getTranslatedText("Copied!")}
                 </>
               ) : (
                 <>
                   <FaCopy />
-                  Copy
+                  {getTranslatedText("Copy")}
                 </>
               )}
             </motion.button>
@@ -206,7 +256,7 @@ const ReferAndEarn = () => {
         {/* Share Link */}
         <div className="mb-4">
           <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-            Share Link
+            {getTranslatedText("Share Link")}
           </label>
           <div className="flex gap-2">
             <input
@@ -240,7 +290,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
           >
             <FaQrcode />
-            {showQR ? 'Hide' : 'Show'} QR Code
+            {showQR ? getTranslatedText('Hide') : getTranslatedText('Show')} {getTranslatedText('QR Code')}
           </button>
           {showQR && (
             <motion.div
@@ -264,7 +314,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#25D366', color: '#ffffff' }}
           >
             <FaWhatsapp className="text-xl" />
-            <span className="text-xs">WhatsApp</span>
+            <span className="text-xs">{getTranslatedText("WhatsApp")}</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -274,7 +324,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
           >
             <FaShareAlt className="text-xl" />
-            <span className="text-xs">SMS</span>
+            <span className="text-xs">{getTranslatedText("SMS")}</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -284,10 +334,10 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
           >
             <FaEnvelope className="text-xl" />
-            <span className="text-xs">Email</span>
+            <span className="text-xs">{getTranslatedText("Email")}</span>
           </motion.button>
         </div>
-        
+
         {/* Social Media Share */}
         <div className="grid grid-cols-3 gap-2 mt-2">
           <motion.button
@@ -298,7 +348,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#1877F2', color: '#ffffff' }}
           >
             <FaFacebook className="text-xl" />
-            <span className="text-xs">Facebook</span>
+            <span className="text-xs">{getTranslatedText("Facebook")}</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -308,7 +358,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#1DA1F2', color: '#ffffff' }}
           >
             <FaTwitter className="text-xl" />
-            <span className="text-xs">Twitter</span>
+            <span className="text-xs">{getTranslatedText("Twitter")}</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -318,7 +368,7 @@ const ReferAndEarn = () => {
             style={{ backgroundColor: '#E4405F', color: '#ffffff' }}
           >
             <FaInstagram className="text-xl" />
-            <span className="text-xs">Instagram</span>
+            <span className="text-xs">{getTranslatedText("Instagram")}</span>
           </motion.button>
         </div>
       </motion.div>
@@ -334,10 +384,10 @@ const ReferAndEarn = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
-                Monthly Tier Bonus
+                {getTranslatedText("Monthly Tier Bonus")}
               </h3>
               <p className="text-sm" style={{ color: '#718096' }}>
-                You're eligible for ₹{tierInfo.monthlyBonus} monthly bonus as {tierInfo.name} tier member
+                {getTranslatedText("You're eligible for ₹{amount} monthly bonus as {tierName} tier member", { amount: tierInfo.monthlyBonus, tierName: tierInfo.name })}
               </p>
             </div>
             <motion.button
@@ -348,20 +398,20 @@ const ReferAndEarn = () => {
                 const userId = scrapperUser.phone || scrapperUser.id;
                 const result = processMonthlyTierBonus(userId, 'scrapper');
                 if (result.success) {
-                  alert(`Monthly tier bonus of ₹${result.amount} credited!`);
+                  alert(getTranslatedText("Monthly tier bonus of ₹{amount} credited!", { amount: result.amount }));
                   // Reload stats
                   const referralStats = getUserReferralStats(userId, 'scrapper');
                   setStats(referralStats);
                   const tier = getUserTier(userId, 'scrapper');
                   setTierInfo(tier);
                 } else {
-                  alert(result.error || 'Unable to process monthly bonus');
+                  alert(result.error || getTranslatedText('Unable to process monthly bonus'));
                 }
               }}
               className="px-4 py-2 rounded-xl font-semibold text-sm transition-all"
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
-              Claim Bonus
+              {getTranslatedText("Claim Bonus")}
             </motion.button>
           </div>
         </motion.div>
@@ -383,7 +433,7 @@ const ReferAndEarn = () => {
               <FaUsers className="text-xl" style={{ color: '#64946e' }} />
             </div>
             <div>
-              <p className="text-sm" style={{ color: '#718096' }}>Total Referrals</p>
+              <p className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Total Referrals")}</p>
               <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
                 {stats.totalReferrals}
               </p>
@@ -405,7 +455,7 @@ const ReferAndEarn = () => {
               <FaRupeeSign className="text-xl" style={{ color: '#64946e' }} />
             </div>
             <div>
-              <p className="text-sm" style={{ color: '#718096' }}>Total Earnings</p>
+              <p className="text-sm" style={{ color: '#718096' }}>{getTranslatedText("Total Earnings")}</p>
               <p className="text-2xl font-bold" style={{ color: '#2d3748' }}>
                 ₹{stats.totalEarnings}
               </p>
@@ -425,21 +475,21 @@ const ReferAndEarn = () => {
           <div className="flex items-center gap-3 mb-4">
             <FaTrophy className="text-2xl" style={{ color: tierInfo.color }} />
             <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-              {tierInfo.name} Tier Benefits
+              {getTranslatedText("{tierName} Tier Benefits", { tierName: tierInfo.name })}
             </h2>
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <FaCheckCircle style={{ color: '#10b981' }} />
               <span className="text-sm" style={{ color: '#2d3748' }}>
-                {tierInfo.bonusPercent}% bonus on all referral rewards
+                {getTranslatedText("{percent}% bonus on all referral rewards", { percent: tierInfo.bonusPercent })}
               </span>
             </div>
             {tierInfo.monthlyBonus > 0 && (
               <div className="flex items-center gap-2">
                 <FaCheckCircle style={{ color: '#10b981' }} />
                 <span className="text-sm" style={{ color: '#2d3748' }}>
-                  ₹{tierInfo.monthlyBonus} monthly tier bonus
+                  {getTranslatedText("₹{amount} monthly tier bonus", { amount: tierInfo.monthlyBonus })}
                 </span>
               </div>
             )}
@@ -455,7 +505,7 @@ const ReferAndEarn = () => {
         className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
       >
         <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-          How It Works
+          {getTranslatedText("How It Works")}
         </h2>
         <div className="space-y-4">
           <div className="flex gap-4">
@@ -467,10 +517,10 @@ const ReferAndEarn = () => {
             </div>
             <div>
               <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
-                Share Your Code
+                {getTranslatedText("Share Your Code")}
               </h3>
               <p className="text-sm" style={{ color: '#718096' }}>
-                Share your referral code or link with other scrappers
+                {getTranslatedText("Share your referral code or link with other scrappers")}
               </p>
             </div>
           </div>
@@ -483,10 +533,10 @@ const ReferAndEarn = () => {
             </div>
             <div>
               <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
-                They Join & Complete KYC
+                {getTranslatedText("They Join & Complete KYC")}
               </h3>
               <p className="text-sm" style={{ color: '#718096' }}>
-                Your referral signs up and completes KYC verification
+                {getTranslatedText("Your referral signs up and completes KYC verification")}
               </p>
             </div>
           </div>
@@ -499,10 +549,10 @@ const ReferAndEarn = () => {
             </div>
             <div>
               <h3 className="font-semibold mb-1" style={{ color: '#2d3748' }}>
-                You Both Earn
+                {getTranslatedText("You Both Earn")}
               </h3>
               <p className="text-sm" style={{ color: '#718096' }}>
-                You get ₹{settings.scrapperRewards.signupBonus} when they sign up, ₹{settings.scrapperRewards.refereeWelcomeBonus} when KYC verified, and more when they subscribe!
+                {getTranslatedText("You get ₹{signupBonus} when they sign up, ₹{kycBonus} when KYC verified, and more when they subscribe!", { signupBonus: settings.scrapperRewards.signupBonus, kycBonus: settings.scrapperRewards.refereeWelcomeBonus })}
               </p>
             </div>
           </div>
@@ -518,19 +568,19 @@ const ReferAndEarn = () => {
           className="bg-white rounded-2xl shadow-lg p-4 md:p-6"
         >
           <h2 className="text-lg md:text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-            Your Referrals
+            {getTranslatedText("Your Referrals")}
           </h2>
           <div className="space-y-4">
             {stats.referrals.map((referral, index) => {
               const milestones = referral.milestones || {};
               const rewards = referral.rewards?.referrerRewards || [];
               const totalEarned = rewards.reduce((sum, r) => sum + (r.amount || 0), 0);
-              
+
               return (
                 <div
                   key={referral.id || index}
                   className="p-4 rounded-xl border"
-                  style={{ 
+                  style={{
                     backgroundColor: '#f7fafc',
                     borderColor: '#e2e8f0'
                   }}
@@ -545,7 +595,7 @@ const ReferAndEarn = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-sm" style={{ color: '#2d3748' }}>
-                          Referred Scrapper
+                          {getTranslatedText("Referred Scrapper")}
                         </p>
                         <p className="text-xs" style={{ color: '#718096' }}>
                           {new Date(referral.createdAt).toLocaleDateString()}
@@ -560,22 +610,22 @@ const ReferAndEarn = () => {
                         {referral.status === 'active' ? (
                           <span className="flex items-center gap-1">
                             <FaCheckCircle />
-                            Active
+                            {getTranslatedText("Active")}
                           </span>
                         ) : (
                           <span className="flex items-center gap-1">
                             <FaClock />
-                            Pending
+                            {getTranslatedText("Pending")}
                           </span>
                         )}
                       </p>
                     </div>
                   </div>
-                  
+
                   {/* Milestone Progress */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span style={{ color: '#718096' }}>Milestones:</span>
+                      <span style={{ color: '#718096' }}>{getTranslatedText("Milestones:")}</span>
                       <span className="font-semibold" style={{ color: '#2d3748' }}>
                         {Object.values(milestones).filter(Boolean).length}/4
                       </span>
@@ -584,25 +634,25 @@ const ReferAndEarn = () => {
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${milestones.refereeRegistered ? 'bg-green-500' : 'bg-gray-300'}`} />
                         <span className="text-xs" style={{ color: '#718096' }}>
-                          Registered {milestones.refereeRegistered ? '✓' : ''}
+                          {getTranslatedText("Registered")} {milestones.refereeRegistered ? '✓' : ''}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${milestones.refereeKYCVerified ? 'bg-green-500' : 'bg-gray-300'}`} />
                         <span className="text-xs" style={{ color: '#718096' }}>
-                          KYC Verified {milestones.refereeKYCVerified ? '✓' : ''}
+                          {getTranslatedText("KYC Verified")} {milestones.refereeKYCVerified ? '✓' : ''}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${milestones.refereeSubscribed ? 'bg-green-500' : 'bg-gray-300'}`} />
                         <span className="text-xs" style={{ color: '#718096' }}>
-                          Subscribed {milestones.refereeSubscribed ? '✓' : ''}
+                          {getTranslatedText("Subscribed")} {milestones.refereeSubscribed ? '✓' : ''}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${milestones.refereeFirstPickup ? 'bg-green-500' : 'bg-gray-300'}`} />
                         <span className="text-xs" style={{ color: '#718096' }}>
-                          First Pickup {milestones.refereeFirstPickup ? '✓' : ''}
+                          {getTranslatedText("First Pickup")} {milestones.refereeFirstPickup ? '✓' : ''}
                         </span>
                       </div>
                     </div>

@@ -1,11 +1,58 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../../modules/shared/utils/referralUtils';
 import { orderAPI } from '../../../modules/shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const PriceConfirmationPage = () => {
+  const staticTexts = [
+    "Confirm & Apply",
+    "Step 5 of 5",
+    "Request Summary",
+    "Categories:",
+    "Images:",
+    "Weight:",
+    "kg",
+    "(Auto-detected)",
+    "Pickup Address:",
+    "📍 Location:",
+    "Price Breakdown:",
+    "Estimated Payout:",
+    "for",
+    "Additional Notes (Optional)",
+    "Add any special instructions or details about your scrap...",
+    "Preferred Pickup Date & Time",
+    "Select a day (today or upcoming days)",
+    "Or type a specific date",
+    "Select a time window",
+    "Or type a specific time",
+    "You selected:",
+    "Submitting Request...",
+    "Apply for Pickup -",
+    "By applying, you agree to our terms and conditions",
+    "Please select a pickup date and time slot before applying.",
+    "Please login to place a pickup request.",
+    "Failed to submit request. Please try again.",
+    "Address not provided",
+    "Plastic",
+    "Metal",
+    "Paper",
+    "Electronics",
+    "Copper",
+    "Aluminium",
+    "Steel",
+    "Brass",
+    "9:00 AM - 11:00 AM",
+    "11:00 AM - 1:00 PM",
+    "1:00 PM - 3:00 PM",
+    "3:00 PM - 5:00 PM",
+    "5:00 PM - 7:00 PM",
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -96,7 +143,7 @@ const PriceConfirmationPage = () => {
   }, []);
 
   // Helper: generate next 7 days (including today)
-  const getNextDays = (count = 7) => {
+  const dayOptions = useMemo(() => {
     const days = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     for (let i = 0; i < count; i++) {
@@ -104,11 +151,11 @@ const PriceConfirmationPage = () => {
       date.setDate(date.getDate() + i);
       const iso = date.toISOString().split('T')[0];
       const dayName = dayNames[date.getDay()];
-      const display = `${dayName}, ${date.getDate()}`;
+      const display = `${getTranslatedText(dayName)}, ${date.getDate()}`;
       days.push({ iso, dayName, display });
     }
     return days;
-  };
+  }, [getTranslatedText]);
 
   const mapCategoryToBackend = (cat) => {
     const id = (cat.id || '').toLowerCase();
@@ -136,13 +183,13 @@ const PriceConfirmationPage = () => {
     setIsSubmitting(true);
 
     if (!selectedDate || !selectedSlot) {
-      alert('Please select a pickup date and time slot before applying.');
+      alert(getTranslatedText('Please select a pickup date and time slot before applying.'));
       setIsSubmitting(false);
       return;
     }
 
     if (!user) {
-      alert('Please login to place a pickup request.');
+      alert(getTranslatedText('Please login to place a pickup request.'));
       setIsSubmitting(false);
       return;
     }
@@ -179,7 +226,7 @@ const PriceConfirmationPage = () => {
 
     // Prepare pickup address from addressData
     const pickupAddress = {
-      street: addressData?.address || 'Address not provided',
+      street: addressData?.address || getTranslatedText('Address not provided'),
       coordinates: {
         lat: addressData?.coordinates?.lat || 0,
         lng: addressData?.coordinates?.lng || 0
@@ -214,10 +261,10 @@ const PriceConfirmationPage = () => {
     } catch (error) {
       console.error('Error submitting request:', error);
       console.error('Error stack:', error.stack);
-      alert(error.message || 'Failed to submit request. Please try again.');
+      alert(getTranslatedText(error.message || 'Failed to submit request. Please try again.'));
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, addressData, preferredTime, user, navigate, marketPrices]);
+  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, addressData, preferredTime, user, navigate, marketPrices, getTranslatedText]);
 
   const timeSlots = [
     '9:00 AM - 11:00 AM',
@@ -226,8 +273,6 @@ const PriceConfirmationPage = () => {
     '3:00 PM - 5:00 PM',
     '5:00 PM - 7:00 PM'
   ];
-
-  const dayOptions = getNextDays(7);
 
   return (
     <motion.div
@@ -253,7 +298,7 @@ const PriceConfirmationPage = () => {
           className="text-lg md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
-          Confirm & Apply
+          {getTranslatedText("Confirm & Apply")}
         </h2>
         <div className="w-10"></div> {/* Spacer for centering */}
       </div>
@@ -270,7 +315,7 @@ const PriceConfirmationPage = () => {
               style={{ backgroundColor: '#64946e' }}
             />
           </div>
-          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 5 of 5</span>
+          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 5 of 5")}</span>
         </div>
       </div>
 
@@ -284,13 +329,13 @@ const PriceConfirmationPage = () => {
           style={{ backgroundColor: '#ffffff' }}
         >
           <h3 className="text-base md:text-lg font-bold mb-4" style={{ color: '#2d3748' }}>
-            Request Summary
+            {getTranslatedText("Request Summary")}
           </h3>
 
           {/* Selected Categories */}
           <div className="mb-4">
             <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-              Categories:
+              {getTranslatedText("Categories:")}
             </p>
             <div className="flex flex-wrap gap-2">
               {selectedCategories.map((cat) => (
@@ -299,7 +344,7 @@ const PriceConfirmationPage = () => {
                   className="px-3 py-1.5 rounded-full text-xs md:text-sm font-medium"
                   style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
                 >
-                  {cat.name}
+                  {getTranslatedText(cat.name)}
                 </span>
               ))}
             </div>
@@ -309,7 +354,7 @@ const PriceConfirmationPage = () => {
           {uploadedImages.length > 0 && (
             <div className="mb-4">
               <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                Images ({uploadedImages.length}):
+                {getTranslatedText("Images")} ({uploadedImages.length}):
               </p>
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {uploadedImages.map((image) => (
@@ -332,13 +377,13 @@ const PriceConfirmationPage = () => {
           {weightData && (
             <div className="mb-4">
               <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                Weight:
+                {getTranslatedText("Weight:")}
               </p>
               <p className="text-base md:text-lg font-semibold" style={{ color: '#2d3748' }}>
-                {weightData.weight} kg
+                {weightData.weight} {getTranslatedText("kg")}
                 {weightData.mode === 'auto' && (
                   <span className="text-xs md:text-sm ml-2" style={{ color: '#718096' }}>
-                    (Auto-detected)
+                    {getTranslatedText("(Auto-detected)")}
                   </span>
                 )}
               </p>
@@ -349,14 +394,14 @@ const PriceConfirmationPage = () => {
           {addressData && (
             <div className="mb-4 pb-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
               <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                Pickup Address:
+                {getTranslatedText("Pickup Address:")}
               </p>
               <p className="text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
                 {addressData.address}
               </p>
               {addressData.coordinates && (
                 <p className="text-xs" style={{ color: '#718096' }}>
-                  📍 Location: {addressData.coordinates.lat.toFixed(6)}, {addressData.coordinates.lng.toFixed(6)}
+                  📍 {getTranslatedText("Location:")} {addressData.coordinates.lat.toFixed(6)}, {addressData.coordinates.lng.toFixed(6)}
                 </p>
               )}
             </div>
@@ -365,15 +410,15 @@ const PriceConfirmationPage = () => {
           {/* Price Breakdown */}
           <div className="mb-4 pb-4 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
             <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-              Price Breakdown:
+              {getTranslatedText("Price Breakdown:")}
             </p>
             {selectedCategories.map((cat) => (
               <div key={cat.id} className="flex justify-between items-center mb-1">
                 <span className="text-xs md:text-sm" style={{ color: '#2d3748' }}>
-                  {cat.name}
+                  {getTranslatedText(cat.name)}
                 </span>
                 <span className="text-xs md:text-sm font-medium" style={{ color: '#64946e' }}>
-                  ₹{marketPrices[cat.name] || 0}/kg
+                  ₹{marketPrices[cat.name] || 0}/{getTranslatedText("kg")}
                 </span>
               </div>
             ))}
@@ -382,14 +427,14 @@ const PriceConfirmationPage = () => {
           {/* Total Estimated Payout */}
           <div className="pt-4">
             <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-              Estimated Payout:
+              {getTranslatedText("Estimated Payout:")}
             </p>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl md:text-4xl font-bold" style={{ color: '#64946e' }}>
                 ₹{estimatedPayout.toFixed(0)}
               </span>
               <span className="text-sm md:text-base" style={{ color: '#718096' }}>
-                for {weightData?.weight || 0} kg
+                {getTranslatedText("for")} {weightData?.weight || 0} {getTranslatedText("kg")}
               </span>
             </div>
           </div>
@@ -406,12 +451,12 @@ const PriceConfirmationPage = () => {
             style={{ backgroundColor: '#ffffff' }}
           >
             <label className="block text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Additional Notes (Optional)
+              {getTranslatedText("Additional Notes (Optional)")}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any special instructions or details about your scrap..."
+              placeholder={getTranslatedText("Add any special instructions or details about your scrap...")}
               rows={4}
               className="w-full py-2 px-3 md:py-3 md:px-4 rounded-lg border-2 focus:outline-none focus:ring-2 transition-all resize-none text-sm md:text-base"
               style={{
@@ -431,13 +476,13 @@ const PriceConfirmationPage = () => {
             style={{ backgroundColor: '#ffffff' }}
           >
             <label className="block text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
-              Preferred Pickup Date & Time
+              {getTranslatedText("Preferred Pickup Date & Time")}
             </label>
 
             {/* Date selection */}
             <div className="mb-3">
               <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                Select a day (today or upcoming days)
+                {getTranslatedText("Select a day (today or upcoming days)")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {dayOptions.map((day) => (
@@ -450,7 +495,7 @@ const PriceConfirmationPage = () => {
                       setSelectedDate(day.iso);
                       // Keep preferredTime string in sync for older consumers
                       if (selectedSlot) {
-                        setPreferredTime(`${day.dayName}, ${day.iso} • ${selectedSlot}`);
+                        setPreferredTime(`${getTranslatedText(day.dayName)}, ${day.iso} • ${getTranslatedText(selectedSlot)}`);
                       }
                     }}
                     className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${selectedDate === day.iso ? 'shadow-md' : ''
@@ -469,7 +514,7 @@ const PriceConfirmationPage = () => {
               {/* Manual date input (theme-styled, no native picker) */}
               <div className="mt-3">
                 <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                  Or type a specific date
+                  {getTranslatedText("Or type a specific date")}
                 </p>
                 <input
                   type="text"
@@ -483,9 +528,9 @@ const PriceConfirmationPage = () => {
                       if (!isNaN(dateObj)) {
                         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                         const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${dayName}, ${value} • ${selectedSlot}`);
+                        setPreferredTime(`${getTranslatedText(dayName)}, ${value} • ${getTranslatedText(selectedSlot)}`);
                       } else {
-                        setPreferredTime(`${value} • ${selectedSlot}`);
+                        setPreferredTime(`${value} • ${getTranslatedText(selectedSlot)}`);
                       }
                     } else {
                       setPreferredTime('');
@@ -504,7 +549,7 @@ const PriceConfirmationPage = () => {
             {/* Time slot selection */}
             <div>
               <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                Select a time window
+                {getTranslatedText("Select a time window")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {timeSlots.map((slot) => (
@@ -520,7 +565,7 @@ const PriceConfirmationPage = () => {
                         const dateObj = new Date(selectedDate);
                         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                         const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${dayName}, ${selectedDate} • ${newSlot}`);
+                        setPreferredTime(`${getTranslatedText(dayName)}, ${selectedDate} • ${getTranslatedText(newSlot)}`);
                       } else if (!newSlot) {
                         setPreferredTime('');
                       }
@@ -543,7 +588,7 @@ const PriceConfirmationPage = () => {
                       }
                     }}
                   >
-                    {slot}
+                    {getTranslatedText(slot)}
                   </button>
                 ))}
               </div>
@@ -551,7 +596,7 @@ const PriceConfirmationPage = () => {
               {/* Manual time input (theme-styled, no native picker) */}
               <div className="mt-3">
                 <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                  Or type a specific time
+                  {getTranslatedText("Or type a specific time")}
                 </p>
                 <input
                   type="text"
@@ -565,7 +610,7 @@ const PriceConfirmationPage = () => {
                       if (!isNaN(dateObj)) {
                         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                         const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${dayName}, ${selectedDate} • ${value}`);
+                        setPreferredTime(`${getTranslatedText(dayName)}, ${selectedDate} • ${value}`);
                       } else {
                         setPreferredTime(`${selectedDate} • ${value}`);
                       }
@@ -586,7 +631,7 @@ const PriceConfirmationPage = () => {
             {/* Small summary line when both selected */}
             {selectedDate && selectedSlot && (
               <p className="mt-3 text-xs md:text-sm" style={{ color: '#718096' }}>
-                You selected: <span className="font-semibold" style={{ color: '#2d3748' }}>{preferredTime}</span>
+                {getTranslatedText("You selected:")} <span className="font-semibold" style={{ color: '#2d3748' }}>{preferredTime}</span>
               </p>
             )}
           </motion.div>
@@ -613,7 +658,7 @@ const PriceConfirmationPage = () => {
               style={{ borderTopColor: '#64946e', borderRightColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: 'transparent' }}
             />
             <span className="ml-3 text-sm md:text-base font-semibold" style={{ color: '#64946e' }}>
-              Submitting Request...
+              {getTranslatedText("Submitting Request...")}
             </span>
           </div>
         ) : (
@@ -658,11 +703,11 @@ const PriceConfirmationPage = () => {
               }
             }}
           >
-            Apply for Pickup - ₹{estimatedPayout.toFixed(0)}
+            {getTranslatedText("Apply for Pickup -")} ₹{estimatedPayout.toFixed(0)}
           </motion.button>
         )}
         <p className="text-xs md:text-sm text-center mt-3" style={{ color: '#718096' }}>
-          By applying, you agree to our terms and conditions
+          {getTranslatedText("By applying, you agree to our terms and conditions")}
         </p>
       </div>
     </motion.div>

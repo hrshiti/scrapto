@@ -8,8 +8,28 @@ import electronicImage from '../../../modules/user/assets/electronicbg.png';
 
 import { publicAPI } from '../../../modules/shared/utils/api';
 import { getEffectivePriceFeed } from '../../../modules/shared/utils/priceFeedUtils';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const CategorySelectionPage = () => {
+  const staticTexts = [
+    "Select Scrap Category",
+    "Step 1 of 4",
+    "Continue with",
+    "Category",
+    "Categories",
+    "Selected:",
+    "Select one or more categories to continue",
+    "kg",
+    "Plastic",
+    "Metal",
+    "Paper",
+    "Electronics",
+    "Copper",
+    "Aluminium",
+    "Steel",
+    "Brass"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const location = useLocation();
   const [categories, setCategories] = useState([]);
@@ -127,7 +147,7 @@ const CategorySelectionPage = () => {
           className="text-xl md:text-2xl font-bold"
           style={{ color: '#2d3748' }}
         >
-          Select Scrap Category
+          {getTranslatedText("Select Scrap Category")}
         </h2>
         <div className="w-10"></div> {/* Spacer for centering */}
       </div>
@@ -144,7 +164,7 @@ const CategorySelectionPage = () => {
               style={{ backgroundColor: '#64946e' }}
             />
           </div>
-          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>Step 1 of 4</span>
+          <span className="text-xs md:text-sm" style={{ color: '#718096' }}>{getTranslatedText("Step 1 of 4")}</span>
         </div>
       </div>
 
@@ -171,7 +191,7 @@ const CategorySelectionPage = () => {
               >
                 <img
                   src={category.image}
-                  alt={category.name}
+                  alt={getTranslatedText(category.name)}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -203,13 +223,13 @@ const CategorySelectionPage = () => {
                   className="text-xs md:text-sm font-semibold mb-0.5 md:mb-1"
                   style={{ color: '#2d3748' }}
                 >
-                  {category.name}
+                  {getTranslatedText(category.name)}
                 </p>
                 <p
                   className="text-[10px] md:text-xs font-medium"
                   style={{ color: '#64946e' }}
                 >
-                  ₹{category.price}/kg
+                  ₹{category.price}/{getTranslatedText("kg")}
                 </p>
               </div>
             </motion.div>
@@ -237,13 +257,13 @@ const CategorySelectionPage = () => {
               onMouseEnter={(e) => e.target.style.backgroundColor = '#5a8263'}
               onMouseLeave={(e) => e.target.style.backgroundColor = '#64946e'}
             >
-              Continue with {selectedCategories.length} {selectedCategories.length === 1 ? 'Category' : 'Categories'}
+              {getTranslatedText("Continue with")} {selectedCategories.length} {selectedCategories.length === 1 ? getTranslatedText("Category") : getTranslatedText("Categories")}
             </motion.button>
             <p
               className="text-xs md:text-sm text-center mt-2"
               style={{ color: '#718096' }}
             >
-              Selected: {selectedCategories.map(cat => cat.name).join(', ')}
+              {getTranslatedText("Selected:")} {selectedCategories.map(cat => getTranslatedText(cat.name)).join(', ')}
             </p>
           </div>
         ) : (
@@ -251,7 +271,7 @@ const CategorySelectionPage = () => {
             className="text-xs md:text-sm text-center"
             style={{ color: '#718096' }}
           >
-            Select one or more categories to continue
+            {getTranslatedText("Select one or more categories to continue")}
           </p>
         )}
       </div>

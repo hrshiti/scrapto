@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaCheckCircle, FaSearch, FaDownload, FaCalendarAlt, FaUser, FaTruck, FaRupeeSign, FaEye } from 'react-icons/fa';
 import { adminOrdersAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const CompletedOrders = () => {
   const navigate = useNavigate();
@@ -11,6 +12,34 @@ const CompletedOrders = () => {
   const [filter, setFilter] = useState('all'); // all, today, week, month
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState(null);
+  const staticTexts = [
+    "Failed to load completed orders",
+    "Completed Orders",
+    "View all completed pickup orders",
+    "Total Revenue: ₹{revenue}",
+    "Export CSV",
+    "Search by order ID, user, or scrapper...",
+    "Loading orders...",
+    "No completed orders found",
+    "Try adjusting your filters",
+    "No orders have been completed yet",
+    "Completed",
+    "User: {name}",
+    "Scrapper: {name}",
+    "Items: {items}",
+    "Mixed",
+    "Weight: {weight} kg",
+    "View User",
+    "all",
+    "today",
+    "week",
+    "month",
+    "All",
+    "Today",
+    "Week",
+    "Month"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadOrders();
@@ -43,7 +72,7 @@ const CompletedOrders = () => {
       }
     } catch (err) {
       console.error('Error loading completed orders:', err);
-      setError('Failed to load completed orders');
+      setError(getTranslatedText('Failed to load completed orders'));
     } finally {
       setLoading(false);
     }
@@ -109,16 +138,16 @@ const CompletedOrders = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-xl md:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Completed Orders
+              {getTranslatedText("Completed Orders")}
             </h1>
             <p className="text-xs md:text-base" style={{ color: '#718096' }}>
-              View all completed pickup orders
+              {getTranslatedText("View all completed pickup orders")}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="px-3 py-1.5 md:px-4 md:py-2 rounded-xl" style={{ backgroundColor: '#f7fafc' }}>
               <span className="text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                Total Revenue: ₹{totalRevenue.toLocaleString()}
+                {getTranslatedText("Total Revenue: ₹{revenue}", { revenue: totalRevenue.toLocaleString() })}
               </span>
             </div>
             <motion.button
@@ -129,8 +158,8 @@ const CompletedOrders = () => {
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
               <FaDownload className="text-xs md:text-sm" />
-              <span className="hidden sm:inline">Export CSV</span>
-              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">{getTranslatedText("Export CSV")}</span>
+              <span className="sm:hidden">{getTranslatedText("Export CSV")}</span>
             </motion.button>
           </div>
         </div>
@@ -149,7 +178,7 @@ const CompletedOrders = () => {
             <FaSearch className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-xs md:text-base" style={{ color: '#718096' }} />
             <input
               type="text"
-              placeholder="Search by order ID, user, or scrapper..."
+              placeholder={getTranslatedText("Search by order ID, user, or scrapper...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2 md:py-3 rounded-xl border-2 focus:outline-none focus:ring-2 transition-all text-sm md:text-base"
@@ -174,7 +203,7 @@ const CompletedOrders = () => {
                   color: filter === period ? '#ffffff' : '#2d3748'
                 }}
               >
-                {period.charAt(0).toUpperCase() + period.slice(1)}
+                {getTranslatedText(period.charAt(0).toUpperCase() + period.slice(1))}
               </button>
             ))}
           </div>
@@ -192,7 +221,7 @@ const CompletedOrders = () => {
           {loading ? (
             <div className="p-12 text-center">
               <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
-              <p style={{ color: '#718096' }}>Loading orders...</p>
+              <p style={{ color: '#718096' }}>{getTranslatedText("Loading orders...")}</p>
             </div>
           ) : filteredOrders.length === 0 ? (
             <motion.div
@@ -202,10 +231,10 @@ const CompletedOrders = () => {
             >
               <FaCheckCircle className="mx-auto mb-4" style={{ color: '#cbd5e0', fontSize: '48px' }} />
               <p className="text-lg font-semibold mb-2" style={{ color: '#2d3748' }}>
-                No completed orders found
+                {getTranslatedText("No completed orders found")}
               </p>
               <p className="text-sm" style={{ color: '#718096' }}>
-                {searchQuery || filter !== 'all' ? 'Try adjusting your filters' : 'No orders have been completed yet'}
+                {searchQuery || filter !== 'all' ? getTranslatedText('Try adjusting your filters') : getTranslatedText('No orders have been completed yet')}
               </p>
             </motion.div>
           ) : (
@@ -228,21 +257,21 @@ const CompletedOrders = () => {
                       </h3>
                       <span className="flex items-center gap-1 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: '#d1fae5', color: '#10b981' }}>
                         <FaCheckCircle className="text-xs" />
-                        <span className="hidden sm:inline">Completed</span>
-                        <span className="sm:hidden">C</span>
+                        <span className="hidden sm:inline">{getTranslatedText("Completed")}</span>
+                        <span className="sm:hidden">{getTranslatedText("Completed").charAt(0)}</span>
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5 md:gap-3 text-xs md:text-sm" style={{ color: '#718096' }}>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaUser className="text-xs" />
-                        <span className="truncate">User: {order.user?.name || 'N/A'}</span>
+                        <span className="truncate">{getTranslatedText("User: {name}", { name: order.user?.name || 'N/A' })}</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaTruck className="text-xs" />
-                        <span className="truncate">Scrapper: {order.scrapper?.name || 'N/A'}</span>
+                        <span className="truncate">{getTranslatedText("Scrapper: {name}", { name: order.scrapper?.name || 'N/A' })}</span>
                       </div>
                       <div>
-                        Items: {order.scrapItems?.map(i => i.category).join(', ') || 'Mixed'}
+                        {getTranslatedText("Items: {items}", { items: order.scrapItems?.map(i => i.category).join(', ') || getTranslatedText('Mixed') })}
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaRupeeSign className="text-xs" />
@@ -251,7 +280,7 @@ const CompletedOrders = () => {
                         </span>
                       </div>
                       <div>
-                        Weight: {order.totalWeight || order.scrapItems?.reduce((sum, i) => sum + i.weight, 0) || 0} kg
+                        {getTranslatedText("Weight: {weight} kg", { weight: order.totalWeight || order.scrapItems?.reduce((sum, i) => sum + i.weight, 0) || 0 })}
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <FaCalendarAlt className="text-xs" />
@@ -272,7 +301,7 @@ const CompletedOrders = () => {
                       style={{ backgroundColor: '#64946e', color: '#ffffff' }}
                     >
                       <FaEye className="text-xs md:text-sm" />
-                      <span className="hidden sm:inline">View User</span>
+                      <span className="hidden sm:inline">{getTranslatedText("View User")}</span>
                     </motion.button>
                   </div>
                 </div>

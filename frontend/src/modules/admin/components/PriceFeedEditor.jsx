@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { FaRupeeSign, FaSave, FaUpload, FaDownload, FaEdit, FaCheck, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 import { DEFAULT_PRICE_FEED, DEFAULT_SERVICE_FEED, PRICE_TYPES } from '../../shared/utils/priceFeedUtils';
 import { adminAPI } from '../../shared/utils/api';
+import { usePageTranslation } from '../../../hooks/usePageTranslation';
 
 const PriceFeedEditor = () => {
   const [prices, setPrices] = useState([]);
@@ -15,6 +16,68 @@ const PriceFeedEditor = () => {
   const [newMaterialData, setNewMaterialData] = useState({ category: '', price: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const staticTexts = [
+    "Please enter a valid price",
+    "Price saved successfully!",
+    "Failed to save price",
+    "Failed to save price. Please try again.",
+    "Are you sure you want to delete this category? This action cannot be undone.",
+    "Category deleted successfully!",
+    "Failed to delete category",
+    "Failed to delete category. Please try again.",
+    "Category removed!",
+    "Please fill in all fields",
+    "Service added successfully!",
+    "Material added successfully!",
+    "Failed to add material",
+    "All prices saved successfully!",
+    "{count} prices failed to save",
+    "Failed to save some prices. Please try again.",
+    "Successfully imported {count} prices!",
+    "Failed to save some imported prices. Please try again.",
+    "No valid prices found in CSV file",
+    "Price Feed Management",
+    "Manage scrap category prices per kilogram",
+    "Add Material",
+    "Add",
+    "Export CSV",
+    "Export",
+    "Import CSV",
+    "Import",
+    "Save All",
+    "Save",
+    "Scrap Materials",
+    "Cleaning Services",
+    "Loading prices...",
+    "Retry",
+    "Category",
+    "Service Name",
+    "Price per Kg (₹)",
+    "Service Fee (₹)",
+    "Price",
+    "Fee",
+    "Region",
+    "Last Updated",
+    "Actions",
+    "Edit price",
+    "Delete category",
+    "Import Prices from CSV",
+    "Upload a CSV file with columns: Category, Price per Kg, Region, Effective Date",
+    "Cancel",
+    "Add New {type}",
+    "Service Name",
+    "Category Name",
+    "e.g. Garage Cleaning",
+    "e.g. Copper Wire",
+    "Fixed Fee (₹)",
+    "Price per Kg (₹)",
+    "e.g. 500",
+    "e.g. 450",
+    "Adding...",
+    "Add Service",
+    "Add Material"
+  ];
+  const { getTranslatedText } = usePageTranslation(staticTexts);
 
   useEffect(() => {
     loadPrices();
@@ -100,7 +163,7 @@ const PriceFeedEditor = () => {
       setPrices(defaultPrices);
       // Don't show error to user if we have defaults, but maybe log it
       if (err.response?.status !== 404) {
-        setError(err.message || 'Failed to load prices');
+        setError(err.message || getTranslatedText('Failed to load prices'));
       }
     } finally {
       setLoading(false);
@@ -122,7 +185,7 @@ const PriceFeedEditor = () => {
   const handleSave = async (id) => {
     const newPrice = parseFloat(editValue);
     if (isNaN(newPrice) || newPrice < 0) {
-      alert('Please enter a valid price');
+      alert(getTranslatedText('Please enter a valid price'));
       return;
     }
 
@@ -161,13 +224,13 @@ const PriceFeedEditor = () => {
         await loadPrices();
         setEditingId(null);
         setEditValue('');
-        alert('Price saved successfully!');
+        alert(getTranslatedText('Price saved successfully!'));
       } else {
-        throw new Error(response.error || response.message || 'Failed to save price');
+        throw new Error(response.error || response.message || getTranslatedText('Failed to save price'));
       }
     } catch (error) {
       console.error('Error saving price:', error);
-      alert(error.message || 'Failed to save price. Please try again.');
+      alert(error.message || getTranslatedText('Failed to save price. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -180,7 +243,7 @@ const PriceFeedEditor = () => {
 
   const handleDelete = async (id) => {
     // Confirm before deleting
-    if (!window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+    if (!window.confirm(getTranslatedText('Are you sure you want to delete this category? This action cannot be undone.'))) {
       return;
     }
 
@@ -193,18 +256,18 @@ const PriceFeedEditor = () => {
 
         if (response.success) {
           await loadPrices();
-          alert('Category deleted successfully!');
+          alert(getTranslatedText('Category deleted successfully!'));
         } else {
-          throw new Error(response.message || 'Failed to delete category');
+          throw new Error(response.message || getTranslatedText('Failed to delete category'));
         }
       } else {
         // Local-only price, just remove from state
         setPrices(prevPrices => prevPrices.filter(p => p.id !== id));
-        alert('Category removed!');
+        alert(getTranslatedText('Category removed!'));
       }
     } catch (error) {
       console.error('Error deleting category:', error);
-      alert(error.message || 'Failed to delete category. Please try again.');
+      alert(error.message || getTranslatedText('Failed to delete category. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -213,7 +276,7 @@ const PriceFeedEditor = () => {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!newMaterialData.category || !newMaterialData.price) {
-      alert('Please fill in all fields');
+      alert(getTranslatedText('Please fill in all fields'));
       return;
     }
 
@@ -236,13 +299,15 @@ const PriceFeedEditor = () => {
         await loadPrices();
         setShowAddModal(false);
         setNewMaterialData({ category: '', price: '', description: '' });
-        alert(`${activeTab === PRICE_TYPES.SERVICE ? 'Service' : 'Material'} added successfully!`);
+        alert(activeTab === PRICE_TYPES.SERVICE
+          ? getTranslatedText('Service added successfully!')
+          : getTranslatedText('Material added successfully!'));
       } else {
-        throw new Error(response.message || 'Failed to add material');
+        throw new Error(response.message || getTranslatedText('Failed to add material'));
       }
     } catch (error) {
       console.error('Error adding material:', error);
-      alert(error.message || 'Failed to add material');
+      alert(error.message || getTranslatedText('Failed to add material'));
     } finally {
       setIsSaving(false);
     }
@@ -278,13 +343,13 @@ const PriceFeedEditor = () => {
       if (failed.length === 0) {
         // Reload prices from backend
         await loadPrices();
-        alert('All prices saved successfully!');
+        alert(getTranslatedText('All prices saved successfully!'));
       } else {
-        throw new Error(`${failed.length} prices failed to save`);
+        throw new Error(getTranslatedText("{count} prices failed to save", { count: failed.length }));
       }
     } catch (error) {
       console.error('Error saving prices:', error);
-      alert(error.message || 'Failed to save some prices. Please try again.');
+      alert(error.message || getTranslatedText('Failed to save some prices. Please try again.'));
     } finally {
       setIsSaving(false);
     }
@@ -374,14 +439,14 @@ const PriceFeedEditor = () => {
         try {
           await Promise.all(savePromises);
           await loadPrices(); // Reload from backend
-          alert(`Successfully imported ${importedPrices.length} prices!`);
+          alert(getTranslatedText("Successfully imported {count} prices!", { count: importedPrices.length }));
           setShowCSVModal(false);
         } catch (error) {
           console.error('Error saving imported prices:', error);
-          alert('Failed to save some imported prices. Please try again.');
+          alert(getTranslatedText('Failed to save some imported prices. Please try again.'));
         }
       } else {
-        alert('No valid prices found in CSV file');
+        alert(getTranslatedText('No valid prices found in CSV file'));
       }
     };
     reader.readAsText(file);
@@ -398,10 +463,10 @@ const PriceFeedEditor = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
           <div>
             <h1 className="text-lg md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2" style={{ color: '#2d3748' }}>
-              Price Feed Management
+              {getTranslatedText("Price Feed Management")}
             </h1>
             <p className="text-xs md:text-sm lg:text-base" style={{ color: '#718096' }}>
-              Manage scrap category prices per kilogram
+              {getTranslatedText("Manage scrap category prices per kilogram")}
             </p>
           </div>
           <div className="flex gap-1.5 md:gap-2 flex-wrap">
@@ -413,8 +478,8 @@ const PriceFeedEditor = () => {
               style={{ backgroundColor: '#64946e', color: '#ffffff' }}
             >
               <FaPlus className="text-xs md:text-sm" />
-              <span className="hidden sm:inline">Add Material</span>
-              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">{getTranslatedText("Add Material")}</span>
+              <span className="sm:hidden">{getTranslatedText("Add")}</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -424,8 +489,8 @@ const PriceFeedEditor = () => {
               style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
             >
               <FaDownload className="text-xs md:text-sm" />
-              <span className="hidden sm:inline">Export CSV</span>
-              <span className="sm:hidden">Export</span>
+              <span className="hidden sm:inline">{getTranslatedText("Export CSV")}</span>
+              <span className="sm:hidden">{getTranslatedText("Export")}</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -435,8 +500,8 @@ const PriceFeedEditor = () => {
               style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
             >
               <FaUpload className="text-xs md:text-sm" />
-              <span className="hidden sm:inline">Import CSV</span>
-              <span className="sm:hidden">Import</span>
+              <span className="hidden sm:inline">{getTranslatedText("Import CSV")}</span>
+              <span className="sm:hidden">{getTranslatedText("Import")}</span>
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -447,8 +512,8 @@ const PriceFeedEditor = () => {
               style={{ backgroundColor: '#2d3748', color: '#ffffff' }}
             >
               <FaSave className="text-xs md:text-sm" />
-              <span className="hidden sm:inline">Save All</span>
-              <span className="sm:hidden">Save</span>
+              <span className="hidden sm:inline">{getTranslatedText("Save All")}</span>
+              <span className="sm:hidden">{getTranslatedText("Save")}</span>
             </motion.button>
           </div>
         </div>
@@ -462,7 +527,7 @@ const PriceFeedEditor = () => {
               : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
           >
-            Scrap Materials
+            {getTranslatedText("Scrap Materials")}
           </button>
           <button
             onClick={() => setActiveTab(PRICE_TYPES.SERVICE)}
@@ -471,7 +536,7 @@ const PriceFeedEditor = () => {
               : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
           >
-            Cleaning Services
+            {getTranslatedText("Cleaning Services")}
           </button>
         </div>
       </motion.div >
@@ -486,7 +551,7 @@ const PriceFeedEditor = () => {
           >
             <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: '#64946e' }} />
             <p className="text-sm md:text-base font-semibold" style={{ color: '#2d3748' }}>
-              Loading prices...
+              {getTranslatedText("Loading prices...")}
             </p>
           </motion.div>
         )
@@ -507,7 +572,7 @@ const PriceFeedEditor = () => {
               className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
               style={{ backgroundColor: '#64946e' }}
             >
-              Retry
+              {getTranslatedText("Retry")}
             </button>
           </motion.div>
         )
@@ -527,20 +592,20 @@ const PriceFeedEditor = () => {
                 <thead style={{ backgroundColor: '#f7fafc' }}>
                   <tr>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                      {activeTab === PRICE_TYPES.MATERIAL ? 'Category' : 'Service Name'}
+                      {activeTab === PRICE_TYPES.MATERIAL ? getTranslatedText('Category') : getTranslatedText('Service Name')}
                     </th>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                      <span className="hidden sm:inline">{activeTab === PRICE_TYPES.MATERIAL ? 'Price per Kg (₹)' : 'Service Fee (₹)'}</span>
-                      <span className="sm:hidden">{activeTab === PRICE_TYPES.MATERIAL ? 'Price' : 'Fee'}</span>
+                      <span className="hidden sm:inline">{activeTab === PRICE_TYPES.MATERIAL ? getTranslatedText('Price per Kg (₹)') : getTranslatedText('Service Fee (₹)')}</span>
+                      <span className="sm:hidden">{activeTab === PRICE_TYPES.MATERIAL ? getTranslatedText('Price') : getTranslatedText('Fee')}</span>
                     </th>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden md:table-cell" style={{ color: '#2d3748' }}>
-                      Region
+                      {getTranslatedText("Region")}
                     </th>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-left text-xs md:text-sm font-semibold hidden lg:table-cell" style={{ color: '#2d3748' }}>
-                      Last Updated
+                      {getTranslatedText("Last Updated")}
                     </th>
                     <th className="px-2 py-2 md:px-6 md:py-4 text-center text-xs md:text-sm font-semibold" style={{ color: '#2d3748' }}>
-                      Actions
+                      {getTranslatedText("Actions")}
                     </th>
                   </tr>
                 </thead>
@@ -612,7 +677,7 @@ const PriceFeedEditor = () => {
                               onClick={() => handleEdit(price)}
                               className="p-1.5 md:p-2 rounded-lg transition-all"
                               style={{ backgroundColor: '#f7fafc', color: '#64946e' }}
-                              title="Edit price"
+                              title={getTranslatedText("Edit price")}
                             >
                               <FaEdit className="text-xs md:text-sm" />
                             </motion.button>
@@ -622,7 +687,7 @@ const PriceFeedEditor = () => {
                               onClick={() => handleDelete(price.id)}
                               className="p-1.5 md:p-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                               style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
-                              title="Delete category"
+                              title={getTranslatedText("Delete category")}
                               disabled={isSaving}
                             >
                               <FaTrash className="text-xs md:text-sm" />
@@ -655,10 +720,10 @@ const PriceFeedEditor = () => {
               className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
             >
               <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-                Import Prices from CSV
+                {getTranslatedText("Import Prices from CSV")}
               </h2>
               <p className="text-sm mb-4" style={{ color: '#718096' }}>
-                Upload a CSV file with columns: Category, Price per Kg, Region, Effective Date
+                {getTranslatedText("Upload a CSV file with columns: Category, Price per Kg, Region, Effective Date")}
               </p>
               <input
                 type="file"
@@ -675,7 +740,7 @@ const PriceFeedEditor = () => {
                   className="flex-1 px-4 py-3 rounded-xl font-semibold transition-all"
                   style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                 >
-                  Cancel
+                  {getTranslatedText("Cancel")}
                 </motion.button>
               </div>
             </motion.div>
@@ -699,18 +764,18 @@ const PriceFeedEditor = () => {
               className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
             >
               <h2 className="text-xl font-bold mb-4" style={{ color: '#2d3748' }}>
-                Add New {activeTab === PRICE_TYPES.SERVICE ? 'Service' : 'Material'}
+                {getTranslatedText("Add New {type}", { type: activeTab === PRICE_TYPES.SERVICE ? getTranslatedText('Service') : getTranslatedText('Material') })}
               </h2>
               <form onSubmit={handleAddSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>
-                    {activeTab === PRICE_TYPES.SERVICE ? 'Service Name' : 'Category Name'}
+                    {activeTab === PRICE_TYPES.SERVICE ? getTranslatedText('Service Name') : getTranslatedText('Category Name')}
                   </label>
                   <input
                     type="text"
                     value={newMaterialData.category}
                     onChange={(e) => setNewMaterialData(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder={activeTab === PRICE_TYPES.SERVICE ? "e.g. Garage Cleaning" : "e.g. Copper Wire"}
+                    placeholder={activeTab === PRICE_TYPES.SERVICE ? getTranslatedText("e.g. Garage Cleaning") : getTranslatedText("e.g. Copper Wire")}
                     className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                     style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
                     required
@@ -718,13 +783,13 @@ const PriceFeedEditor = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1" style={{ color: '#4a5568' }}>
-                    {activeTab === PRICE_TYPES.SERVICE ? 'Fixed Fee (₹)' : 'Price per Kg (₹)'}
+                    {activeTab === PRICE_TYPES.SERVICE ? getTranslatedText('Fixed Fee (₹)') : getTranslatedText('Price per Kg (₹)')}
                   </label>
                   <input
                     type="number"
                     value={newMaterialData.price}
                     onChange={(e) => setNewMaterialData(prev => ({ ...prev, price: e.target.value }))}
-                    placeholder={activeTab === PRICE_TYPES.SERVICE ? "e.g. 500" : "e.g. 450"}
+                    placeholder={activeTab === PRICE_TYPES.SERVICE ? getTranslatedText("e.g. 500") : getTranslatedText("e.g. 450")}
                     className="w-full px-4 py-2 rounded-xl border-2 focus:outline-none focus:ring-2 focus:border-transparent transition-all"
                     style={{ borderColor: '#e2e8f0', focusRingColor: '#64946e' }}
                     required
@@ -741,7 +806,7 @@ const PriceFeedEditor = () => {
                     className="flex-1 px-4 py-2 rounded-xl font-semibold transition-all"
                     style={{ backgroundColor: '#f7fafc', color: '#2d3748' }}
                   >
-                    Cancel
+                    {getTranslatedText("Cancel")}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
@@ -751,7 +816,7 @@ const PriceFeedEditor = () => {
                     className="flex-1 px-4 py-2 rounded-xl font-semibold text-white transition-all shadow-md"
                     style={{ backgroundColor: '#64946e' }}
                   >
-                    {isSaving ? 'Adding...' : (activeTab === PRICE_TYPES.SERVICE ? 'Add Service' : 'Add Material')}
+                    {isSaving ? getTranslatedText('Adding...') : (activeTab === PRICE_TYPES.SERVICE ? getTranslatedText('Add Service') : getTranslatedText('Add Material'))}
                   </motion.button>
                 </div>
               </form>
