@@ -19,7 +19,7 @@ const PriceTicker = () => {
     const fetchPrices = async () => {
       try {
         const response = await publicAPI.getPrices();
-        if (response.success && response.data?.prices?.length > 0) {
+        if (response.success && Array.isArray(response.data?.prices) && response.data.prices.length > 0) {
           const mapped = await Promise.all(
             response.data.prices.map(async (item) => ({
               type: await translate(item.category),

@@ -18,7 +18,10 @@ import scrapImage3 from "../assets/scrap5.png";
 import plasticImage from "../assets/plastic.jpg";
 import metalImage from "../assets/metal.jpg";
 import electronicImage from "../assets/electronicbg.png";
+
 import BannerSlider from "../../shared/components/BannerSlider";
+import { publicAPI } from "../../shared/utils/api";
+import { getEffectivePriceFeed, PRICE_TYPES } from "../../shared/utils/priceFeedUtils";
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -39,7 +42,8 @@ const Hero = () => {
   const locationInputRef = useRef(null);
   const suggestionsRef = useRef(null);
   const debounceTimerRef = useRef(null);
-  const { translateObject } = useDynamicTranslation();
+
+  const { translateObject, translateBatch } = useDynamicTranslation();
 
   const originalBanners = useMemo(
     () => [
@@ -65,7 +69,101 @@ const Hero = () => {
     []
   );
 
+
+
   const [banners, setBanners] = useState(originalBanners);
+  const [rawCategories, setRawCategories] = useState([]);
+  const [activeCategories, setActiveCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+
+  // Helper to get image based on category name
+  const getCategoryImage = (name) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("plastic")) return plasticImage;
+    if (
+      lowerName.includes("metal") ||
+      lowerName.includes("iron") ||
+      lowerName.includes("steel") ||
+      lowerName.includes("copper") ||
+      lowerName.includes("brass") ||
+      lowerName.includes("aluminium")
+    )
+      return metalImage;
+    if (
+      lowerName.includes("paper") ||
+      lowerName.includes("book") ||
+      lowerName.includes("cardboard")
+    )
+      return scrapImage2;
+    if (
+      lowerName.includes("electron") ||
+      lowerName.includes("device") ||
+      lowerName.includes("computer") ||
+      lowerName.includes("phone")
+    )
+      return electronicImage;
+    return scrapImage2; // Default fallback
+  };
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setCategoriesLoading(true);
+      try {
+        const response = await publicAPI.getPrices();
+        if (response.success && response.data?.prices?.length > 0) {
+          // Filter out services, keep only materials
+          const materials = response.data.prices.filter(p => !p.type || p.type === PRICE_TYPES.MATERIAL);
+
+          // Map to display format and limit to 6 for the home screen
+          const mapped = materials.slice(0, 6).map(p => ({
+            name: p.category,
+            originalName: p.category,
+            image: p.image || getCategoryImage(p.category)
+          }));
+
+          setRawCategories(mapped);
+          setActiveCategories(mapped);
+        } else {
+          throw new Error("No prices found");
+        }
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+        // Fallback to default
+        const feed = getEffectivePriceFeed();
+        const mapped = feed.slice(0, 6).map(item => ({
+          name: item.category,
+          originalName: item.category,
+          image: getCategoryImage(item.category)
+        }));
+        setRawCategories(mapped);
+        setActiveCategories(mapped);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Effect to translate categories when language changes
+  useEffect(() => {
+    const translateCategories = async () => {
+      if (rawCategories.length === 0) return;
+
+      try {
+        const names = rawCategories.map(c => c.originalName);
+        const translatedNames = await translateBatch(names);
+
+        const translatedCats = rawCategories.map((c, i) => ({
+          ...c,
+          name: translatedNames[i] || c.originalName
+        }));
+        setActiveCategories(translatedCats);
+      } catch (error) {
+        console.error("Error translating categories:", error);
+      }
+    };
+    translateCategories();
+  }, [rawCategories, translateBatch]);
   const { getTranslatedText } = usePageTranslation([
     "Current Location",
     "Enter location manually",
@@ -103,6 +201,23 @@ const Hero = () => {
     "Highest market rates with real-time pricing so every deal stays fair.",
     "Verified & Safe",
     "KYC-verified partners with reliable pickups for a worry-free experience.",
+    "Premium",
+    "Experience a spotless home with our professional deep cleaning. Verified experts & eco-friendly products.",
+    "Verified",
+    "Iron",
+    "Steel",
+    "Copper",
+    "Brass",
+    "Aluminium",
+    "Cardboard",
+    "Books",
+    "Newspaper",
+    "Old Books",
+    "Cartons",
+    "E-Waste",
+    "Batteries",
+    "Cables",
+    "Book Now"
   ]);
 
   useEffect(() => {
@@ -729,118 +844,51 @@ const Hero = () => {
                   <div
                     className="flex flex-col gap-3 md:gap-4"
                     style={{ width: "max-content" }}>
-                    {/* First Row */}
-                    <div className="flex gap-3 md:gap-4">
-                      {[
-                        {
-                          name: "Plastic",
-                          image: plasticImage,
-                        },
-                        {
-                          name: "Paper",
-                          image: scrapImage2,
-                        },
-                        {
-                          name: "Glass",
-                          image: scrapImage3,
-                        },
-                      ].map((category, index) => (
-                        <motion.div
-                          key={category.name}
-                          initial={{ x: -20 }}
-                          animate={{ x: 0 }}
-                          transition={{
-                            duration: 0.5,
-                            delay: 0.7 + index * 0.1,
-                          }}
-                          className="flex-shrink-0 w-24 md:w-28 lg:w-32 cursor-pointer"
-                          onClick={() =>
-                            navigate("/add-scrap/category", {
-                              state: { preSelectedCategory: category.name },
-                            })
-                          }
-                          whileTap={{ scale: 0.95 }}>
-                          <div
-                            className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
-                            style={{ backgroundColor: "#ffffff" }}>
+                    {/* Display dynamic categories in rows of 3 */}
+                    {Array.from({ length: Math.ceil(activeCategories.length / 3) }).map((_, rowIndex) => (
+                      <div key={rowIndex} className="flex gap-3 md:gap-4">
+                        {activeCategories.slice(rowIndex * 3, (rowIndex + 1) * 3).map((category, index) => (
+                          <motion.div
+                            key={category.name}
+                            initial={{ x: -20 }}
+                            animate={{ x: 0 }}
+                            transition={{
+                              duration: 0.5,
+                              delay: 0.7 + (rowIndex * 3 + index) * 0.1,
+                            }}
+                            className="flex-shrink-0 w-24 md:w-28 lg:w-32 cursor-pointer"
+                            onClick={() =>
+                              navigate("/add-scrap/category", {
+                                state: { preSelectedCategory: category.name },
+                              })
+                            }
+                            whileTap={{ scale: 0.95 }}>
                             <div
-                              className="aspect-square relative overflow-hidden bg-gray-100"
-                              style={{ width: "100%" }}>
-                              <img
-                                src={category.image}
-                                alt={category.name}
-                                className="w-full h-full object-cover"
-                                style={{ display: "block" }}
-                                loading="lazy"
-                              />
+                              className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
+                              style={{ backgroundColor: "#ffffff" }}>
+                              <div
+                                className="aspect-square relative overflow-hidden bg-gray-100"
+                                style={{ width: "100%" }}>
+                                <img
+                                  src={category.image}
+                                  alt={category.name}
+                                  className="w-full h-full object-cover"
+                                  style={{ display: "block" }}
+                                  loading="lazy"
+                                />
+                              </div>
+                              <div className="p-2 md:p-2.5">
+                                <p
+                                  className="text-xs md:text-sm font-semibold text-center truncate"
+                                  style={{ color: "#2d3748" }}>
+                                  {category.name}
+                                </p>
+                              </div>
                             </div>
-                            <div className="p-2 md:p-2.5">
-                              <p
-                                className="text-xs md:text-sm font-semibold text-center"
-                                style={{ color: "#2d3748" }}>
-                                {getTranslatedText(category.name)}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                    {/* Second Row */}
-                    <div className="flex gap-3 md:gap-4">
-                      {[
-                        {
-                          name: "Metal",
-                          image: metalImage,
-                        },
-                        {
-                          name: "Electronics",
-                          image: electronicImage,
-                        },
-                        {
-                          name: "Textile",
-                          image: scrapImage,
-                        },
-                      ].map((category, index) => (
-                        <motion.div
-                          key={category.name}
-                          initial={{ x: -20 }}
-                          animate={{ x: 0 }}
-                          transition={{
-                            duration: 0.5,
-                            delay: 1.0 + index * 0.1,
-                          }}
-                          className="flex-shrink-0 w-24 md:w-28 lg:w-32 cursor-pointer"
-                          onClick={() =>
-                            navigate("/add-scrap/category", {
-                              state: { preSelectedCategory: category.name },
-                            })
-                          }
-                          whileTap={{ scale: 0.95 }}>
-                          <div
-                            className="rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300"
-                            style={{ backgroundColor: "#ffffff" }}>
-                            <div
-                              className="aspect-square relative overflow-hidden bg-gray-100"
-                              style={{ width: "100%" }}>
-                              <img
-                                src={category.image}
-                                alt={category.name}
-                                className="w-full h-full object-cover"
-                                style={{ display: "block" }}
-                                loading="lazy"
-                              />
-                            </div>
-                            <div className="p-2 md:p-2.5">
-                              <p
-                                className="text-xs md:text-sm font-semibold text-center"
-                                style={{ color: "#2d3748" }}>
-                                {getTranslatedText(category.name)}
-                              </p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
@@ -867,59 +915,57 @@ const Hero = () => {
                 onClick={() => navigate("/book-service/details")}
                 style={{
                   background:
-                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    "linear-gradient(135deg, #111827 0%, #000000 100%)", // Black Gradient
                 }}
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}>
-                {/* Decorative Circles */}
-                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 rounded-full bg-white opacity-10"></div>
-                <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 rounded-full bg-white opacity-10"></div>
 
-                <div className="flex flex-row items-center p-6 md:p-8 relative z-10">
+                {/* Abstract Patterns Overlay */}
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+
+                <div className="relative z-10 p-4 md:p-6 flex items-center justify-between gap-4">
+                  {/* Text Content */}
                   <div className="flex-1">
-                    <h4 className="text-xl md:text-3xl font-bold text-white mb-2">
-                      {getTranslatedText("Deep Home Cleaning")}
-                    </h4>
-                    <p className="text-white/90 text-sm md:text-base mb-4 max-w-md">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-md text-[10px] md:text-xs font-bold text-white uppercase tracking-wider border border-white/10">
+                        {getTranslatedText("Premium")}
+                      </span>
+                      <h4 className="text-lg md:text-2xl font-bold text-white">
+                        {getTranslatedText("Deep Home Cleaning")}
+                      </h4>
+                    </div>
+
+                    <p className="text-gray-300 text-xs md:text-sm mb-3 line-clamp-2 max-w-lg">
                       {getTranslatedText(
-                        "Professional deep cleaning service including floor scrubbing, cobweb removal, and bathroom cleaning."
+                        "Experience a spotless home with our professional deep cleaning. Verified experts & eco-friendly products."
                       )}
                     </p>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                      <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs md:text-sm font-semibold border border-white/30">
-                        {getTranslatedText("Fixed Price: ₹1200")}
+
+                    {/* Features Badges - Compact */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 text-white/90 text-xs md:text-sm font-medium">
+                        <span className="bg-white/20 p-1 rounded-full">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </span>
+                        <span>₹1200</span>
                       </div>
-                      <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg text-white text-xs md:text-sm font-semibold border border-white/30 flex items-center gap-1">
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        {getTranslatedText("Verified Pros")}
+                      <div className="flex items-center gap-1.5 text-white/90 text-xs md:text-sm font-medium">
+                        <span className="bg-white/20 p-1 rounded-full">
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                        </span>
+                        <span>{getTranslatedText("Verified")}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="hidden sm:flex ml-6 items-center justify-center bg-white text-emerald-600 rounded-full w-10 h-10 md:w-12 md:h-12 shadow-md group-hover:scale-110 transition-transform">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                      <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
+                  {/* Visual / CTA Side - Compact */}
+                  <div className="flex-shrink-0 flex flex-col items-center justify-center gap-2">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-xl flex items-center justify-center shadow-md text-black transform group-hover:rotate-6 transition-transform">
+                      <svg className="w-6 h-6 md:w-8 md:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               </motion.div>

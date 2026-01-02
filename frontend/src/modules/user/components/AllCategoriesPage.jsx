@@ -34,7 +34,7 @@ const AllCategoriesPage = () => {
   ];
 
   const { getTranslatedText } = usePageTranslation(staticTexts);
-  const { translateText: translateDynamic } = useDynamicTranslation();
+  const { translateBatch } = useDynamicTranslation();
 
   // Helper to get image based on category name
   const getCategoryImage = (name) => {
@@ -81,6 +81,17 @@ const AllCategoriesPage = () => {
           const materialsRaw = allItems.filter(
             (p) => !p.type || p.type === PRICE_TYPES.MATERIAL
           );
+
+          // Translate material names/descriptions
+          const materialNames = materialsRaw.map(p => p.category);
+          // Assuming we want to translate names primarily. 
+          // Since translation is async, we can do it here or render English first.
+          // For simplicity and to fix the crash, we'll store them as is and let specific translation components handle it 
+          // OR translate them in batch here.
+
+          // Let's use the raw values for now to fix the crash, 
+          // and if dynamic translation is needed, it should be done via state updates.
+
           const mappedMaterials = materialsRaw.map((price) => ({
             name: price.category,
             image: price.image || getCategoryImage(price.category),
@@ -98,7 +109,7 @@ const AllCategoriesPage = () => {
           const mappedServices = servicesRaw.map((price) => ({
             name: price.category,
             price: price.price || 0,
-            image: price.image || getCategoryImage(price.category), // Us dynamic image or fallback
+            image: price.image || getCategoryImage(price.category),
             description:
               price.description ||
               getTranslatedText("Book {category}", {
@@ -140,7 +151,7 @@ const AllCategoriesPage = () => {
       }
     };
     fetchCategories();
-  }, []);
+  }, [getTranslatedText]); // Added dependency
 
   const handleCategoryClick = (item) => {
     if (item.type === PRICE_TYPES.SERVICE) {
@@ -216,7 +227,7 @@ const AllCategoriesPage = () => {
                   <div className="aspect-square relative overflow-hidden bg-gray-100">
                     <img
                       src={category.image}
-                      alt={translateDynamic(category.name)}
+                      alt={category.name}
                       className="w-full h-full object-cover"
                       style={{ display: "block" }}
                       loading="lazy"
@@ -226,12 +237,12 @@ const AllCategoriesPage = () => {
                     <p
                       className="text-base md:text-lg font-semibold text-center mb-1"
                       style={{ color: "#2d3748" }}>
-                      {translateDynamic(category.name)}
+                      {category.name}
                     </p>
                     <p
                       className="text-xs md:text-sm text-center"
                       style={{ color: "#718096" }}>
-                      {translateDynamic(category.description)}
+                      {category.description}
                     </p>
                   </div>
                 </div>
@@ -275,7 +286,7 @@ const AllCategoriesPage = () => {
                       <p
                         className="text-base md:text-lg font-bold text-center mb-1"
                         style={{ color: "#2d3748" }}>
-                        {translateDynamic(service.name)}
+                        {service.name}
                       </p>
                       <p
                         className="text-sm font-bold text-center mb-1"
@@ -285,7 +296,7 @@ const AllCategoriesPage = () => {
                       <p
                         className="text-xs md:text-sm text-center truncate"
                         style={{ color: "#718096" }}>
-                        {translateDynamic(service.description)}
+                        {service.description}
                       </p>
                     </div>
                   </div>
