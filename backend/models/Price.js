@@ -24,6 +24,11 @@ const priceSchema = new mongoose.Schema({
     min: [0, 'Price cannot be negative'],
     default: 0
   },
+  image: {
+    type: String,
+    trim: true,
+    default: null
+  },
   regionCode: {
     type: String,
     required: [true, 'Region code is required'],

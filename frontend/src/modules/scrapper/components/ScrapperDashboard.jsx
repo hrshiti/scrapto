@@ -6,8 +6,7 @@ import { FaGift, FaChartLine, FaCheck } from 'react-icons/fa';
 import PriceTicker from '../../user/components/PriceTicker';
 import ScrapperSolutions from './ScrapperSolutions';
 import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRequest } from '../../shared/utils/scrapperRequestUtils';
-import { earningsAPI, scrapperOrdersAPI } from '../../shared/utils/api';
-import { kycAPI } from '../../shared/utils/api';
+import { earningsAPI, scrapperOrdersAPI, subscriptionAPI, kycAPI } from '../../shared/utils/api';
 import BannerSlider from '../../shared/components/BannerSlider';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import LanguageSelector from '../../shared/components/LanguageSelector';
@@ -292,7 +291,7 @@ const ScrapperDashboard = () => {
       // Fetch KYC and Subscription status from backend
       setIsLoadingStatus(true);
       try {
-        const { kycAPI, subscriptionAPI } = await import('../../shared/utils/api');
+
 
         // Fetch KYC
         const kycRes = await kycAPI.getMy();
@@ -402,8 +401,6 @@ const ScrapperDashboard = () => {
 
     const interval = setInterval(async () => {
       try {
-        const { kycAPI, subscriptionAPI } = await import('../../shared/utils/api');
-
         // Fetch KYC
         const kycRes = await kycAPI.getMy();
         const kyc = kycRes.data?.kyc;
@@ -572,24 +569,9 @@ const ScrapperDashboard = () => {
           </motion.button>
         </motion.div>
 
-        {/* Live Market Prices with Subscription Lock */}
+        {/* Live Market Prices */}
         <div className="mt-4 relative">
           <PriceTicker />
-          {(!subscriptionData?.isMarketActive) && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl backdrop-blur-sm bg-white/30 border border-white/20">
-              <div className="text-center p-4 bg-white/90 rounded-xl shadow-lg border border-emerald-100 max-w-xs">
-                <FaGift className="text-3xl text-emerald-600 mx-auto mb-2" />
-                <h3 className="font-bold text-gray-800 mb-1">{getTranslatedText("Unlock Live Prices")}</h3>
-                <p className="text-xs text-gray-600 mb-3">{getTranslatedText("Get real-time market rates with our subscription.")}</p>
-                <button
-                  onClick={() => navigate('/scrapper/subscription')}
-                  className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-full shadow-md hover:scale-105 transition-transform"
-                >
-                  {getTranslatedText("View Plans")}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Ad Banners */}

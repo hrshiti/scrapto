@@ -83,7 +83,7 @@ const AllCategoriesPage = () => {
           );
           const mappedMaterials = materialsRaw.map((price) => ({
             name: price.category,
-            image: getCategoryImage(price.category),
+            image: price.image || getCategoryImage(price.category),
             description: getTranslatedText("Sell your {category} scrap", {
               category: price.category,
             }),
@@ -98,7 +98,7 @@ const AllCategoriesPage = () => {
           const mappedServices = servicesRaw.map((price) => ({
             name: price.category,
             price: price.price || 0,
-            image: getCategoryImage(price.category), // Using fallback image for services for now, or add specific ones
+            image: price.image || getCategoryImage(price.category), // Us dynamic image or fallback
             description:
               price.description ||
               getTranslatedText("Book {category}", {
