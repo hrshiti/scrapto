@@ -63,35 +63,38 @@ export const createSubscription = async (scrapperId, planId, paymentData) => {
       throw new Error('Plan not found or inactive');
     }
 
+    // Determine target field based on plan type
+    const targetField = plan.type === 'market_price' ? 'marketSubscription' : 'subscription';
+
     // Calculate dates
     const startDate = new Date();
     const durationDays = plan.getDurationInDays();
     const expiryDate = calculateExpiryDate(startDate, durationDays);
 
     // Cancel previous subscription if exists (for renewal)
-    if (scrapper.subscription.status === 'active') {
-      scrapper.subscription.status = 'cancelled';
-      scrapper.subscription.cancelledAt = new Date();
+    if (scrapper[targetField].status === 'active') {
+      scrapper[targetField].status = 'cancelled';
+      scrapper[targetField].cancelledAt = new Date();
     }
 
     // Create new subscription
-    scrapper.subscription.status = 'active';
-    scrapper.subscription.planId = planId;
-    scrapper.subscription.startDate = startDate;
-    scrapper.subscription.expiryDate = expiryDate;
-    scrapper.subscription.razorpaySubscriptionId = paymentData.razorpayOrderId || null;
-    scrapper.subscription.razorpayPaymentId = paymentData.razorpayPaymentId || null;
-    scrapper.subscription.autoRenew = true; // Default to auto-renew
-    scrapper.subscription.cancelledAt = null;
-    scrapper.subscription.cancellationReason = null;
+    scrapper[targetField].status = 'active';
+    scrapper[targetField].planId = planId;
+    scrapper[targetField].startDate = startDate;
+    scrapper[targetField].expiryDate = expiryDate;
+    scrapper[targetField].razorpaySubscriptionId = paymentData.razorpayOrderId || null;
+    scrapper[targetField].razorpayPaymentId = paymentData.razorpayPaymentId || null;
+    scrapper[targetField].autoRenew = true; // Default to auto-renew
+    scrapper[targetField].cancelledAt = null;
+    scrapper[targetField].cancellationReason = null;
 
     await scrapper.save();
 
-    logger.info(`[Subscription] Subscription created for scrapper ${scrapperId}, plan: ${plan.name}`);
+    logger.info(`[Subscription] ${plan.type} Subscription created for scrapper ${scrapperId}, plan: ${plan.name}`);
 
     return {
       success: true,
-      subscription: scrapper.subscription,
+      subscription: scrapper[targetField],
       plan
     };
   } catch (error) {
@@ -134,29 +137,48 @@ export const activateSubscription = async (scrapperId, paymentId) => {
 /**
  * Get scrapper's current subscription
  */
+/**
+ * Get scrapper's current subscription
+ */
 export const getScrapperSubscription = async (scrapperId) => {
   try {
     const scrapper = await Scrapper.findById(scrapperId)
-      .populate('subscription.planId', 'name price duration durationType features maxPickups');
+      .populate('subscription.planId', 'name price duration durationType features maxPickups type')
+      .populate('marketSubscription.planId', 'name price duration durationType features maxPickups type');
 
     if (!scrapper) {
       throw new Error('Scrapper not found');
     }
 
-    // Check if subscription is expired
     const now = new Date();
+    let updated = false;
+
+    // Check if platform subscription is expired
     if (scrapper.subscription.status === 'active' && scrapper.subscription.expiryDate) {
       const expiryDate = new Date(scrapper.subscription.expiryDate);
       if (expiryDate < now) {
-        // Mark as expired
         scrapper.subscription.status = 'expired';
-        await scrapper.save();
+        updated = true;
       }
+    }
+
+    // Check if market subscription is expired
+    if (scrapper.marketSubscription && scrapper.marketSubscription.status === 'active' && scrapper.marketSubscription.expiryDate) {
+      const expiryDate = new Date(scrapper.marketSubscription.expiryDate);
+      if (expiryDate < now) {
+        scrapper.marketSubscription.status = 'expired';
+        updated = true;
+      }
+    }
+
+    if (updated) {
+      await scrapper.save();
     }
 
     return {
       success: true,
-      subscription: scrapper.subscription
+      subscription: scrapper.subscription,
+      marketSubscription: scrapper.marketSubscription
     };
   } catch (error) {
     logger.error('[Subscription] Error fetching scrapper subscription:', error);
@@ -215,10 +237,10 @@ export const renewSubscription = async (scrapperId, planId) => {
 
     // Calculate new expiry date
     const now = new Date();
-    const currentExpiry = scrapper.subscription.expiryDate 
+    const currentExpiry = scrapper.subscription.expiryDate
       ? new Date(scrapper.subscription.expiryDate)
       : now;
-    
+
     // If current subscription is still active, extend from expiry date
     // Otherwise, start from now
     const startDate = currentExpiry > now ? currentExpiry : now;

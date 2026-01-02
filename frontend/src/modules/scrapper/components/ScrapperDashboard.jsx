@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { FaGift, FaChartLine } from 'react-icons/fa';
+import { FaGift, FaChartLine, FaCheck } from 'react-icons/fa';
 import PriceTicker from '../../user/components/PriceTicker';
 import ScrapperSolutions from './ScrapperSolutions';
 import { getActiveRequestsCount, getScrapperAssignedRequests, migrateOldActiveRequest } from '../../shared/utils/scrapperRequestUtils';
@@ -292,43 +292,42 @@ const ScrapperDashboard = () => {
       // Fetch KYC and Subscription status from backend
       setIsLoadingStatus(true);
       try {
-        // Fetch KYC and subscription status from backend
-        const res = await kycAPI.getMy();
-        const kyc = res.data?.kyc;
-        const subscription = res.data?.subscription;
+        const { kycAPI, subscriptionAPI } = await import('../../shared/utils/api');
+
+        // Fetch KYC
+        const kycRes = await kycAPI.getMy();
+        const kyc = kycRes.data?.kyc;
+
+        // Fetch Subscriptions
+        const subRes = await subscriptionAPI.getMySubscription();
+        const subscription = subRes.data?.subscription;
+        const marketSubscription = subRes.data?.marketSubscription;
 
         if (kyc) {
-          // Update state with backend data
           setKycStatus(kyc.status || 'not_submitted');
-
-          // Sync with localStorage for compatibility
           localStorage.setItem('scrapperKYCStatus', kyc.status || 'not_submitted');
           localStorage.setItem('scrapperKYC', JSON.stringify(kyc));
         } else {
           setKycStatus('not_submitted');
         }
 
-        if (subscription) {
-          // Update state with backend subscription data
-          setSubscriptionData(subscription);
+        // Handle Subscriptions
+        const platformSubActive = subscription?.status === 'active' && new Date(subscription.expiryDate) > new Date();
+        const marketSubActive = marketSubscription?.status === 'active' && new Date(marketSubscription.expiryDate) > new Date();
 
-          // Check if subscription is actually active (not expired)
-          const expiryDate = subscription.expiryDate ? new Date(subscription.expiryDate) : null;
-          const now = new Date();
-          const isActive = subscription.status === 'active' && expiryDate && expiryDate > now;
+        setSubscriptionData({
+          platform: subscription,
+          market: marketSubscription,
+          isPlatformActive: platformSubActive,
+          isMarketActive: marketSubActive
+        });
 
-          // Sync with localStorage for compatibility
-          localStorage.setItem('scrapperSubscriptionStatus', isActive ? 'active' : 'expired');
-          if (isActive) {
-            localStorage.setItem('scrapperSubscription', JSON.stringify({
-              status: 'active',
-              expiryDate: subscription.expiryDate,
-              startDate: subscription.startDate
-            }));
-          }
+        localStorage.setItem('scrapperSubscriptionStatus', platformSubActive ? 'active' : 'expired');
+        // We might want to store market status too
+        if (marketSubActive) {
+          localStorage.setItem('scrapperMarketPriceSubscriptionStatus', 'active');
         } else {
-          setSubscriptionData(null);
-          localStorage.setItem('scrapperSubscriptionStatus', 'expired');
+          localStorage.setItem('scrapperMarketPriceSubscriptionStatus', 'inactive');
         }
 
         // Redirect based on REAL backend data
@@ -346,13 +345,10 @@ const ScrapperDashboard = () => {
           return;
         }
 
-        // If KYC is verified but subscription not active, redirect to subscription page
+        // If KYC is verified but platform subscription not active, redirect to subscription page
+        // Note: Market price subscription is optional, so we don't block access if missing
         if (backendKycStatus === 'verified') {
-          const expiryDate = subscription?.expiryDate ? new Date(subscription.expiryDate) : null;
-          const now = new Date();
-          const isSubscriptionActive = subscription?.status === 'active' && expiryDate && expiryDate > now;
-
-          if (!isSubscriptionActive) {
+          if (!platformSubActive) {
             navigate('/scrapper/subscription', { replace: true });
             return;
           }
@@ -364,7 +360,7 @@ const ScrapperDashboard = () => {
           return;
         }
 
-        // If all checks pass (KYC verified + Subscription active), allow dashboard to render
+        // If all checks pass (KYC verified + Platform Subscription active), allow dashboard to render
         migrateOldActiveRequest();
         loadDashboardData();
       } catch (error) {
@@ -379,7 +375,17 @@ const ScrapperDashboard = () => {
           navigate('/scrapper/kyc-status', { replace: true });
           return;
         }
-        // If verified in localStorage, allow dashboard (but will show loading)
+
+        // Reconstruct basic subscription data from localStorage
+        const storedSubStatus = localStorage.getItem('scrapperSubscriptionStatus');
+        const storedMarketStatus = localStorage.getItem('scrapperMarketPriceSubscriptionStatus');
+
+        setSubscriptionData({
+          isPlatformActive: storedSubStatus === 'active',
+          isMarketActive: storedMarketStatus === 'active'
+        });
+
+        // If verified in localStorage, allow dashboard
         loadDashboardData();
       } finally {
         setIsLoadingStatus(false);
@@ -396,9 +402,16 @@ const ScrapperDashboard = () => {
 
     const interval = setInterval(async () => {
       try {
-        const res = await kycAPI.getMy();
-        const kyc = res.data?.kyc;
-        const subscription = res.data?.subscription;
+        const { kycAPI, subscriptionAPI } = await import('../../shared/utils/api');
+
+        // Fetch KYC
+        const kycRes = await kycAPI.getMy();
+        const kyc = kycRes.data?.kyc;
+
+        // Fetch Subscriptions
+        const subRes = await subscriptionAPI.getMySubscription();
+        const subscription = subRes.data?.subscription;
+        const marketSubscription = subRes.data?.marketSubscription;
 
         if (kyc) {
           setKycStatus(kyc.status || 'not_submitted');
@@ -406,20 +419,23 @@ const ScrapperDashboard = () => {
           localStorage.setItem('scrapperKYC', JSON.stringify(kyc));
         }
 
-        if (subscription) {
-          setSubscriptionData(subscription);
-          const expiryDate = subscription.expiryDate ? new Date(subscription.expiryDate) : null;
-          const now = new Date();
-          const isActive = subscription.status === 'active' && expiryDate && expiryDate > now;
-          localStorage.setItem('scrapperSubscriptionStatus', isActive ? 'active' : 'expired');
-          if (isActive) {
-            localStorage.setItem('scrapperSubscription', JSON.stringify({
-              status: 'active',
-              expiryDate: subscription.expiryDate,
-              startDate: subscription.startDate
-            }));
-          }
+        const platformSubActive = subscription?.status === 'active' && new Date(subscription.expiryDate) > new Date();
+        const marketSubActive = marketSubscription?.status === 'active' && new Date(marketSubscription.expiryDate) > new Date();
+
+        setSubscriptionData({
+          platform: subscription,
+          market: marketSubscription,
+          isPlatformActive: platformSubActive,
+          isMarketActive: marketSubActive
+        });
+
+        localStorage.setItem('scrapperSubscriptionStatus', platformSubActive ? 'active' : 'expired');
+        if (marketSubActive) {
+          localStorage.setItem('scrapperMarketPriceSubscriptionStatus', 'active');
+        } else {
+          localStorage.setItem('scrapperMarketPriceSubscriptionStatus', 'inactive');
         }
+
       } catch (error) {
         console.error('Error polling KYC/Subscription status:', error);
       }
@@ -556,9 +572,24 @@ const ScrapperDashboard = () => {
           </motion.button>
         </motion.div>
 
-        {/* Live Market Prices for Scrappers (base admin feed / real-time with add-on) */}
-        <div className="mt-4">
+        {/* Live Market Prices with Subscription Lock */}
+        <div className="mt-4 relative">
           <PriceTicker />
+          {(!subscriptionData?.isMarketActive) && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl backdrop-blur-sm bg-white/30 border border-white/20">
+              <div className="text-center p-4 bg-white/90 rounded-xl shadow-lg border border-emerald-100 max-w-xs">
+                <FaGift className="text-3xl text-emerald-600 mx-auto mb-2" />
+                <h3 className="font-bold text-gray-800 mb-1">{getTranslatedText("Unlock Live Prices")}</h3>
+                <p className="text-xs text-gray-600 mb-3">{getTranslatedText("Get real-time market rates with our subscription.")}</p>
+                <button
+                  onClick={() => navigate('/scrapper/subscription')}
+                  className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-full shadow-md hover:scale-105 transition-transform"
+                >
+                  {getTranslatedText("View Plans")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Ad Banners */}
@@ -566,26 +597,36 @@ const ScrapperDashboard = () => {
           <BannerSlider audience="scrapper" />
         </div>
 
-        {/* Market Price Subscription (separate from onboarding subscription) */}
+        {/* Market Price Management Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="mt-3 rounded-2xl shadow-md p-4 md:p-5 border border-gray-800"
+          onClick={() => navigate('/scrapper/subscription')}
+          className="mt-3 rounded-2xl shadow-md p-4 md:p-5 border border-gray-800 cursor-pointer relative overflow-hidden group"
           style={{ backgroundColor: '#020617' }}
         >
-          <div className="flex items-start justify-between gap-3">
+          {/* Shine Effect */}
+          <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:left-full transition-all duration-1000 ease-in-out"></div>
+
+          <div className="flex items-start justify-between gap-3 relative z-10">
             <div className="flex gap-3">
               <div className="mt-1 w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: 'rgba(148, 163, 184, 0.15)' }}>
-                <FaChartLine className="text-emerald-400" />
+                style={{ backgroundColor: subscriptionData?.isMarketActive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(148, 163, 184, 0.15)' }}>
+                {subscriptionData?.isMarketActive ? (
+                  <FaCheck className="text-emerald-400" />
+                ) : (
+                  <FaChartLine className="text-emerald-400" />
+                )}
               </div>
               <div>
-                <p className="text-xs font-semibold mb-1" style={{ color: '#a5b4fc' }}>
-                  {getTranslatedText("Market Price Add‑On")}
+                <p className="text-xs font-semibold mb-1" style={{ color: subscriptionData?.isMarketActive ? '#34d399' : '#a5b4fc' }}>
+                  {subscriptionData?.isMarketActive ? getTranslatedText("Active Subscription") : getTranslatedText("Market Price Add‑On")}
                 </p>
                 <h3 className="text-sm md:text-base font-bold mb-1" style={{ color: '#e5e7eb' }}>
-                  {getTranslatedText("Unlock real‑time scrap rates")}
+                  {subscriptionData?.isMarketActive
+                    ? getTranslatedText("You have access to live rates")
+                    : getTranslatedText("Unlock real‑time scrap rates")}
                 </h3>
               </div>
             </div>
@@ -594,12 +635,12 @@ const ScrapperDashboard = () => {
                 type="button"
                 className="mt-1 px-3 py-1.5 rounded-full text-[11px] md:text-xs font-semibold border transition-colors"
                 style={{
-                  borderColor: '#4b5563',
-                  color: '#e5e7eb',
-                  backgroundColor: 'transparent'
+                  borderColor: subscriptionData?.isMarketActive ? '#34d399' : '#4b5563',
+                  color: subscriptionData?.isMarketActive ? '#34d399' : '#e5e7eb',
+                  backgroundColor: subscriptionData?.isMarketActive ? 'rgba(16, 185, 129, 0.1)' : 'transparent'
                 }}
               >
-                {getTranslatedText("View plans")}
+                {subscriptionData?.isMarketActive ? getTranslatedText("Manage Plan") : getTranslatedText("View plans")}
               </button>
             </div>
           </div>

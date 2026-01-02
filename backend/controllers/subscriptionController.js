@@ -39,7 +39,10 @@ export const getPlan = asyncHandler(async (req, res) => {
 export const getMySubscription = asyncHandler(async (req, res) => {
   const scrapperId = req.user.id;
   const result = await getScrapperSubscription(scrapperId);
-  sendSuccess(res, 'Subscription retrieved successfully', { subscription: result.subscription });
+  sendSuccess(res, 'Subscription retrieved successfully', {
+    subscription: result.subscription,
+    marketSubscription: result.marketSubscription
+  });
 });
 
 // @desc    Subscribe to a plan (create payment order)
@@ -65,15 +68,18 @@ export const subscribe = asyncHandler(async (req, res) => {
     return sendError(res, 'Plan not found or inactive', 404);
   }
 
-  // Check if scrapper already has active subscription
-  if (scrapper.subscription.status === 'active') {
-    const expiryDate = scrapper.subscription.expiryDate
-      ? new Date(scrapper.subscription.expiryDate)
+  // Determine target subscription based on plan type
+  const targetSub = plan.type === 'market_price' ? scrapper.marketSubscription : scrapper.subscription;
+
+  // Check if scrapper already has active subscription of this type
+  if (targetSub && targetSub.status === 'active') {
+    const expiryDate = targetSub.expiryDate
+      ? new Date(targetSub.expiryDate)
       : null;
     const now = new Date();
 
     if (expiryDate && expiryDate > now) {
-      return sendError(res, 'You already have an active subscription. Please renew or cancel it first.', 400);
+      return sendError(res, `You already have an active ${plan.type === 'market_price' ? 'Market Price' : 'Platform'} subscription. Please renew or cancel it first.`, 400);
     }
   }
 
@@ -94,6 +100,7 @@ export const subscribe = asyncHandler(async (req, res) => {
       scrapperId: scrapperId.toString(),
       planId: planId.toString(),
       planName: plan.name,
+      planType: plan.type, // Store type in notes
       durationDays: plan.getDurationInDays()
     };
 
@@ -116,11 +123,12 @@ export const subscribe = asyncHandler(async (req, res) => {
     durationDays: plan.getDurationInDays(),
     notes: JSON.stringify({
       planName: plan.name,
+      planType: plan.type,
       planDuration: plan.durationType
     })
   });
 
-  logger.info(`[Subscription] Payment order created for scrapper ${scrapperId}, plan: ${plan.name}`);
+  logger.info(`[Subscription] Payment order created for scrapper ${scrapperId}, plan: ${plan.name} (${plan.type})`);
 
   sendSuccess(res, 'Payment order created successfully', {
     razorpayOrderId: razorpayOrder.id,
@@ -133,7 +141,8 @@ export const subscribe = asyncHandler(async (req, res) => {
       name: plan.name,
       price: plan.price,
       duration: plan.duration,
-      durationType: plan.durationType
+      durationType: plan.durationType,
+      type: plan.type
     }
   });
 });

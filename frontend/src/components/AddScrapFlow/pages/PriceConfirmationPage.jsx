@@ -146,7 +146,7 @@ const PriceConfirmationPage = () => {
   const dayOptions = useMemo(() => {
     const days = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
       const iso = date.toISOString().split('T')[0];

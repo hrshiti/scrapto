@@ -72,7 +72,8 @@ const SubscriptionPlanManagement = () => {
     priority: 0,
     isActive: true,
     isPopular: false,
-    sortOrder: 0
+    sortOrder: 0,
+    type: 'general'
   });
   const [newFeature, setNewFeature] = useState('');
 
@@ -84,7 +85,7 @@ const SubscriptionPlanManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await subscriptionAPI.getPlans();
+      const response = await adminAPI.getAllSubscriptionPlans();
       if (response.success && response.data?.plans) {
         setPlans(response.data.plans);
       } else {
@@ -111,7 +112,8 @@ const SubscriptionPlanManagement = () => {
       priority: 0,
       isActive: true,
       isPopular: false,
-      sortOrder: 0
+      sortOrder: 0,
+      type: 'general'
     });
     setEditingId(null);
     setShowCreateModal(true);
@@ -130,7 +132,8 @@ const SubscriptionPlanManagement = () => {
       priority: plan.priority || 0,
       isActive: plan.isActive !== undefined ? plan.isActive : true,
       isPopular: plan.isPopular || false,
-      sortOrder: plan.sortOrder || 0
+      sortOrder: plan.sortOrder || 0,
+      type: plan.type || 'general'
     });
     setEditingId(plan._id || plan.id);
     setShowCreateModal(true);
@@ -168,13 +171,21 @@ const SubscriptionPlanManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(getTranslatedText('Are you sure you want to delete this plan? This action cannot be undone.'))) {
+  const handleDelete = async (plan) => {
+    const planId = plan._id || plan.id;
+
+    let confirmMessage = getTranslatedText('Are you sure you want to delete this plan? This action cannot be undone.');
+
+    if (plan.type === 'market_price') {
+      confirmMessage = getTranslatedText('Warning: This is a Market Price plan. Deleting it might affect users accessing market prices. Are you sure you want to delete this plan?');
+    }
+
+    if (!confirm(confirmMessage)) {
       return;
     }
 
     try {
-      const response = await adminAPI.deletePlan(id);
+      const response = await adminAPI.deletePlan(planId);
       if (response.success) {
         await loadPlans();
         alert(getTranslatedText('Plan deleted successfully!'));
@@ -296,6 +307,9 @@ const SubscriptionPlanManagement = () => {
               <div className="mb-4">
                 <h3 className="text-lg md:text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
                   {plan.name}
+                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${plan.type === 'market_price' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {plan.type === 'market_price' ? 'Market Price' : 'General'}
+                  </span>
                 </h3>
                 {plan.description && (
                   <p className="text-xs md:text-sm mb-3" style={{ color: '#718096' }}>
@@ -353,7 +367,7 @@ const SubscriptionPlanManagement = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => handleDelete(plan._id || plan.id)}
+                  onClick={() => handleDelete(plan)}
                   className="px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}
                 >
@@ -445,6 +459,20 @@ const SubscriptionPlanManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
+                    {getTranslatedText("Plan Type *")}
+                  </label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
+                    style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
+                  >
+                    <option value="general">{getTranslatedText("General Subscription")}</option>
+                    <option value="market_price">{getTranslatedText("Market Price Subscription")}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                     {getTranslatedText("Duration Type *")}
                   </label>
                   <select
@@ -458,6 +486,9 @@ const SubscriptionPlanManagement = () => {
                     <option value="yearly">{getTranslatedText("Yearly")}</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
                     {getTranslatedText("Max Pickups (leave empty for unlimited)")}
@@ -471,43 +502,6 @@ const SubscriptionPlanManagement = () => {
                     min="0"
                     placeholder={getTranslatedText("Unlimited")}
                   />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#2d3748' }}>
-                  {getTranslatedText("Features")}
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newFeature}
-                    onChange={(e) => setNewFeature(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addFeature()}
-                    className="flex-1 px-4 py-2 rounded-lg border-2 focus:outline-none focus:ring-2"
-                    style={{ borderColor: '#e2e8f0', focusBorderColor: '#64946e' }}
-                    placeholder={getTranslatedText("Add a feature...")}
-                  />
-                  <button
-                    onClick={addFeature}
-                    className="px-4 py-2 rounded-lg font-semibold text-white"
-                    style={{ backgroundColor: '#64946e' }}
-                  >
-                    {getTranslatedText("Add")}
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {formData.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ backgroundColor: '#f7fafc' }}>
-                      <span className="text-sm" style={{ color: '#2d3748' }}>{feature}</span>
-                      <button
-                        onClick={() => removeFeature(idx)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <FaTimes />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </div>
 

@@ -120,6 +120,46 @@ const scrapperSchema = new mongoose.Schema({
       default: null
     }
   },
+  marketSubscription: {
+    status: {
+      type: String,
+      enum: ['active', 'expired', 'cancelled'],
+      default: 'expired'
+    },
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubscriptionPlan',
+      default: null
+    },
+    startDate: {
+      type: Date,
+      default: null
+    },
+    expiryDate: {
+      type: Date,
+      default: null
+    },
+    razorpaySubscriptionId: {
+      type: String,
+      default: null
+    },
+    razorpayPaymentId: {
+      type: String,
+      default: null
+    },
+    autoRenew: {
+      type: Boolean,
+      default: true
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
+    },
+    cancellationReason: {
+      type: String,
+      default: null
+    }
+  },
   liveLocation: {
     type: {
       type: String,
@@ -254,7 +294,7 @@ const scrapperSchema = new mongoose.Schema({
 
 // Geospatial index for location queries
 scrapperSchema.index({ liveLocation: '2dsphere' });
-scrapperSchema.index({ isOnline: 1, 'kyc.status': 1, 'subscription.status': 1 });
+scrapperSchema.index({ isOnline: 1, 'kyc.status': 1, 'subscription.status': 1, 'marketSubscription.status': 1 });
 scrapperSchema.index({ phone: 1 }, { unique: true });
 
 // Hash password before saving

@@ -37,7 +37,8 @@ import {
   createPlan,
   updatePlan,
   deletePlan,
-  getAllSubscriptions
+  getAllSubscriptions,
+  getAllSubscriptionPlans
 } from '../controllers/adminController.js';
 import { getScrapperEarningsForAdmin } from '../controllers/earningsController.js';
 import {
@@ -109,6 +110,7 @@ router.delete('/prices/:id', deletePrice);
 // ============================================
 // SUBSCRIPTION PLAN MANAGEMENT
 // ============================================
+router.get('/subscriptions/plans', getAllSubscriptionPlans);
 router.post('/subscriptions/plans', createPlan);
 router.put('/subscriptions/plans/:id', updatePlan);
 router.delete('/subscriptions/plans/:id', deletePlan);

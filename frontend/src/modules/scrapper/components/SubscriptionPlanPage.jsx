@@ -35,7 +35,9 @@ const SubscriptionPlanPage = () => {
     "months",
     "year",
     "years",
-    "days"
+    "days",
+    "Platform Access",
+    "Market Prices"
   ];
   const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
@@ -46,6 +48,7 @@ const SubscriptionPlanPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [planType, setPlanType] = useState('market_price'); // Default to market value
 
   // Check if user is authenticated as scrapper
   useEffect(() => {
@@ -77,7 +80,8 @@ const SubscriptionPlanPage = () => {
             durationType: plan.durationType,
             features: plan.features || [],
             maxPickups: plan.maxPickups,
-            isPopular: plan.isPopular || false
+            isPopular: plan.isPopular || false,
+            type: plan.type || 'general' // Include type
           }));
           setPlans(transformedPlans);
         }
@@ -85,29 +89,21 @@ const SubscriptionPlanPage = () => {
         // Fetch current subscription
         try {
           const subRes = await subscriptionAPI.getMySubscription();
-          if (subRes.success && subRes.data.subscription) {
-            const sub = subRes.data.subscription;
-            // Check if subscription is active and not expired
-            const expiryDate = sub.expiryDate ? new Date(sub.expiryDate) : null;
-            const now = new Date();
-            if (sub.status === 'active' && expiryDate && expiryDate > now) {
-              setCurrentSubscription(sub);
-              // Update localStorage
+          if (subRes.success) {
+            // Store full response to handle both types
+            const { subscription, marketSubscription } = subRes.data;
+            setCurrentSubscription({
+              general: subscription,
+              market_price: marketSubscription
+            });
+
+            // Update localStorage - storing generic status might be tricky now
+            // For backward compatibility, store general status
+            if (subscription?.status === 'active') {
               localStorage.setItem('scrapperSubscriptionStatus', 'active');
-              localStorage.setItem('scrapperSubscription', JSON.stringify({
-                status: sub.status,
-                planId: sub.planId?._id || sub.planId,
-                planName: sub.planId?.name || 'Unknown Plan',
-                startDate: sub.startDate,
-                expiryDate: sub.expiryDate,
-                autoRenew: sub.autoRenew
-              }));
-            } else {
-              localStorage.setItem('scrapperSubscriptionStatus', 'expired');
             }
           }
         } catch (subError) {
-          // Subscription not found or error - that's okay
           console.log('No active subscription found');
         }
       } catch (err) {
@@ -120,6 +116,139 @@ const SubscriptionPlanPage = () => {
 
     fetchData();
   }, []);
+
+  // Helper to get active sub for current tab
+  const activeSubForTab = currentSubscription?.[planType];
+  const isTabActive = activeSubForTab?.status === 'active' && new Date(activeSubForTab.expiryDate) > new Date();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen w-full p-4 md:p-6"
+      style={{ backgroundColor: '#f4ebe2' }}
+    >
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ color: '#2d3748' }}>
+            {isTabActive ? getTranslatedText('Manage Your Subscription') : getTranslatedText('Choose Your Plan')}
+          </h1>
+          {/* TABS */}
+          <div className="flex justify-center gap-4 mt-4 mb-6">
+            <button
+              onClick={() => { setPlanType('general'); setSelectedPlan(null); }}
+              className={`px-4 py-2 rounded-full font-semibold transition-colors ${planType === 'general' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600'}`}
+            >
+              {getTranslatedText("Platform Access")}
+            </button>
+            <button
+              onClick={() => { setPlanType('market_price'); setSelectedPlan(null); }}
+              className={`px-4 py-2 rounded-full font-semibold transition-colors ${planType === 'market_price' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600'}`}
+            >
+              {getTranslatedText("Market Prices")}
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Current Subscription Info for Selected Tab */}
+        {
+          isTabActive && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 rounded-2xl p-6 shadow-lg"
+              style={{ backgroundColor: '#ffffff', border: '2px solid #64946e' }}
+            >
+              {/* Display activeSubForTab info */}
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
+                    {getTranslatedText("Current Subscription: {plan}", { plan: activeSubForTab.planId?.name || 'Active Plan' })}
+                  </h3>
+                  <p className="text-sm" style={{ color: '#718096' }}>
+                    {getTranslatedText("Expires: {date}", { date: activeSubForTab.expiryDate ? new Date(activeSubForTab.expiryDate).toLocaleDateString() : 'N/A' })}
+                  </p>
+                </div>
+                <div className="px-4 py-2 rounded-lg font-semibold" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}>
+                  {getTranslatedText("Active")}
+                </div>
+              </div>
+            </motion.div>
+          )
+        }
+
+        {/* Plans Grid - Filtered by planType */}
+        <div className="grid md:grid-cols-2 gap-4 md:gap-6 mb-6">
+          {plans.filter(p => (p.type || 'general') === planType).map((plan, index) => (
+            /* Render Plan Card */
+            <motion.div
+              key={plan.id}
+              onClick={() => handlePlanSelect(plan.id)}
+              className={`relative rounded-2xl p-6 md:p-8 shadow-lg cursor-pointer transition-all duration-300 ${selectedPlan === plan.id ? 'ring-4' : 'hover:shadow-xl'}`}
+              style={{
+                backgroundColor: '#ffffff',
+                border: selectedPlan === plan.id ? '2px solid #64946e' : '2px solid transparent',
+                ringColor: selectedPlan === plan.id ? '#64946e' : 'transparent'
+              }}
+            >
+              {/* ... existing card content ... */}
+              {/* Plan Header */}
+              <div className="mb-6">
+                <h3 className="text-xl md:text-2xl font-bold mb-2" style={{ color: '#2d3748' }}>
+                  {plan.name}
+                </h3>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-4xl font-bold" style={{ color: '#64946e' }}>
+                    ₹{plan.price}
+                  </span>
+                  <span className="text-sm md:text-base" style={{ color: '#718096' }}>
+                    /{formatDuration(plan.duration, plan.durationType)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Features List */}
+              <ul className="space-y-3 mb-6">
+                {plan.features.map((feature, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 mt-0.5" style={{ color: '#64946e' }}>
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
+                      <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <span className="text-sm md:text-base" style={{ color: '#2d3748' }}>
+                      {feature}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Selection Indicator */}
+              {selectedPlan === plan.id && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="w-full py-2 rounded-lg text-center font-semibold"
+                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#64946e' }}
+                >
+                  {getTranslatedText("Selected")}
+                </motion.div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Subscribe Button */}
+        {/* ... */}
+      </div >
+    </motion.div >
+  );
 
   const handlePlanSelect = (planId) => {
     setSelectedPlan(planId);

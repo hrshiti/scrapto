@@ -79,6 +79,7 @@ const AddressInputPage = () => {
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
+                console.log("Location detected:", position.coords);
                 const coords = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
@@ -91,25 +92,30 @@ const AddressInputPage = () => {
                 setAddress(`Lat: ${coords.lat.toFixed(6)}, Lng: ${coords.lng.toFixed(6)}`);
             },
             (error) => {
+                console.error("Geolocation Error:", error);
                 setIsGettingLocation(false);
+
+                // Use standard error codes: 1=PERMISSION_DENIED, 2=POSITION_UNAVAILABLE, 3=TIMEOUT
                 switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        setLocationError(getTranslatedText('Location permission denied. Please enable location access in your browser settings.'));
+                    case 1: // PERMISSION_DENIED
+                        setLocationError(getTranslatedText('Browser blocked location. Please click the lock icon in your URL bar and select "Allow" for Location.'));
                         break;
-                    case error.POSITION_UNAVAILABLE:
+                    case 2: // POSITION_UNAVAILABLE
                         setLocationError(getTranslatedText('Location information is unavailable.'));
                         break;
-                    case error.TIMEOUT:
+                    case 3: // TIMEOUT
                         setLocationError(getTranslatedText('Location request timed out.'));
                         break;
                     default:
+                        // Log the specific unknown error message for debugging
+                        console.error("Unknown location error:", error.message);
                         setLocationError(getTranslatedText('An unknown error occurred.'));
                         break;
                 }
             },
             {
-                enableHighAccuracy: true,
-                timeout: 10000,
+                enableHighAccuracy: false, // Changed to false for faster, more reliable Wi-Fi/IP location
+                timeout: 30000,            // Increased timeout to 30 seconds
                 maximumAge: 0
             }
         );

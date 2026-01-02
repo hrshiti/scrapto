@@ -489,6 +489,9 @@ export const adminAPI = {
   getAllSubscriptions: async () => {
     return apiRequest(API_ENDPOINTS.admin.subscriptionsAll, { method: 'GET' });
   },
+  getAllSubscriptionPlans: async () => {
+    return apiRequest(API_ENDPOINTS.admin.subscriptionPlans, { method: 'GET' });
+  },
   createPlan: async (planData) => {
     return apiRequest(API_ENDPOINTS.admin.subscriptionPlans, {
       method: 'POST',

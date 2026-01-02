@@ -57,6 +57,12 @@ const subscriptionPlanSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  type: {
+    type: String,
+    enum: ['general', 'market_price'],
+    default: 'general',
+    required: true
+  },
   sortOrder: {
     type: Number,
     default: 0
@@ -70,18 +76,18 @@ subscriptionPlanSchema.index({ isActive: 1, sortOrder: 1 });
 subscriptionPlanSchema.index({ durationType: 1, isActive: 1 });
 
 // Static method to get active plans
-subscriptionPlanSchema.statics.getActivePlans = async function() {
+subscriptionPlanSchema.statics.getActivePlans = async function () {
   return this.find({ isActive: true })
     .sort({ sortOrder: 1, priority: -1, createdAt: 1 });
 };
 
 // Static method to get plan by ID (only if active)
-subscriptionPlanSchema.statics.getActivePlanById = async function(planId) {
+subscriptionPlanSchema.statics.getActivePlanById = async function (planId) {
   return this.findOne({ _id: planId, isActive: true });
 };
 
 // Instance method to calculate duration in days
-subscriptionPlanSchema.methods.getDurationInDays = function() {
+subscriptionPlanSchema.methods.getDurationInDays = function () {
   if (this.durationType === 'monthly') {
     return this.duration * 30;
   } else if (this.durationType === 'quarterly') {
@@ -93,7 +99,7 @@ subscriptionPlanSchema.methods.getDurationInDays = function() {
 };
 
 // Remove sensitive/internal fields from JSON output
-subscriptionPlanSchema.methods.toJSON = function() {
+subscriptionPlanSchema.methods.toJSON = function () {
   const obj = this.toObject();
   // All fields are safe to expose, but we can add filtering here if needed
   return obj;

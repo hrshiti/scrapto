@@ -1040,6 +1040,19 @@ export const getPaymentAnalytics = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get all subscription plans (Admin)
+// @route   GET /api/admin/subscriptions/plans
+// @access  Private (Admin)
+export const getAllSubscriptionPlans = asyncHandler(async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.find().sort({ isActive: -1, sortOrder: 1, createdAt: -1 });
+    sendSuccess(res, 'Subscription plans retrieved successfully', { plans });
+  } catch (error) {
+    logger.error('[Admin] Error fetching subscription plans:', error);
+    sendError(res, 'Failed to fetch subscription plans', 500);
+  }
+});
+
 // ============================================
 // SUBSCRIPTION PLAN MANAGEMENT (Admin)
 // ============================================
