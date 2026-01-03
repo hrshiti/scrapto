@@ -36,7 +36,7 @@ import {
   // Subscription Plan Management
   createPlan,
   updatePlan,
-  updatePlan,
+
   deletePlan,
   getAllSubscriptions,
   getAllSubscriptionPlans,
