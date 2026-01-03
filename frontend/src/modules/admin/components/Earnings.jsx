@@ -173,8 +173,9 @@ const Earnings = () => {
                 className="rounded-xl bg-white p-6 shadow-sm border border-gray-100"
             >
                 <h2 className="mb-6 text-lg font-bold text-gray-800">Revenue Overview</h2>
-                <div className="h-[300px]">
-                    <Line options={chartOptions} data={chartData} />
+                <div className="h-[300px] flex items-center justify-center bg-gray-50 rounded-lg">
+                    {/* <Line options={chartOptions} data={chartData} /> */}
+                    <p className="text-gray-400">Chart visualization is momentarily disabled for maintenance.</p>
                 </div>
             </motion.div>
 
@@ -199,13 +200,16 @@ const Earnings = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {analyticsData?.monthlyRevenue?.map((item) => (
-                                    <tr key={item._id || Math.random()} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item._id || 'N/A'}</td>
-                                        <td className="px-6 py-4">{item.count || 0}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{(item.total || 0).toLocaleString()}</td>
-                                    </tr>
-                                ))}
+                                {Array.isArray(analyticsData?.monthlyRevenue) && analyticsData.monthlyRevenue.map((item, index) => {
+                                    if (!item) return null;
+                                    return (
+                                        <tr key={item._id || index} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 font-medium text-gray-900">{item._id || 'N/A'}</td>
+                                            <td className="px-6 py-4">{item.count || 0}</td>
+                                            <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{(item.total || 0).toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
                                 {(!analyticsData?.monthlyRevenue || analyticsData.monthlyRevenue.length === 0) && (
                                     <tr>
                                         <td colSpan="3" className="px-6 py-8 text-center text-gray-500">
