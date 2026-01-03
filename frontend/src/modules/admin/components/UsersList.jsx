@@ -11,6 +11,7 @@ const UsersList = () => {
   const [filter, setFilter] = useState('all'); // all, active, blocked
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { login, isAuthenticated } = { login: () => { }, isAuthenticated: true }; // Placeholder or use context if needed
   const staticTexts = [
     "Failed to load users",

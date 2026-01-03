@@ -33,8 +33,17 @@ export const usePageTranslation = (staticTexts = [], sourceLang = 'en') => {
     translateAll();
   }, [language, JSON.stringify(staticTexts), sourceLang]);
 
-  const getTranslatedText = useCallback((text) => {
-    return translations[text] || text;
+  const getTranslatedText = useCallback((text, params = {}) => {
+    let translated = translations[text] || text;
+
+    if (params && Object.keys(params).length > 0) {
+      Object.keys(params).forEach(key => {
+        // Replace {key} globally
+        translated = translated.split(`{${key}}`).join(params[key]);
+      });
+    }
+
+    return translated;
   }, [translations]);
 
   return {

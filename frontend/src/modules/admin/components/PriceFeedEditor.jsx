@@ -102,56 +102,10 @@ const PriceFeedEditor = () => {
         }));
       }
 
-      // Merge backend prices with defaults
-      const nowIso = new Date().toISOString();
-      const processedCategories = new Set();
-      const processedServices = new Set();
-      const finalPrices = [];
 
-      // 1. Process Material Defaults
-      DEFAULT_PRICE_FEED.forEach((def) => {
-        const match = dbPrices.find(p => p.category === def.category && (!p.type || p.type === PRICE_TYPES.MATERIAL));
-        if (match) {
-          processedCategories.add(match.category);
-          finalPrices.push({ ...match, type: PRICE_TYPES.MATERIAL });
-        } else {
-          processedCategories.add(def.category);
-          finalPrices.push({
-            ...def,
-            effectiveDate: def.effectiveDate || nowIso,
-            updatedAt: def.updatedAt || nowIso,
-            type: PRICE_TYPES.MATERIAL
-          });
-        }
-      });
 
-      // 2. Process Service Defaults
-      DEFAULT_SERVICE_FEED.forEach((def) => {
-        const match = dbPrices.find(p => p.category === def.category && p.type === PRICE_TYPES.SERVICE);
-        if (match) {
-          processedServices.add(match.category);
-          finalPrices.push({ ...match, type: PRICE_TYPES.SERVICE });
-        } else {
-          processedServices.add(def.category);
-          finalPrices.push({
-            ...def,
-            effectiveDate: def.effectiveDate || nowIso,
-            updatedAt: def.updatedAt || nowIso,
-            type: PRICE_TYPES.SERVICE
-          });
-        }
-      });
-
-      // 3. Add any custom items from DB
-      dbPrices.forEach(p => {
-        if ((!p.type || p.type === PRICE_TYPES.MATERIAL) && !processedCategories.has(p.category)) {
-          finalPrices.push({ ...p, type: PRICE_TYPES.MATERIAL });
-        } else if (p.type === PRICE_TYPES.SERVICE && !processedServices.has(p.category)) {
-          finalPrices.push({ ...p, type: PRICE_TYPES.SERVICE });
-        }
-      });
-
-      setPrices(finalPrices);
+      // Use prices directly from DB
+      setPrices(dbPrices);
     } catch (err) {
       console.error('Error loading prices:', err);
       // Fallback to defaults on error

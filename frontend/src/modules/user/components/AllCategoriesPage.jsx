@@ -82,22 +82,10 @@ const AllCategoriesPage = () => {
             (p) => !p.type || p.type === PRICE_TYPES.MATERIAL
           );
 
-          // Translate material names/descriptions
-          const materialNames = materialsRaw.map(p => p.category);
-          // Assuming we want to translate names primarily. 
-          // Since translation is async, we can do it here or render English first.
-          // For simplicity and to fix the crash, we'll store them as is and let specific translation components handle it 
-          // OR translate them in batch here.
-
-          // Let's use the raw values for now to fix the crash, 
-          // and if dynamic translation is needed, it should be done via state updates.
-
           const mappedMaterials = materialsRaw.map((price) => ({
             name: price.category,
             image: price.image || getCategoryImage(price.category),
-            description: getTranslatedText("Sell your {category} scrap", {
-              category: price.category,
-            }),
+            // We don't translate here to avoid dependency loops
             type: PRICE_TYPES.MATERIAL,
           }));
           setCategories(mappedMaterials);
@@ -110,11 +98,7 @@ const AllCategoriesPage = () => {
             name: price.category,
             price: price.price || 0,
             image: price.image || getCategoryImage(price.category),
-            description:
-              price.description ||
-              getTranslatedText("Book {category}", {
-                category: price.category,
-              }),
+            description: price.description, // Keep raw description if active
             type: PRICE_TYPES.SERVICE,
           }));
           setServices(mappedServices);
@@ -128,9 +112,6 @@ const AllCategoriesPage = () => {
         const mapped = defaultFeed.map((item) => ({
           name: item.category,
           image: getCategoryImage(item.category),
-          description: getTranslatedText("Sell your {category} scrap", {
-            category: item.category,
-          }),
           type: PRICE_TYPES.MATERIAL,
         }));
         setCategories(mapped);
@@ -140,9 +121,7 @@ const AllCategoriesPage = () => {
           name: item.category,
           price: item.price,
           image: getCategoryImage(item.category),
-          description:
-            item.description ||
-            getTranslatedText("Book {category}", { category: item.category }),
+          description: item.description,
           type: PRICE_TYPES.SERVICE,
         }));
         setServices(mappedServices);
@@ -151,7 +130,7 @@ const AllCategoriesPage = () => {
       }
     };
     fetchCategories();
-  }, [getTranslatedText]); // Added dependency
+  }, []); // Removed dependency to prevent re-fetching loop
 
   const handleCategoryClick = (item) => {
     if (item.type === PRICE_TYPES.SERVICE) {
@@ -242,7 +221,9 @@ const AllCategoriesPage = () => {
                     <p
                       className="text-xs md:text-sm text-center"
                       style={{ color: "#718096" }}>
-                      {category.description}
+                      {getTranslatedText("Sell your {category} scrap", {
+                        category: category.name,
+                      })}
                     </p>
                   </div>
                 </div>
@@ -296,7 +277,11 @@ const AllCategoriesPage = () => {
                       <p
                         className="text-xs md:text-sm text-center truncate"
                         style={{ color: "#718096" }}>
-                        {service.description}
+                        {service.description
+                          ? getTranslatedText(service.description)
+                          : getTranslatedText("Book {category}", {
+                            category: service.name,
+                          })}
                       </p>
                     </div>
                   </div>

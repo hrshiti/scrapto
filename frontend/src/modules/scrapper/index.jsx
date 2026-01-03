@@ -14,8 +14,9 @@ import ScrapperHelpSupport from './components/ScrapperHelpSupport';
 import ScrapperProfile from './components/ScrapperProfile';
 import ChatPage from './components/ChatPage';
 import ChatListPage from './components/ChatListPage';
+import ScrapperWallet from './components/ScrapperWallet';
 import { authAPI } from '../shared/utils/api';
-import { FaHome, FaList, FaRegComments, FaUser } from 'react-icons/fa';
+import { FaHome, FaList, FaRegComments, FaUser, FaWallet } from 'react-icons/fa';
 import WebViewHeader from '../shared/components/WebViewHeader';
 
 // Helper function to check KYC status
@@ -210,6 +211,7 @@ const ScrapperModule = () => {
     { label: 'Dashboard', path: '/scrapper/dashboard', icon: FaHome },
     { label: 'Active Requests', path: '/scrapper/active-requests', icon: FaList },
     { label: 'Chats', path: '/scrapper/chats', icon: FaRegComments },
+    { label: 'Wallet', path: '/scrapper/wallet', icon: FaWallet }, // Added Wallet Option
     { label: 'Profile', path: '/scrapper/profile', icon: FaUser },
   ];
 
@@ -252,6 +254,9 @@ const ScrapperModule = () => {
         <Route path="/chats" element={<ChatListPage />} />
         <Route path="/chat/:chatId" element={<ChatPage />} />
         <Route path="/chat" element={<ChatPage />} />
+
+        {/* Wallet Route */}
+        <Route path="/wallet" element={<ScrapperWallet />} />
 
         {/* Redirect logic based on KYC and Subscription status */}
         <Route path="*" element={

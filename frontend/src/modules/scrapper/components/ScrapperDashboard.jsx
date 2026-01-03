@@ -10,6 +10,7 @@ import { earningsAPI, scrapperOrdersAPI, subscriptionAPI, kycAPI } from '../../s
 import BannerSlider from '../../shared/components/BannerSlider';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import LanguageSelector from '../../shared/components/LanguageSelector';
+import ScrapperBottomNav from './ScrapperBottomNav';
 
 const ScrapperDashboard = () => {
   const staticTexts = [
@@ -708,249 +709,262 @@ const ScrapperDashboard = () => {
           </div>
         </motion.div>
 
+
+
+        {/* Bottom Navigation for Mobile */}
+        <div className="md:hidden">
+          <ScrapperBottomNav />
+        </div>
+
         {/* Scrapper Solutions Section */}
         <div className="px-2">
           <ScrapperSolutions />
         </div>
 
         {/* Active Requests List */}
-        {activeRequests.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="rounded-2xl p-4 md:p-6 shadow-lg"
-            style={{ backgroundColor: '#ffffff' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                {getTranslatedText("Active Requests")}
-              </h2>
-              <button
-                onClick={() => navigate('/scrapper/my-active-requests')}
-                className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
-                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
-              >
-                {getTranslatedText("View All")}
-              </button>
-            </div>
-            <div className="space-y-3">
-              {activeRequests.slice(0, 3).map((request, index) => {
-                const statusColors = {
-                  accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: getTranslatedText('Accepted') },
-                  picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: getTranslatedText('Picked Up') },
-                  payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: getTranslatedText('Payment Pending') }
-                };
-                const statusConfig = statusColors[request.status] || statusColors.accepted;
-                const pickupTime = request.pickupSlot
-                  ? `${getTranslatedText(request.pickupSlot.dayName)}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
-                  : request.preferredTime || getTranslatedText('Time not specified');
-
-                return (
-                  <motion.div
-                    key={request.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    onClick={() => navigate(`/scrapper/active-request/${request.id}`, { state: { request }, replace: false })}
-                    className="p-3 md:p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md"
-                    style={{
-                      backgroundColor: 'rgba(100, 148, 110, 0.05)',
-                      borderColor: 'rgba(100, 148, 110, 0.2)'
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}>
-                            <span className="text-xs font-bold" style={{ color: '#64946e' }}>
-                              {request.userName?.[0]?.toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
-                              {request.userName || getTranslatedText('Unknown User')}
-                            </p>
-                            <p className="text-xs truncate" style={{ color: '#718096' }}>
-                              {getTranslatedText(request.scrapType || 'Scrap')}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="ml-10 space-y-1">
-                          {request.location?.address && (
-                            <div className="flex items-center gap-1">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
-                              </svg>
-                              <p className="text-xs truncate" style={{ color: '#718096' }}>
-                                {request.location.address}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
-                              <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                            <p className="text-xs truncate" style={{ color: '#718096' }}>
-                              {pickupTime}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-bold mb-1" style={{ color: '#64946e' }}>
-                          {request.estimatedEarnings || '₹0'}
-                        </p>
-                        <span
-                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                          style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
-                        >
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-            {activeRequests.length > 3 && (
-              <button
-                onClick={() => navigate('/scrapper/my-active-requests')}
-                className="w-full mt-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
-              >
-                {activeRequests.length - 3 > 1
-                  ? getTranslatedText("View {count} more requests", { count: activeRequests.length - 3 })
-                  : getTranslatedText("View {count} more request", { count: activeRequests.length - 3 })}
-              </button>
-            )}
-          </motion.div>
-        )}
-
-        {/* Subscription Status - Only show if KYC is verified AND subscription is active (from backend) */}
-        {(() => {
-          // Use backend data (state) instead of localStorage
-          // Only show subscription card if KYC is verified from backend
-          if (!kycStatus || kycStatus !== 'verified') {
-            return null;
-          }
-
-          // Check subscription from backend data
-          if (!subscriptionData || subscriptionData.status !== 'active') {
-            return null;
-          }
-
-          // Check if subscription is not expired
-          const expiryDate = subscriptionData.expiryDate ? new Date(subscriptionData.expiryDate) : null;
-          const now = new Date();
-
-          if (!expiryDate || expiryDate <= now) {
-            return null;
-          }
-
-          // Subscription is active and not expired - show card
-          const formattedDate = expiryDate.toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-          });
-
-          return (
+        {
+          activeRequests.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.35 }}
               className="rounded-2xl p-4 md:p-6 shadow-lg"
               style={{ backgroundColor: '#ffffff' }}
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
-                    {getTranslatedText("Subscription Status")}
-                  </h3>
-                  <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
-                    {getTranslatedText("Active until {date}", { date: formattedDate })}
-                  </p>
-                </div>
-                <div className="px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
-                  <p className="text-xs md:text-sm font-semibold" style={{ color: '#10b981' }}>
-                    {getTranslatedText("Active")}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                  {getTranslatedText("Active Requests")}
+                </h2>
+                <button
+                  onClick={() => navigate('/scrapper/my-active-requests')}
+                  className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
+                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
+                >
+                  {getTranslatedText("View All")}
+                </button>
               </div>
+              <div className="space-y-3">
+                {activeRequests.slice(0, 3).map((request, index) => {
+                  const statusColors = {
+                    accepted: { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', label: getTranslatedText('Accepted') },
+                    picked_up: { bg: 'rgba(234, 179, 8, 0.1)', color: '#ca8a04', label: getTranslatedText('Picked Up') },
+                    payment_pending: { bg: 'rgba(249, 115, 22, 0.1)', color: '#f97316', label: getTranslatedText('Payment Pending') }
+                  };
+                  const statusConfig = statusColors[request.status] || statusColors.accepted;
+                  const pickupTime = request.pickupSlot
+                    ? `${getTranslatedText(request.pickupSlot.dayName)}, ${request.pickupSlot.date} • ${request.pickupSlot.slot}`
+                    : request.preferredTime || getTranslatedText('Time not specified');
+
+                  return (
+                    <motion.div
+                      key={request.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      onClick={() => navigate(`/scrapper/active-request/${request.id}`, { state: { request }, replace: false })}
+                      className="p-3 md:p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md"
+                      style={{
+                        backgroundColor: 'rgba(100, 148, 110, 0.05)',
+                        borderColor: 'rgba(100, 148, 110, 0.2)'
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}>
+                              <span className="text-xs font-bold" style={{ color: '#64946e' }}>
+                                {request.userName?.[0]?.toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold truncate" style={{ color: '#2d3748' }}>
+                                {request.userName || getTranslatedText('Unknown User')}
+                              </p>
+                              <p className="text-xs truncate" style={{ color: '#718096' }}>
+                                {getTranslatedText(request.scrapType || 'Scrap')}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="ml-10 space-y-1">
+                            {request.location?.address && (
+                              <div className="flex items-center gap-1">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
+                                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="currentColor" />
+                                </svg>
+                                <p className="text-xs truncate" style={{ color: '#718096' }}>
+                                  {request.location.address}
+                                </p>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: '#718096', flexShrink: 0 }}>
+                                <path d="M8 2v2M16 2v2M5 7h14M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <p className="text-xs truncate" style={{ color: '#718096' }}>
+                                {pickupTime}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold mb-1" style={{ color: '#64946e' }}>
+                            {request.estimatedEarnings || '₹0'}
+                          </p>
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                            style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              {activeRequests.length > 3 && (
+                <button
+                  onClick={() => navigate('/scrapper/my-active-requests')}
+                  className="w-full mt-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
+                >
+                  {activeRequests.length - 3 > 1
+                    ? getTranslatedText("View {count} more requests", { count: activeRequests.length - 3 })
+                    : getTranslatedText("View {count} more request", { count: activeRequests.length - 3 })}
+                </button>
+              )}
             </motion.div>
-          );
-        })()}
+          )
+        }
+
+        {/* Subscription Status - Only show if KYC is verified AND subscription is active (from backend) */}
+        {
+          (() => {
+            // Use backend data (state) instead of localStorage
+            // Only show subscription card if KYC is verified from backend
+            if (!kycStatus || kycStatus !== 'verified') {
+              return null;
+            }
+
+            // Check subscription from backend data
+            if (!subscriptionData || subscriptionData.status !== 'active') {
+              return null;
+            }
+
+            // Check if subscription is not expired
+            const expiryDate = subscriptionData.expiryDate ? new Date(subscriptionData.expiryDate) : null;
+            const now = new Date();
+
+            if (!expiryDate || expiryDate <= now) {
+              return null;
+            }
+
+            // Subscription is active and not expired - show card
+            const formattedDate = expiryDate.toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            });
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="rounded-2xl p-4 md:p-6 shadow-lg"
+                style={{ backgroundColor: '#ffffff' }}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base md:text-lg font-bold mb-1" style={{ color: '#2d3748' }}>
+                      {getTranslatedText("Subscription Status")}
+                    </h3>
+                    <p className="text-xs md:text-sm" style={{ color: '#718096' }}>
+                      {getTranslatedText("Active until {date}", { date: formattedDate })}
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 rounded-full" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)' }}>
+                    <p className="text-xs md:text-sm font-semibold" style={{ color: '#10b981' }}>
+                      {getTranslatedText("Active")}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()
+        }
 
         {/* Recent Activity (Completed Orders History) */}
-        {completedOrders.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="rounded-2xl p-4 md:p-6 shadow-lg"
-            style={{ backgroundColor: '#ffffff' }}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
-                {getTranslatedText("Recent Activity")}
-              </h2>
-              <button
-                onClick={() => navigate('/scrapper/earnings')}
-                className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
-                style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
-              >
-                {getTranslatedText("View Earnings")}
-              </button>
-            </div>
-            <div className="space-y-3">
-              {completedOrders.slice(0, 5).map((order, index) => {
-                const date = new Date(order.completedAt || order.createdAt);
+        {
+          completedOrders.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="rounded-2xl p-4 md:p-6 shadow-lg"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg md:text-xl font-bold" style={{ color: '#2d3748' }}>
+                  {getTranslatedText("Recent Activity")}
+                </h2>
+                <button
+                  onClick={() => navigate('/scrapper/earnings')}
+                  className="text-xs md:text-sm font-semibold px-3 py-1.5 rounded-full transition-colors"
+                  style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)', color: '#166534' }}
+                >
+                  {getTranslatedText("View Earnings")}
+                </button>
+              </div>
+              <div className="space-y-3">
+                {completedOrders.slice(0, 5).map((order, index) => {
+                  const date = new Date(order.completedAt || order.createdAt);
 
-                return (
-                  <motion.div
-                    key={order.id || order.orderId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                    className="p-3 md:p-4 rounded-xl border flex items-center justify-between"
-                    style={{
-                      backgroundColor: '#f8fafc',
-                      borderColor: '#e2e8f0'
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}
-                      >
-                        <span className="text-sm font-bold" style={{ color: '#64946e' }}>
-                          ✓
+                  return (
+                    <motion.div
+                      key={order.id || order.orderId}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      className="p-3 md:p-4 rounded-xl border flex items-center justify-between"
+                      style={{
+                        backgroundColor: '#f8fafc',
+                        borderColor: '#e2e8f0'
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'rgba(100, 148, 110, 0.2)' }}
+                        >
+                          <span className="text-sm font-bold" style={{ color: '#64946e' }}>
+                            ✓
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
+                            {getTranslatedText(order.scrapType || 'Scrap Pickup')}
+                          </p>
+                          <p className="text-xs" style={{ color: '#718096' }}>
+                            {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • from {order.userName || getTranslatedText('User')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold" style={{ color: '#64946e' }}>
+                          ₹{order.amount || order.totalAmount || 0}
+                        </p>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
+                          {getTranslatedText("Completed")}
                         </span>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold" style={{ color: '#2d3748' }}>
-                          {getTranslatedText(order.scrapType || 'Scrap Pickup')}
-                        </p>
-                        <p className="text-xs" style={{ color: '#718096' }}>
-                          {date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • from {order.userName || getTranslatedText('User')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold" style={{ color: '#64946e' }}>
-                        ₹{order.amount || order.totalAmount || 0}
-                      </p>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
-                        {getTranslatedText("Completed")}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )
+        }
 
         {/* Refer & Earn Card */}
         <motion.div
@@ -1138,8 +1152,8 @@ const ScrapperDashboard = () => {
             </div>
           )}
         </motion.div>
-      </div>
-    </motion.div>
+      </div >
+    </motion.div >
   );
 };
 

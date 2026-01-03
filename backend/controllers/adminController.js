@@ -854,10 +854,16 @@ export const getAllPrices = asyncHandler(async (req, res) => {
 // @access  Private (Admin)
 export const createPrice = asyncHandler(async (req, res) => {
   try {
-    const { category, pricePerKg, regionCode, effectiveDate, isActive, image } = req.body;
+    const { category, pricePerKg, price: fixedPrice, regionCode, effectiveDate, isActive, image, type } = req.body;
 
-    if (!category || !pricePerKg) {
-      return sendError(res, 'Category and price per kg are required', 400);
+    if (!category) {
+      return sendError(res, 'Category is required', 400);
+    }
+
+    // Validate price based on type
+    if (type === 'service' && fixedPrice === undefined) {
+      // if service, we expect 'price' (fixedPrice here)
+      // But if frontend sends 0, it's valid.
     }
 
     // Deactivate old prices for same category and region
@@ -868,17 +874,19 @@ export const createPrice = asyncHandler(async (req, res) => {
       );
     }
 
-    const price = await Price.create({
+    const newPriceEntry = await Price.create({
       category,
-      pricePerKg,
+      pricePerKg: pricePerKg || 0,
+      price: fixedPrice || 0,
       regionCode: regionCode || 'IN-DL',
       effectiveDate: effectiveDate ? new Date(effectiveDate) : new Date(),
       isActive: isActive !== undefined ? isActive : true,
       updatedBy: req.user.id,
-      image
+      image,
+      type: type || 'material'
     });
 
-    sendSuccess(res, 'Price created successfully', { price });
+    sendSuccess(res, 'Price created successfully', { price: newPriceEntry });
   } catch (error) {
     logger.error('[Admin] Error creating price:', error);
     sendError(res, 'Failed to create price', 500);
@@ -929,6 +937,9 @@ export const deletePrice = asyncHandler(async (req, res) => {
     sendSuccess(res, 'Price deleted successfully', {});
   } catch (error) {
     logger.error('[Admin] Error deleting price:', error);
+    if (error.name === 'CastError') {
+      return sendError(res, 'Invalid Price ID', 400);
+    }
     sendError(res, 'Failed to delete price', 500);
   }
 });
