@@ -2,28 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { adminAPI } from '../../shared/utils/api';
 import { Line } from 'react-chartjs-2';
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-} from 'chart.js';
+import { Chart as ChartJS, registerables } from 'chart.js';
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-);
+ChartJS.register(...registerables);
 
 const Earnings = () => {
     const [loading, setLoading] = useState(true);
