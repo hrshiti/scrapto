@@ -35,6 +35,31 @@ const Earnings = () => {
         endDate: new Date().toISOString().split('T')[0]
     });
 
+    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+    const [withdrawAmount, setWithdrawAmount] = useState('');
+    const [withdrawNotes, setWithdrawNotes] = useState('');
+    const [withdrawing, setWithdrawing] = useState(false);
+
+    const handleWithdraw = async () => {
+        try {
+            setWithdrawing(true);
+            const response = await adminAPI.withdrawFunds(Number(withdrawAmount), withdrawNotes);
+            if (response.success) {
+                // Success feedback (usually toast)
+                alert('Withdrawal Successful');
+                setShowWithdrawModal(false);
+                setWithdrawAmount('');
+                setWithdrawNotes('');
+                fetchAnalytics(); // Refresh
+            }
+        } catch (error) {
+            console.error(error);
+            alert(error.message || 'Withdrawal Failed');
+        } finally {
+            setWithdrawing(false);
+        }
+    };
+
     useEffect(() => {
         fetchAnalytics();
     }, [dateRange]);
@@ -121,6 +146,7 @@ const Earnings = () => {
                         <div>
                             <p className="text-sm font-medium text-gray-500">Total Revenue</p>
                             <h3 className="text-2xl font-bold text-gray-900">₹{analyticsData?.totalRevenue?.toLocaleString() || '0'}</h3>
+                            <p className="text-xs text-gray-400">Merged (Payments + Commissions)</p>
                         </div>
                     </div>
                 </motion.div>
@@ -129,6 +155,52 @@ const Earnings = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
+                    className="rounded-xl bg-white p-6 shadow-sm border border-gray-100"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                            {/* Icon for Commission */}
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-500">Commission Earned</p>
+                            <h3 className="text-2xl font-bold text-gray-900">₹{analyticsData?.revenueBreakdown?.commissions?.toLocaleString() || '0'}</h3>
+                            <p className="text-xs text-green-600">1% on Orders</p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 p-6 shadow-lg text-white"
+                >
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 rounded-lg bg-white/10">
+                            <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                        </div>
+                        <button
+                            onClick={() => setShowWithdrawModal(true)}
+                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-xs font-bold rounded-full transition-colors"
+                        >
+                            Withdraw
+                        </button>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-400">Admin Wallet Balance</p>
+                        <h3 className="text-3xl font-bold mt-1">₹{analyticsData?.adminWalletBalance?.toLocaleString() || '0'}</h3>
+                    </div>
+                </motion.div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
                     className="rounded-xl bg-white p-6 shadow-sm border border-gray-100"
                 >
                     <div className="flex items-center gap-4">
@@ -144,6 +216,63 @@ const Earnings = () => {
                     </div>
                 </motion.div>
             </div>
+
+            {/* Withdraw Modal */}
+            {showWithdrawModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
+                    >
+                        <h3 className="text-xl font-bold text-gray-900 mb-4">Withdraw Funds</h3>
+                        <p className="text-gray-500 text-sm mb-6">Transfer funds from Admin Wallet to linked bank account via System Payout.</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
+                                    <input
+                                        type="number"
+                                        value={withdrawAmount}
+                                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Available: ₹{analyticsData?.adminWalletBalance || 0}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                                <textarea
+                                    value={withdrawNotes}
+                                    onChange={(e) => setWithdrawNotes(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none h-24 resize-none"
+                                    placeholder="Reason for withdrawal..."
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-8">
+                            <button
+                                onClick={() => setShowWithdrawModal(false)}
+                                className="px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleWithdraw}
+                                disabled={withdrawing}
+                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
+                            >
+                                {withdrawing ? 'Processing...' : 'Confirm Withdraw'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
 
             {/* Revenue Chart */}
             <motion.div

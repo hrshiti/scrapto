@@ -36,9 +36,11 @@ import {
   // Subscription Plan Management
   createPlan,
   updatePlan,
+  updatePlan,
   deletePlan,
   getAllSubscriptions,
-  getAllSubscriptionPlans
+  getAllSubscriptionPlans,
+  withdrawFunds
 } from '../controllers/adminController.js';
 import { getScrapperEarningsForAdmin } from '../controllers/earningsController.js';
 import {
@@ -138,5 +140,10 @@ router.get('/leads', getAllLeads);
 router.post('/leads', createLead);
 router.put('/leads/:id', updateLead);
 router.delete('/leads/:id', deleteLead);
+
+// ============================================
+// FINANCE MANAGEMENT
+// ============================================
+router.post('/finance/withdraw', withdrawFunds);
 
 export default router;

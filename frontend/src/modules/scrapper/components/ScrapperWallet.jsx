@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../shared/context/AuthContext';
 import { FaWallet, FaHistory, FaArrowUp, FaArrowDown, FaExclamationCircle } from 'react-icons/fa';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
-import { earningsAPI } from '../../shared/utils/api';
+import { walletAPI } from '../../shared/utils/api';
 import WebViewHeader from '../../shared/components/WebViewHeader';
 import ScrapperBottomNav from './ScrapperBottomNav';
 
@@ -11,15 +11,18 @@ const ScrapperWallet = () => {
     const { user } = useAuth();
     const staticTexts = [
         "My Wallet",
-        "Total Earnings",
+        "Total Balance", // Changed from Earnings because it's a wallet now
         "Available Balance",
-        "Pending Clearance",
         "Recent Transactions",
         "Withdraw",
         "Add Money",
         "No transactions yet",
         "Completed Pickup",
         "Withdrawal",
+        "Recharge",
+        "Commission",
+        "Payment Sent",
+        "Payment Received",
         "Refund",
         "Bonus",
         "Status",
@@ -36,22 +39,19 @@ const ScrapperWallet = () => {
         const fetchWalletData = async () => {
             try {
                 setLoading(true);
-                // Fetch summary for balance
-                const summaryRes = await earningsAPI.getSummary();
-                if (summaryRes.success && summaryRes.data?.summary) {
-                    const { total, today, week, month } = summaryRes.data.summary;
-                    // Mocking separation of available vs pending for now based on total
-                    setBalance({
-                        available: total * 0.8, // 80% available
-                        pending: total * 0.2,   // 20% pending
-                        total: total
-                    });
-                }
+                // Fetch wallet profile which contains balance and recent transactions
+                const res = await walletAPI.getWalletProfile();
 
-                // Fetch history for transactions
-                const historyRes = await earningsAPI.getHistory();
-                if (historyRes.success && historyRes.data?.history) {
-                    setTransactions(historyRes.data.history);
+                if (res.success && res.data) {
+                    setBalance({
+                        available: res.data.balance || 0,
+                        pending: 0, // Wallet usually doesn't have pending concept unless we add it
+                        total: res.data.balance || 0
+                    });
+
+                    if (res.data.transactions) {
+                        setTransactions(res.data.transactions);
+                    }
                 }
             } catch (error) {
                 console.error("Failed to fetch wallet data:", error);
@@ -88,7 +88,7 @@ const ScrapperWallet = () => {
                     </div>
 
                     <div className="relative z-10">
-                        <p className="text-emerald-100 text-sm font-medium mb-1">{getTranslatedText("Total Earnings")}</p>
+                        <p className="text-emerald-100 text-sm font-medium mb-1">{getTranslatedText("Total Balance")}</p>
                         <h2 className="text-4xl font-bold mb-6">₹{balance.total.toLocaleString()}</h2>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -135,39 +135,61 @@ const ScrapperWallet = () => {
                         </div>
                     ) : transactions.length > 0 ? (
                         <div className="space-y-3">
-                            {transactions.map((tx, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.05 * index }}
-                                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'withdrawal' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
-                                            }`}>
-                                            {tx.type === 'withdrawal' ? <FaArrowUp /> : <FaArrowDown />}
+                            {transactions.map((tx, index) => {
+                                const isDebit = tx.type === 'DEBIT';
+                                const isCredit = tx.type === 'CREDIT';
+
+                                let label = getTranslatedText("Completed Pickup");
+                                let icon = isDebit ? <FaArrowUp /> : <FaArrowDown />; // Debit = Out (Up), Credit = In (Down)
+
+                                switch (tx.category) {
+                                    case 'RECHARGE': label = getTranslatedText("Recharge"); break;
+                                    case 'COMMISSION': label = getTranslatedText("Commission"); break;
+                                    case 'WITHDRAWAL': label = getTranslatedText("Withdrawal"); break;
+                                    case 'PAYMENT_RECEIVED': label = getTranslatedText("Payment Received"); break;
+                                    case 'PAYMENT_SENT': label = getTranslatedText("Payment Sent"); break;
+                                    case 'REFUND': label = getTranslatedText("Refund"); break;
+                                    case 'REFERRAL_BONUS': label = getTranslatedText("Bonus"); break;
+                                    default: label = tx.description || getTranslatedText("Transaction");
+                                }
+
+                                return (
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, x: -10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.05 * index }}
+                                        className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center justify-between"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDebit ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'
+                                                }`}>
+                                                {icon}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-800">
+                                                    {label}
+                                                    {tx.orderId && <span className="text-xs text-gray-400 ml-1">#{tx.orderId.substring(tx.orderId.length - 4)}</span>}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {formatDate(tx.createdAt)}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-semibold text-gray-800">
-                                                {tx.orderId ? `${getTranslatedText("Completed Pickup")} #${tx.orderId.slice(-4)}` : getTranslatedText("Top up")}
+                                        <div className="text-right">
+                                            <p className={`font-bold ${isDebit ? 'text-red-500' : 'text-emerald-600'
+                                                }`}>
+                                                {isDebit ? '-' : '+'}₹{tx.amount?.toLocaleString()}
                                             </p>
-                                            <p className="text-xs text-gray-500">
-                                                {formatDate(tx.createdAt || tx.completedAt)}
-                                            </p>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${tx.status === 'SUCCESS' ? 'bg-green-100 text-green-700' :
+                                                tx.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                {tx.status}
+                                            </span>
                                         </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className={`font-bold ${tx.type === 'withdrawal' ? 'text-red-500' : 'text-emerald-600'
-                                            }`}>
-                                            {tx.type === 'withdrawal' ? '-' : '+'}₹{tx.amount || tx.totalAmount}
-                                        </p>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                                            {tx.status || 'Completed'}
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">

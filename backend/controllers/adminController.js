@@ -6,6 +6,7 @@ import Order from '../models/Order.js';
 import Payment from '../models/Payment.js';
 import SubscriptionPlan from '../models/SubscriptionPlan.js';
 import Price from '../models/Price.js';
+import WalletTransaction from '../models/WalletTransaction.js';
 import { USER_ROLES, ORDER_STATUS, PAYMENT_STATUS, PAGINATION } from '../config/constants.js';
 import logger from '../utils/logger.js';
 import mongoose from 'mongoose';
@@ -1038,8 +1039,43 @@ export const getPaymentAnalytics = asyncHandler(async (req, res) => {
       ])
     ]);
 
+    // --- Added Commission Logic ---
+    const walletDateFilter = {};
+    if (startDate || endDate) {
+      walletDateFilter.createdAt = {};
+      if (startDate) walletDateFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) walletDateFilter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Fetch Commissions within date range
+    const [statsCommissions] = await WalletTransaction.aggregate([
+      { $match: { category: 'COMMISSION', type: 'DEBIT', ...walletDateFilter } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const commissionRevenue = statsCommissions?.total || 0;
+
+    // Fetch Total Admin Balance (All Time)
+    const [allTimeCommissions, allTimeWithdrawals] = await Promise.all([
+      WalletTransaction.aggregate([
+        { $match: { category: 'COMMISSION', type: 'DEBIT' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      WalletTransaction.aggregate([
+        { $match: { category: 'WITHDRAWAL', context: 'system_payout' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
+    ]);
+    const adminBalance = (allTimeCommissions[0]?.total || 0) - (allTimeWithdrawals[0]?.total || 0);
+
+    const paymentTotal = totalRevenue[0]?.total || 0;
+
     sendSuccess(res, 'Payment analytics retrieved successfully', {
-      totalRevenue: totalRevenue[0]?.total || 0,
+      totalRevenue: paymentTotal + commissionRevenue,
+      revenueBreakdown: {
+        payments: paymentTotal,
+        commissions: commissionRevenue
+      },
+      adminWalletBalance: adminBalance,
       totalPayments,
       statusBreakdown,
       dailyRevenue,
@@ -1177,5 +1213,60 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
     logger.error('[Admin] Error fetching subscriptions:', error);
     sendError(res, 'Failed to fetch subscriptions', 500);
   }
+});
+
+// @desc    Withdraw Admin Funds (System Payout)
+// @route   POST /api/admin/finance/withdraw
+// @access  Private (Admin)
+export const withdrawFunds = asyncHandler(async (req, res) => {
+  const { amount, notes } = req.body;
+
+  if (!amount || amount <= 0) {
+    return sendError(res, 'Invalid withdrawal amount', 400);
+  }
+
+  // Check Balance logic (Recalculating to be safe)
+  const [allTimeCommissions, allTimeWithdrawals] = await Promise.all([
+    WalletTransaction.aggregate([
+      { $match: { category: 'COMMISSION', type: 'DEBIT' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]),
+    WalletTransaction.aggregate([
+      { $match: { category: 'WITHDRAWAL', context: 'system_payout' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ])
+  ]);
+
+  const currentBalance = (allTimeCommissions[0]?.total || 0) - (allTimeWithdrawals[0]?.total || 0);
+
+  if (currentBalance < amount) {
+    return sendError(res, 'Insufficient funds in Admin Wallet', 400);
+  }
+
+  // Record Withdrawal
+  const transaction = await WalletTransaction.create({
+    trxId: `TRX-ADM-WD-${Date.now()}`,
+    user: req.user.id, // Logged in Admin ID
+    userType: 'User', // Admin is a User
+    amount: amount,
+    type: 'DEBIT',
+    balanceBefore: currentBalance,
+    balanceAfter: currentBalance - amount,
+    category: 'WITHDRAWAL',
+    status: 'SUCCESS',
+    description: notes || 'Admin Payout Withdrawal',
+    context: 'system_payout', // Special flag to identify System Withdrawals
+    gateway: {
+      provider: 'SYSTEM'
+    }
+  });
+
+  // In a real flow, here we would trigger Razorpay Payout API
+
+  sendSuccess(res, 'Withdrawal processed successfully', {
+    amount,
+    remainingBalance: currentBalance - amount,
+    transactionId: transaction.trxId
+  });
 });
 

@@ -525,6 +525,12 @@ export const adminAPI = {
   deleteLead: async (id) => {
     return apiRequest(`/admin/leads/${id}`, { method: 'DELETE' });
   },
+  withdrawFunds: async (amount, notes) => {
+    return apiRequest('/admin/finance/withdraw', {
+      method: 'POST',
+      body: JSON.stringify({ amount, notes }),
+    });
+  },
 };
 
 // Scrapper Profile API

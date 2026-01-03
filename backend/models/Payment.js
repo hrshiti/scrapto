@@ -14,8 +14,13 @@ const paymentSchema = new mongoose.Schema({
   },
   entityType: {
     type: String,
-    enum: ['order', 'subscription', 'price_feed'],
+    enum: ['order', 'subscription', 'price_feed', 'commission', 'withdrawal'],
     default: 'order'
+  },
+  transactionType: {
+    type: String,
+    enum: ['credit', 'debit'],
+    default: 'credit'
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
