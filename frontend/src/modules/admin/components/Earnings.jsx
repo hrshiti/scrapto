@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { adminAPI } from '../../shared/utils/api';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
     PointElement,
     LineElement,
-    BarElement,
     Title,
     Tooltip,
     Legend,
@@ -20,7 +19,6 @@ ChartJS.register(
     LinearScale,
     PointElement,
     LineElement,
-    BarElement,
     Title,
     Tooltip,
     Legend,
@@ -30,7 +28,7 @@ ChartJS.register(
 const Earnings = () => {
     const [loading, setLoading] = useState(true);
     const [analyticsData, setAnalyticsData] = useState(null);
-    const [dateRange, setDateRange] = useState({
+    const [dateRange] = useState({
         startDate: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
         endDate: new Date().toISOString().split('T')[0]
     });
@@ -42,8 +40,7 @@ const Earnings = () => {
     const fetchAnalytics = async () => {
         try {
             setLoading(true);
-            // Assuming adminAPI.getPaymentAnalytics supports query params for date filtering
-            const response = await adminAPI.getPaymentAnalytics(); // Pass filtered date if API supports
+            const response = await adminAPI.getPaymentAnalytics();
             if (response && response.success) {
                 setAnalyticsData(response.data);
             }
@@ -63,8 +60,8 @@ const Earnings = () => {
     }
 
     // Chart Data Preparation
-    const dailyLabels = analyticsData?.dailyRevenue?.map(d => d._id) || [];
-    const dailyValues = analyticsData?.dailyRevenue?.map(d => d.total) || [];
+    const dailyLabels = analyticsData?.dailyRevenue?.map(d => d._id || '') || [];
+    const dailyValues = analyticsData?.dailyRevenue?.map(d => d.total || 0) || [];
 
     const chartData = {
         labels: dailyLabels,
@@ -97,12 +94,14 @@ const Earnings = () => {
         }
     };
 
+    // Calculate Admin Balance safely
+    const adminBalance = analyticsData?.adminWalletBalance || 0;
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-2xl font-bold text-gray-800">Earnings & Transactions</h1>
-                {/* Date Filter Inputs could go here */}
             </div>
 
             {/* Stats Cards */}
@@ -134,7 +133,6 @@ const Earnings = () => {
                 >
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                            {/* Icon for Commission */}
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                             </svg>
@@ -159,11 +157,10 @@ const Earnings = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
                         </div>
-                        {/* Withdraw button removed as per request */}
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-400">Admin Wallet Balance</p>
-                        <h3 className="text-3xl font-bold mt-1">₹{analyticsData?.adminWalletBalance?.toLocaleString() || '0'}</h3>
+                        <h3 className="text-3xl font-bold mt-1">₹{adminBalance.toLocaleString()}</h3>
                     </div>
                 </motion.div>
 
@@ -187,9 +184,6 @@ const Earnings = () => {
                 </motion.div>
             </div>
 
-            {/* Withdraw Modal Removed */}
-            {/* Bank Config Modal Removed */}
-
             {/* Revenue Chart */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -203,7 +197,7 @@ const Earnings = () => {
                 </div>
             </motion.div>
 
-            {/* Monthly Breakdown Table (if available) - Creating simplified list */}
+            {/* Monthly Breakdown Table */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -225,10 +219,10 @@ const Earnings = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {analyticsData?.monthlyRevenue?.map((item) => (
-                                    <tr key={item._id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 font-medium text-gray-900">{item._id}</td>
-                                        <td className="px-6 py-4">{item.count}</td>
-                                        <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{item.total.toLocaleString()}</td>
+                                    <tr key={item._id || Math.random()} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 font-medium text-gray-900">{item._id || 'N/A'}</td>
+                                        <td className="px-6 py-4">{item.count || 0}</td>
+                                        <td className="px-6 py-4 text-right font-bold text-emerald-600">₹{(item.total || 0).toLocaleString()}</td>
                                     </tr>
                                 ))}
                                 {(!analyticsData?.monthlyRevenue || analyticsData.monthlyRevenue.length === 0) && (
@@ -243,7 +237,6 @@ const Earnings = () => {
                     </div>
                 </div>
             </motion.div>
-
         </div>
     );
 };
