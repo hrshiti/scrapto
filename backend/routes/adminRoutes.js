@@ -40,7 +40,8 @@ import {
   deletePlan,
   getAllSubscriptions,
   getAllSubscriptionPlans,
-  withdrawFunds
+  withdrawFunds,
+  updateAdminBankDetails
 } from '../controllers/adminController.js';
 import { getScrapperEarningsForAdmin } from '../controllers/earningsController.js';
 import {
@@ -144,6 +145,7 @@ router.delete('/leads/:id', deleteLead);
 // ============================================
 // FINANCE MANAGEMENT
 // ============================================
+router.put('/finance/bank-details', updateAdminBankDetails);
 router.post('/finance/withdraw', withdrawFunds);
 
 export default router;

@@ -10,6 +10,7 @@ import WalletTransaction from '../models/WalletTransaction.js';
 import { USER_ROLES, ORDER_STATUS, PAYMENT_STATUS, PAGINATION } from '../config/constants.js';
 import logger from '../utils/logger.js';
 import mongoose from 'mongoose';
+import { createContact, createFundAccount, initiatePayout } from '../services/payoutService.js';
 
 // ============================================
 // DASHBOARD & ANALYTICS
@@ -1039,6 +1040,15 @@ export const getPaymentAnalytics = asyncHandler(async (req, res) => {
       ])
     ]);
 
+    // Fetch Admin Bank Details
+    const adminUser = await User.findById(req.user.id).select('bankDetails');
+    const bankDetails = adminUser?.bankDetails ? {
+      accountNumber: adminUser.bankDetails.accountNumber ? `****${adminUser.bankDetails.accountNumber.slice(-4)}` : '',
+      beneficiaryName: adminUser.bankDetails.beneficiaryName,
+      bankName: adminUser.bankDetails.bankName,
+      isConfigured: !!adminUser.bankDetails.fundAccountId
+    } : null;
+
     // --- Added Commission Logic ---
     const walletDateFilter = {};
     if (startDate || endDate) {
@@ -1079,8 +1089,10 @@ export const getPaymentAnalytics = asyncHandler(async (req, res) => {
       totalPayments,
       statusBreakdown,
       dailyRevenue,
-      monthlyRevenue
+      monthlyRevenue,
+      bankDetails
     });
+
   } catch (error) {
     logger.error('[Admin] Error fetching payment analytics:', error);
     sendError(res, 'Failed to fetch payment analytics', 500);
@@ -1218,11 +1230,78 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
 // @desc    Withdraw Admin Funds (System Payout)
 // @route   POST /api/admin/finance/withdraw
 // @access  Private (Admin)
+// @desc    Update Admin Bank Details (For Payouts)
+// @route   PUT /api/admin/finance/bank-details
+// @access  Private (Admin)
+export const updateAdminBankDetails = asyncHandler(async (req, res) => {
+  const { accountNumber, ifsc, beneficiaryName, bankName } = req.body;
+  const userId = req.user.id;
+
+  if (!accountNumber || !ifsc || !beneficiaryName) {
+    return sendError(res, 'Please provide Account Number, IFSC and Beneficiary Name', 400);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return sendError(res, 'User not found', 404);
+  }
+
+  // 1. Create/Get Contact on Razorpay X
+  let contactId = user.bankDetails?.contactId;
+  if (!contactId) {
+    try {
+      const contact = await createContact(user.name, user.email, user.phone);
+      contactId = contact.id;
+    } catch (err) {
+      return sendError(res, 'Failed to register contact on Razorpay: ' + err.message, 500);
+    }
+  }
+
+  // 2. Create Fund Account on Razorpay X
+  let fundAccountId;
+  try {
+    const fundAccount = await createFundAccount(contactId, {
+      accountNumber,
+      ifsc,
+      name: beneficiaryName
+    });
+    fundAccountId = fundAccount.id;
+  } catch (err) {
+    return sendError(res, 'Failed to verify bank account with Razorpay: ' + err.message, 500);
+  }
+
+  // 3. Save to DB
+  user.bankDetails = {
+    accountNumber: accountNumber.slice(-4), // Only store last 4 digits for display
+    ifsc,
+    beneficiaryName,
+    bankName,
+    contactId,
+    fundAccountId
+  };
+
+  await user.save();
+
+  sendSuccess(res, 'Bank details updated successfully', {
+    bankDetails: user.bankDetails
+  });
+});
+
+// @desc    Withdraw Admin Funds (System Payout)
+// @route   POST /api/admin/finance/withdraw
+// @access  Private (Admin)
 export const withdrawFunds = asyncHandler(async (req, res) => {
   const { amount, notes } = req.body;
+  const userId = req.user.id;
 
   if (!amount || amount <= 0) {
     return sendError(res, 'Invalid withdrawal amount', 400);
+  }
+
+  // 1. Check Bank Details
+  const user = await User.findById(userId);
+  if (!user.bankDetails?.fundAccountId) {
+    return sendError(res, 'Bank details not found. Please configure withdrawal account first.', 400);
   }
 
   // Check Balance logic (Recalculating to be safe)
@@ -1243,7 +1322,22 @@ export const withdrawFunds = asyncHandler(async (req, res) => {
     return sendError(res, 'Insufficient funds in Admin Wallet', 400);
   }
 
-  // Record Withdrawal
+  // 2. Initiate Real Payout via Razorpay
+  let payoutResult;
+  try {
+    const referenceId = `wd_${Date.now()}`;
+    payoutResult = await initiatePayout(
+      user.bankDetails.fundAccountId,
+      amount,
+      'IMPS',
+      'payout',
+      referenceId
+    );
+  } catch (err) {
+    return sendError(res, 'Withdrawal Failed at Gateway: ' + err.message, 500);
+  }
+
+  // 3. Record Withdrawal (Only if API succeeds)
   const transaction = await WalletTransaction.create({
     trxId: `TRX-ADM-WD-${Date.now()}`,
     user: req.user.id, // Logged in Admin ID
@@ -1253,20 +1347,21 @@ export const withdrawFunds = asyncHandler(async (req, res) => {
     balanceBefore: currentBalance,
     balanceAfter: currentBalance - amount,
     category: 'WITHDRAWAL',
-    status: 'SUCCESS',
+    status: payoutResult.status === 'processed' ? 'SUCCESS' : 'PENDING', // Razorpay often returns 'processing'
     description: notes || 'Admin Payout Withdrawal',
-    context: 'system_payout', // Special flag to identify System Withdrawals
+    context: 'system_payout',
     gateway: {
-      provider: 'SYSTEM'
+      provider: 'RAZORPAY_X',
+      paymentId: payoutResult.id, // Payout ID
+      status: payoutResult.status
     }
   });
-
-  // In a real flow, here we would trigger Razorpay Payout API
 
   sendSuccess(res, 'Withdrawal processed successfully', {
     amount,
     remainingBalance: currentBalance - amount,
-    transactionId: transaction.trxId
+    transactionId: transaction.trxId,
+    payoutStatus: payoutResult.status
   });
 });
 

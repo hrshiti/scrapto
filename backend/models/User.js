@@ -81,6 +81,14 @@ const userSchema = new mongoose.Schema({
       enum: ['ACTIVE', 'FROZEN'],
       default: 'ACTIVE'
     }
+  },
+  bankDetails: {
+    accountNumber: String,
+    ifsc: String,
+    beneficiaryName: String,
+    bankName: String,
+    fundAccountId: String, // Razorpay Fund Account ID
+    contactId: String // Razorpay Contact ID
   }
 }, {
   timestamps: true

@@ -35,31 +35,6 @@ const Earnings = () => {
         endDate: new Date().toISOString().split('T')[0]
     });
 
-    const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-    const [withdrawAmount, setWithdrawAmount] = useState('');
-    const [withdrawNotes, setWithdrawNotes] = useState('');
-    const [withdrawing, setWithdrawing] = useState(false);
-
-    const handleWithdraw = async () => {
-        try {
-            setWithdrawing(true);
-            const response = await adminAPI.withdrawFunds(Number(withdrawAmount), withdrawNotes);
-            if (response.success) {
-                // Success feedback (usually toast)
-                alert('Withdrawal Successful');
-                setShowWithdrawModal(false);
-                setWithdrawAmount('');
-                setWithdrawNotes('');
-                fetchAnalytics(); // Refresh
-            }
-        } catch (error) {
-            console.error(error);
-            alert(error.message || 'Withdrawal Failed');
-        } finally {
-            setWithdrawing(false);
-        }
-    };
-
     useEffect(() => {
         fetchAnalytics();
     }, [dateRange]);
@@ -184,12 +159,7 @@ const Earnings = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
                         </div>
-                        <button
-                            onClick={() => setShowWithdrawModal(true)}
-                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-xs font-bold rounded-full transition-colors"
-                        >
-                            Withdraw
-                        </button>
+                        {/* Withdraw button removed as per request */}
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-400">Admin Wallet Balance</p>
@@ -206,7 +176,7 @@ const Earnings = () => {
                     <div className="flex items-center gap-4">
                         <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 0 00-2 2v12a2 0 002 2h10a2 0 002-2V7a2 0 00-2-2h-2M9 5a2 0 002 2h2a2 0 002-2M9 5a2 0 012-2h2a2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                             </svg>
                         </div>
                         <div>
@@ -217,62 +187,8 @@ const Earnings = () => {
                 </motion.div>
             </div>
 
-            {/* Withdraw Modal */}
-            {showWithdrawModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6"
-                    >
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">Withdraw Funds</h3>
-                        <p className="text-gray-500 text-sm mb-6">Transfer funds from Admin Wallet to linked bank account via System Payout.</p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-gray-500">₹</span>
-                                    <input
-                                        type="number"
-                                        value={withdrawAmount}
-                                        onChange={(e) => setWithdrawAmount(e.target.value)}
-                                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">Available: ₹{analyticsData?.adminWalletBalance || 0}</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
-                                <textarea
-                                    value={withdrawNotes}
-                                    onChange={(e) => setWithdrawNotes(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none h-24 resize-none"
-                                    placeholder="Reason for withdrawal..."
-                                ></textarea>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-3 mt-8">
-                            <button
-                                onClick={() => setShowWithdrawModal(false)}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleWithdraw}
-                                disabled={withdrawing}
-                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium shadow-lg shadow-emerald-200 transition-all disabled:opacity-50"
-                            >
-                                {withdrawing ? 'Processing...' : 'Confirm Withdraw'}
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
+            {/* Withdraw Modal Removed */}
+            {/* Bank Config Modal Removed */}
 
             {/* Revenue Chart */}
             <motion.div

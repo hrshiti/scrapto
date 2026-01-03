@@ -531,6 +531,12 @@ export const adminAPI = {
       body: JSON.stringify({ amount, notes }),
     });
   },
+  updateAdminBankDetails: async (bankDetails) => {
+    return apiRequest('/admin/finance/bank-details', {
+      method: 'PUT',
+      body: JSON.stringify(bankDetails),
+    });
+  },
 };
 
 // Scrapper Profile API
