@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { adminAPI } from '../../shared/utils/api';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, registerables } from 'chart.js';
-
-ChartJS.register(...registerables);
 
 const Earnings = () => {
     const [loading, setLoading] = useState(true);
@@ -39,41 +35,6 @@ const Earnings = () => {
             </div>
         );
     }
-
-    // Chart Data Preparation
-    const dailyLabels = analyticsData?.dailyRevenue?.map(d => d._id || '') || [];
-    const dailyValues = analyticsData?.dailyRevenue?.map(d => d.total || 0) || [];
-
-    const chartData = {
-        labels: dailyLabels,
-        datasets: [
-            {
-                label: 'Daily Revenue',
-                data: dailyValues,
-                fill: true,
-                borderColor: 'rgb(16, 185, 129)',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                tension: 0.4,
-            },
-        ],
-    };
-
-    const chartOptions = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top',
-            },
-            title: {
-                display: false,
-            },
-        },
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
-    };
 
     // Calculate Admin Balance safely
     const adminBalance = analyticsData?.adminWalletBalance || 0;
