@@ -4,7 +4,7 @@ import { useAuth } from '../../shared/context/AuthContext';
 import { FaWallet, FaHistory, FaArrowUp, FaArrowDown, FaExclamationCircle } from 'react-icons/fa';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { walletAPI } from '../../shared/utils/api';
-import WebViewHeader from '../../shared/components/WebViewHeader';
+
 import ScrapperBottomNav from './ScrapperBottomNav';
 
 const ScrapperWallet = () => {

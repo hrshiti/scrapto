@@ -515,7 +515,7 @@ const ScrapperDashboard = () => {
               {getTranslatedText("Ready to start earning?")}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 md:hidden">
             <LanguageSelector />
             <button
               type="button"
