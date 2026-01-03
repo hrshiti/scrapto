@@ -620,7 +620,7 @@ const RequestStatusPage = () => {
                   <span className="text-xl md:text-2xl font-bold" style={{ color: '#64946e' }}>
                     {requestData.orderType === 'cleaning_service'
                       ? `₹${requestData.serviceFee || 0}`
-                      : `₹${requestData.estimatedPayout?.toFixed(0) || 0}`
+                      : `₹${requestData.totalAmount?.toFixed(0) || 0}`
                     }
                   </span>
                 </div>

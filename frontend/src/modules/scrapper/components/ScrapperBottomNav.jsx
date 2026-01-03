@@ -8,7 +8,7 @@ const ScrapperBottomNav = () => {
 
     const navItems = [
         { id: 'home', icon: FaHome, label: 'Home', path: '/scrapper' },
-        { id: 'active', icon: FaBolt, label: 'Active', path: '/scrapper/my-active-requests' },
+        { id: 'active', icon: FaBolt, label: 'Request', path: '/scrapper/my-active-requests' },
         { id: 'wallet', icon: FaWallet, label: 'Wallet', path: '/scrapper/wallet' },
         { id: 'profile', icon: FaUser, label: 'Profile', path: '/scrapper/profile' },
     ];

@@ -217,9 +217,9 @@ export const acceptOrder = asyncHandler(async (req, res) => {
     return sendError(res, 'Scrapper profile not found', 404);
   }
 
-  // Minimum balance check (₹500)
-  if (scrapper.wallet.balance < 500) {
-    return sendError(res, 'Insufficient wallet balance. You need minimum ₹500 to accept orders. Please recharge your wallet.', 403);
+  // Minimum balance check (₹100)
+  if (scrapper.wallet.balance < 100) {
+    return sendError(res, 'Insufficient wallet balance. You need minimum ₹100 to accept orders. Please recharge your wallet.', 403);
   }
 
   // Assign scrapper to order
@@ -309,7 +309,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     if (order.scrapper) {
       const scrapper = await Scrapper.findById(order.scrapper);
       if (scrapper) {
-        const commissionAmount = Math.ceil(order.totalAmount * 0.01); // 1% rounded up
+        const commissionAmount = 1; // Fixed ₹1 commission per request
 
         const balanceBefore = scrapper.wallet.balance;
 
@@ -330,7 +330,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
           balanceAfter: balanceAfter,
           category: 'COMMISSION',
           status: 'SUCCESS',
-          description: `Commission (1%) for completed Order #${order._id}`,
+          description: `Commission (₹1) for completed Order #${order._id}`,
           orderId: order._id,
           gateway: {
             provider: 'SYSTEM'

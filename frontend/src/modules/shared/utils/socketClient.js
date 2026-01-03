@@ -26,7 +26,7 @@ class SocketClient {
 
     // Socket.io needs base URL without /api
     const socketUrl = API_BASE_URL.replace('/api', '') || 'http://localhost:7000';
-    
+
     this.socket = io(socketUrl, {
       auth: {
         token: token
@@ -232,6 +232,62 @@ class SocketClient {
   onError(callback) {
     if (this.socket) {
       this.socket.on('error', callback);
+    }
+  }
+
+  /**
+   * Join a tracking room for an order
+   * @param {string} orderId - Order ID
+   */
+  joinTracking(orderId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('join_tracking', { orderId });
+      console.log('Joined tracking:', orderId);
+    }
+  }
+
+  /**
+   * Leave a tracking room
+   * @param {string} orderId - Order ID
+   */
+  leaveTracking(orderId) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('leave_tracking', { orderId });
+      console.log('Left tracking:', orderId);
+    }
+  }
+
+  /**
+   * Send location update
+   * @param {Object} data - Location data { orderId, location: {lat, lng}, heading }
+   */
+  sendLocationUpdate(data) {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('scrapper_location_update', data);
+    }
+  }
+
+  /**
+   * Listen for location updates
+   * @param {Function} callback - Callback function
+   */
+  onLocationUpdate(callback) {
+    if (this.socket) {
+      const listener = (data) => {
+        callback(data);
+      };
+      this.socket.on('scrapper_location_update', listener);
+      this.listeners.set('scrapper_location_update', listener);
+    }
+  }
+
+  /**
+   * Remove location update listener
+   */
+  offLocationUpdate() {
+    if (this.socket) {
+      this.socket.off('scrapper_location_update');
+      this.listeners.delete('scrapper_location_update');
     }
   }
 

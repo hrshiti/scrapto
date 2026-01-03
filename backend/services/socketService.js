@@ -26,7 +26,7 @@ export const initializeSocket = (server) => {
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token;
-      
+
       if (!token) {
         return next(new Error('Authentication error: No token provided'));
       }
@@ -35,7 +35,7 @@ export const initializeSocket = (server) => {
       socket.userId = decoded.id;
       socket.userType = decoded.role === 'scrapper' ? 'scrapper' : decoded.role === 'admin' ? 'admin' : 'user';
       socket.userRole = decoded.role;
-      
+
       next();
     } catch (error) {
       logger.error('Socket authentication error:', error);
@@ -56,11 +56,11 @@ export const initializeSocket = (server) => {
       const actualChatId = typeof chatId === 'string' ? chatId : chatId?.chatId;
       await handleJoinChat(socket, actualChatId);
     });
-    
+
     socket.on('join_chat', async ({ chatId }) => {
       await handleJoinChat(socket, chatId);
     });
-    
+
     const handleJoinChat = async (socket, chatId) => {
       try {
         // Verify user has access to this chat
@@ -98,7 +98,7 @@ export const initializeSocket = (server) => {
       socket.leave(`chat_${actualChatId}`);
       logger.info(`User ${socket.userId} left chat: ${actualChatId}`);
     });
-    
+
     socket.on('leave_chat', ({ chatId }) => {
       socket.leave(`chat_${chatId}`);
       logger.info(`User ${socket.userId} left chat: ${chatId}`);
@@ -135,8 +135,8 @@ export const initializeSocket = (server) => {
         });
 
         // Notify the other participant if they're not in the chat room
-        const otherUserId = socket.userId === chat.user._id.toString() 
-          ? chat.scrapper._id.toString() 
+        const otherUserId = socket.userId === chat.user._id.toString()
+          ? chat.scrapper._id.toString()
           : chat.user._id.toString();
 
         // Check if other user is online
@@ -180,6 +180,23 @@ export const initializeSocket = (server) => {
         logger.error('Error marking messages as read:', error);
         socket.emit('error', { message: 'Error marking messages as read' });
       }
+    });
+
+    // Handle Location Tracking
+    socket.on('join_tracking', ({ orderId }) => {
+      socket.join(`tracking_${orderId}`);
+      logger.info(`User ${socket.userId} joined tracking for order: ${orderId}`);
+    });
+
+    socket.on('leave_tracking', ({ orderId }) => {
+      socket.leave(`tracking_${orderId}`);
+      logger.info(`User ${socket.userId} left tracking for order: ${orderId}`);
+    });
+
+    socket.on('scrapper_location_update', (data) => {
+      // data: { orderId, location: {lat, lng}, heading }
+      // Broadcast to everyone in the tracking room EXCEPT the sender (scrapper)
+      socket.to(`tracking_${data.orderId}`).emit('scrapper_location_update', data);
     });
 
     // Handle disconnection

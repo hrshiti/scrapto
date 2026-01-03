@@ -701,6 +701,7 @@ const ActiveRequestDetailsPage = () => {
       <div className="w-full h-screen">
         <ScrapperMap
           stage="pickup"
+          orderId={requestData?.id || requestData?._id}
           scrapperLocation={scrapperLocation}
           userLocation={userLiveLocation}
           userName={requestData?.userName}

@@ -23,6 +23,7 @@ import ServiceAddressPage from "./components/ServiceBookingFlow/ServiceAddressPa
 import ServiceSchedulePage from "./components/ServiceBookingFlow/ServiceSchedulePage";
 import ServiceConfirmationPage from "./components/ServiceBookingFlow/ServiceConfirmationPage";
 import WalletPage from "./components/WalletPage";
+import TrackOrderPage from "./components/TrackOrderPage";
 
 import { FaHome, FaList, FaRegComments, FaUser } from "react-icons/fa";
 import WebViewHeader from "../shared/components/WebViewHeader";
@@ -34,7 +35,7 @@ const UserModule = () => {
   const { getTranslatedText } = usePageTranslation(staticTexts);
 
   const navItems = [
-    { label: getTranslatedText("Home"), path: "/", icon: FaHome },
+    { label: getTranslatedText("Sell"), path: "/", icon: FaHome },
     {
       label: getTranslatedText("My Requests"),
       path: "/my-requests",
@@ -82,6 +83,7 @@ const UserModule = () => {
         <Route path="/my-requests" element={<MyRequestsPage />} />
         <Route path="/review-order/:orderId" element={<ReviewOrderPage />} />
         <Route path="/my-reviews" element={<ReviewListPage />} />
+        <Route path="/track-order/:orderId" element={<TrackOrderPage />} />
         <Route path="/help" element={<HelpSupport />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -2,6 +2,7 @@ import { GoogleMap, Marker, DirectionsRenderer, Polyline } from '@react-google-m
 import { useGoogleMaps, mapContainerStyle, defaultCenter, mapOptions } from './RequestMapUtils';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePageTranslation } from '../../../../hooks/usePageTranslation';
+import socketClient from '../../../../modules/shared/utils/socketClient';
 
 // Custom 3D-style marker icons (Lazy created to avoid window.google access on module load)
 const getScrapperIcon = () => ({
@@ -46,6 +47,7 @@ const getUserIcon = () => ({
 });
 
 const ScrapperMap = ({
+    orderId,
     userLocation,
     scrapperLocation,
     stage, // 'request' | 'pickup' | 'arrived'
@@ -69,6 +71,7 @@ const ScrapperMap = ({
     const [animatedPosition, setAnimatedPosition] = useState(scrapperLocation);
     const [trail, setTrail] = useState([]);
     const [heading, setHeading] = useState(0);
+    const [routeStats, setRouteStats] = useState(null);
     const animationRef = useRef(null);
     const lastPositionRef = useRef(scrapperLocation);
 
@@ -123,11 +126,29 @@ const ScrapperMap = ({
                     setTrail(prev => [...prev.slice(-50), { lat: newLat, lng: newLng }]);
                 }
 
+                // Broadcast location update if pickup stage
+                if (stage === 'pickup' && orderId && currentStep % 10 === 0) {
+                    socketClient.sendLocationUpdate({
+                        orderId,
+                        location: { lat: newLat, lng: newLng },
+                        heading: newHeading
+                    });
+                }
+
                 currentStep++;
                 animationRef.current = requestAnimationFrame(animate);
             } else {
                 setAnimatedPosition(scrapperLocation);
                 lastPositionRef.current = scrapperLocation;
+
+                // Final update
+                if (stage === 'pickup' && orderId) {
+                    socketClient.sendLocationUpdate({
+                        orderId,
+                        location: scrapperLocation,
+                        heading: heading
+                    });
+                }
             }
         };
 
@@ -138,7 +159,7 @@ const ScrapperMap = ({
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [scrapperLocation, enableTracking, showTrail]);
+    }, [scrapperLocation, enableTracking, showTrail, stage, orderId]);
 
     // Calculate Route when in pickup stage
     useEffect(() => {
@@ -154,6 +175,14 @@ const ScrapperMap = ({
                 (result, status) => {
                     if (status === window.google.maps.DirectionsStatus.OK) {
                         setDirections(result);
+                        // Extract stats
+                        if (result.routes[0]?.legs[0]) {
+                            const leg = result.routes[0].legs[0];
+                            setRouteStats({
+                                distance: leg.distance.text,
+                                duration: leg.duration.text
+                            });
+                        }
                     } else {
                         console.error(`Error fetching directions ${result}`);
                     }
@@ -219,125 +248,134 @@ const ScrapperMap = ({
     }
 
     return (
-        <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            zoom={14}
-            center={animatedPosition || userLocation || defaultCenter}
-            options={{
-                ...mapOptions,
-                tilt: 45, // 3D view
-                heading: heading,
-                mapTypeId: 'roadmap',
-                gestureHandling: 'greedy',
-            }}
-            onLoad={onLoad}
-            onUnmount={onUnmount}
-        >
-            {/* Trail/Path (breadcrumb) */}
-            {showTrail && trail.length > 1 && (
-                <Polyline
-                    path={trail}
-                    options={{
-                        strokeColor: '#64946e',
-                        strokeOpacity: 0.4,
-                        strokeWeight: 4,
-                        geodesic: true,
-                        icons: [{
-                            icon: {
-                                path: window.google.maps.SymbolPath.CIRCLE,
-                                scale: 2,
-                                fillColor: '#64946e',
-                                fillOpacity: 0.6,
-                                strokeColor: '#ffffff',
-                                strokeWeight: 1,
-                            },
-                            offset: '0',
-                            repeat: '20px'
-                        }]
-                    }}
-                />
-            )}
-
-            {/* Request Stage: Show User Marker only */}
-            {stage === 'request' && userLocation && (
-                <Marker
-                    position={userLocation}
-                    title={userName || getTranslatedText("Pickup Location")}
-                    icon={getUserIcon()}
-                    animation={window.google.maps.Animation.DROP}
-                />
-            )}
-
-            {/* Pickup Stage: Show both + Route */}
-            {stage === 'pickup' && (
-                <>
-                    {/* Animated Scrapper Marker with 3D truck icon */}
-                    {animatedPosition && (
-                        <Marker
-                            position={animatedPosition}
-                            title={getTranslatedText("Scrapper (You)")}
-                            icon={getScrapperIcon()}
-                            zIndex={1000}
-                        />
-                    )}
-
-                    {/* User Marker with 3D pin */}
-                    {userLocation && (
-                        <Marker
-                            position={userLocation}
-                            title={userName || getTranslatedText("Pickup Location")}
-                            icon={getUserIcon()}
-                            animation={window.google.maps.Animation.BOUNCE}
-                        />
-                    )}
-
-                    {/* Route Line with gradient effect */}
-                    {directions && (
-                        <DirectionsRenderer
-                            directions={directions}
-                            options={{
-                                suppressMarkers: true,
-                                polylineOptions: {
-                                    strokeColor: "#64946e",
-                                    strokeOpacity: 0.8,
-                                    strokeWeight: 6,
-                                    geodesic: true,
-                                    icons: [{
-                                        icon: {
-                                            path: 'M 0,-1 0,1',
-                                            strokeOpacity: 1,
-                                            strokeColor: '#ffffff',
-                                            scale: 3
-                                        },
-                                        offset: '0',
-                                        repeat: '20px'
-                                    }]
+        <div className="relative w-full h-full">
+            <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                zoom={14}
+                center={animatedPosition || userLocation || defaultCenter}
+                options={{
+                    ...mapOptions,
+                    tilt: 45, // 3D view
+                    heading: heading,
+                    mapTypeId: 'roadmap',
+                    gestureHandling: 'greedy',
+                }}
+                onLoad={onLoad}
+                onUnmount={onUnmount}
+            >
+                {/* Trail/Path (breadcrumb) */}
+                {showTrail && trail.length > 1 && (
+                    <Polyline
+                        path={trail}
+                        options={{
+                            strokeColor: '#64946e',
+                            strokeOpacity: 0.4,
+                            strokeWeight: 4,
+                            geodesic: true,
+                            icons: [{
+                                icon: {
+                                    path: window.google.maps.SymbolPath.CIRCLE,
+                                    scale: 2,
+                                    fillColor: '#64946e',
+                                    fillOpacity: 0.6,
+                                    strokeColor: '#ffffff',
+                                    strokeWeight: 1,
                                 },
-                            }}
-                        />
-                    )}
-                </>
-            )}
+                                offset: '0',
+                                repeat: '20px'
+                            }]
+                        }}
+                    />
+                )}
 
-            {/* Arrived Stage: Show celebration */}
-            {stage === 'arrived' && userLocation && (
-                <Marker
-                    position={userLocation}
-                    title={getTranslatedText("Arrived! 🎉")}
-                    icon={{
-                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                {/* Request Stage: Show User Marker only */}
+                {stage === 'request' && userLocation && (
+                    <Marker
+                        position={userLocation}
+                        title={userName || getTranslatedText("Pickup Location")}
+                        icon={getUserIcon()}
+                        animation={window.google.maps.Animation.DROP}
+                    />
+                )}
+
+                {/* Pickup Stage: Show both + Route */}
+                {stage === 'pickup' && (
+                    <>
+                        {/* Animated Scrapper Marker with 3D truck icon */}
+                        {animatedPosition && (
+                            <Marker
+                                position={animatedPosition}
+                                title={getTranslatedText("Scrapper (You)")}
+                                icon={getScrapperIcon()}
+                                zIndex={1000}
+                            />
+                        )}
+
+                        {/* User Marker with 3D pin */}
+                        {userLocation && (
+                            <Marker
+                                position={userLocation}
+                                title={userName || getTranslatedText("Pickup Location")}
+                                icon={getUserIcon()}
+                                animation={window.google.maps.Animation.BOUNCE}
+                            />
+                        )}
+
+                        {/* Route Line with premium opaque style */}
+                        {directions && (
+                            <DirectionsRenderer
+                                directions={directions}
+                                options={{
+                                    suppressMarkers: true,
+                                    polylineOptions: {
+                                        strokeColor: "#1e1e1e", // Dark grey/black for premium look
+                                        strokeOpacity: 0.9,
+                                        strokeWeight: 6,
+                                        geodesic: true,
+                                    },
+                                }}
+                            />
+                        )}
+                    </>
+                )}
+
+                {/* Arrived Stage: Show celebration */}
+                {stage === 'arrived' && userLocation && (
+                    <Marker
+                        position={userLocation}
+                        title={getTranslatedText("Arrived! 🎉")}
+                        icon={{
+                            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                             <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
                                 <circle cx="30" cy="30" r="28" fill="#10b981" stroke="#ffffff" stroke-width="3"/>
                                 <text x="30" y="40" font-size="30" text-anchor="middle" fill="white">✓</text>
                             </svg>
                         `),
-                        scaledSize: new window.google.maps.Size(60, 60),
-                        anchor: new window.google.maps.Point(30, 30),
-                    }}
-                    animation={window.google.maps.Animation.BOUNCE}
-                />
+                            scaledSize: new window.google.maps.Size(60, 60),
+                            anchor: new window.google.maps.Point(30, 30),
+                        }}
+                        animation={window.google.maps.Animation.BOUNCE}
+                    />
+                )}
+            </GoogleMap>
+
+            {/* Stats Overlay for Pickup Status */}
+            {stage === 'pickup' && routeStats && (
+                <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-gray-100/50">
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <p className="text-xs text-gray-500 font-medium">Distance</p>
+                            <p className="text-lg font-bold text-gray-800">{routeStats.distance}</p>
+                        </div>
+                        <div className="w-[1px] h-8 bg-gray-200"></div>
+                        <div>
+                            <p className="text-xs text-gray-500 font-medium">Est. Time</p>
+                            <p className="text-lg font-bold text-green-600">{routeStats.duration}</p>
+                        </div>
+                    </div>
+                </div>
             )}
-        </GoogleMap>
+        </div>
     );
 };
 

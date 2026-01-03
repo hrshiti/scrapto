@@ -16,6 +16,7 @@ import {
   FaSpinner,
   FaComments,
   FaStar,
+  FaPhone,
 } from "react-icons/fa";
 import { HiClock, HiCheckCircle, HiXCircle } from "react-icons/hi";
 import { MdPending, MdLocalShipping, MdDone } from "react-icons/md";
@@ -736,6 +737,21 @@ const MyRequestsPage = () => {
                         <div
                           className="flex gap-2 mt-3 pt-3 border-t"
                           style={{ borderColor: "rgba(100, 148, 110, 0.15)" }}>
+                          {request.status === "in_progress" && (
+                            <button
+                              onClick={() => navigate(`/track-order/${request.id}`)}
+                              className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold text-white text-center transition-all flex items-center justify-center gap-2"
+                              style={{ backgroundColor: "#ea580c" }} // Orange for Track
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = "#c2410c";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = "#ea580c";
+                              }}>
+                              <FaMapMarkerAlt size={14} />
+                              {getTranslatedText("Track")}
+                            </button>
+                          )}
                           <button
                             onClick={() =>
                               navigate(`/chat`, {
@@ -759,14 +775,15 @@ const MyRequestsPage = () => {
                                 /\s/g,
                                 ""
                               )}`}
-                              className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold text-white text-center transition-all"
-                              style={{ backgroundColor: "#8b5cf6" }}
+                              className="flex-1 py-2 px-4 rounded-lg text-sm font-semibold text-white text-center transition-all flex items-center justify-center gap-2"
+                              style={{ backgroundColor: "#8b5cf6" }} // Purple for Call
                               onMouseEnter={(e) => {
                                 e.target.style.backgroundColor = "#7c3aed";
                               }}
                               onMouseLeave={(e) => {
                                 e.target.style.backgroundColor = "#8b5cf6";
                               }}>
+                              <FaPhone size={14} />
                               {getTranslatedText("Call")}
                             </a>
                           )}

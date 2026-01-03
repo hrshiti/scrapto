@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -5,6 +6,12 @@ import { useAuth } from '../../../modules/shared/context/AuthContext';
 import { checkAndProcessMilestone } from '../../../modules/shared/utils/referralUtils';
 import { orderAPI } from '../../../modules/shared/utils/api';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
+import { FaCalendarAlt, FaClock, FaBolt, FaRegCalendarAlt } from 'react-icons/fa';
+import Calendar from 'react-calendar';
+import TimePicker from 'react-time-picker';
+import 'react-calendar/dist/Calendar.css';
+import 'react-time-picker/dist/TimePicker.css';
+import 'react-clock/dist/Clock.css';
 
 const PriceConfirmationPage = () => {
   const staticTexts = [
@@ -50,18 +57,21 @@ const PriceConfirmationPage = () => {
     "3:00 PM - 5:00 PM",
     "5:00 PM - 7:00 PM",
     "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat",
-    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+    "Select Date", "Select Time", "Selected Time",
+    "When for?", "Right Now", "Schedule", "Scrapper will come immediately"
   ];
   const { getTranslatedText } = usePageTranslation(staticTexts);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [pickupMode, setPickupMode] = useState('scheduled'); // 'immediate' | 'scheduled'
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [uploadedImages, setUploadedImages] = useState([]);
   const [weightData, setWeightData] = useState(null);
   const [notes, setNotes] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
-  const [selectedDate, setSelectedDate] = useState(null); // ISO date string
-  const [selectedSlot, setSelectedSlot] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]); // ISO date string
+  const [selectedSlot, setSelectedSlot] = useState("10:00");
   const [marketPrices, setMarketPrices] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [estimatedPayout, setEstimatedPayout] = useState(0);
@@ -182,7 +192,7 @@ const PriceConfirmationPage = () => {
     console.log('handleSubmit called');
     setIsSubmitting(true);
 
-    if (!selectedDate || !selectedSlot) {
+    if (pickupMode === 'scheduled' && (!selectedDate || !selectedSlot)) {
       alert(getTranslatedText('Please select a pickup date and time slot before applying.'));
       setIsSubmitting(false);
       return;
@@ -194,14 +204,33 @@ const PriceConfirmationPage = () => {
       return;
     }
 
-    const dateObj = new Date(selectedDate);
+    let pickupSlotData = {};
+    const dateObj = new Date();
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = dayNames[dateObj.getDay()];
-    const pickupSlot = {
-      date: selectedDate,
-      dayName,
-      slot: selectedSlot
-    };
+
+    if (pickupMode === 'immediate') {
+      const dayName = dayNames[dateObj.getDay()];
+      const isoDate = dateObj.toISOString().split('T')[0];
+      const hours = dateObj.getHours();
+      const minutes = dateObj.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const formattedTime = `${hours % 12 || 12}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+
+      pickupSlotData = {
+        date: isoDate,
+        dayName,
+        slot: "Immediate"
+      };
+      // We can also set preferredTime for display consistency, though it's technically "Immediate"
+    } else {
+      const scheduledDateObj = new Date(selectedDate);
+      const dayName = dayNames[scheduledDateObj.getDay()];
+      pickupSlotData = {
+        date: selectedDate,
+        dayName,
+        slot: selectedSlot
+      };
+    }
 
     const totalWeight = Number(weightData?.weight || 0);
     const itemCount = Math.max(selectedCategories.length, 1);
@@ -235,8 +264,8 @@ const PriceConfirmationPage = () => {
 
     const payload = {
       scrapItems,
-      preferredTime,
-      pickupSlot,
+      preferredTime: pickupMode === 'immediate' ? 'Immediate Pickup' : preferredTime,
+      pickupSlot: pickupSlotData,
       pickupAddress,
       images,
       notes
@@ -264,7 +293,7 @@ const PriceConfirmationPage = () => {
       alert(getTranslatedText(error.message || 'Failed to submit request. Please try again.'));
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, addressData, preferredTime, user, navigate, marketPrices, getTranslatedText]);
+  }, [isSubmitting, selectedDate, selectedSlot, selectedCategories, uploadedImages, weightData, addressData, preferredTime, user, navigate, marketPrices, getTranslatedText, pickupMode]);
 
   const timeSlots = [
     '9:00 AM - 11:00 AM',
@@ -475,164 +504,130 @@ const PriceConfirmationPage = () => {
             className="rounded-xl p-4 md:p-6"
             style={{ backgroundColor: '#ffffff' }}
           >
-            <label className="block text-sm md:text-base font-semibold mb-2" style={{ color: '#2d3748' }}>
+            <label className="block text-sm md:text-base font-semibold mb-4" style={{ color: '#2d3748' }}>
               {getTranslatedText("Preferred Pickup Date & Time")}
             </label>
 
-            {/* Date selection */}
-            <div className="mb-3">
-              <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                {getTranslatedText("Select a day (today or upcoming days)")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {dayOptions.map((day) => (
-                  <button
-                    key={day.iso}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setSelectedDate(day.iso);
-                      // Keep preferredTime string in sync for older consumers
-                      if (selectedSlot) {
-                        setPreferredTime(`${getTranslatedText(day.dayName)}, ${day.iso} • ${getTranslatedText(selectedSlot)}`);
-                      }
-                    }}
-                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${selectedDate === day.iso ? 'shadow-md' : ''
-                      }`}
-                    style={{
-                      borderColor: selectedDate === day.iso ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                      backgroundColor: selectedDate === day.iso ? '#64946e' : 'transparent',
-                      color: selectedDate === day.iso ? '#ffffff' : '#64946e'
-                    }}
-                  >
-                    {day.display}
-                  </button>
-                ))}
-              </div>
+            {/* Mode Selection */}
+            <div className="flex gap-4 mb-6">
+              <button
+                type="button"
+                onClick={() => setPickupMode('immediate')}
+                className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${pickupMode === 'immediate'
+                    ? 'border-green-600 bg-green-50 text-green-700 shadow-md'
+                    : 'border-gray-200 text-gray-500 hover:border-green-200 hover:bg-green-50/50'
+                  }`}
+              >
+                <FaBolt className={`text-2xl mb-2 ${pickupMode === 'immediate' ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className="font-bold text-sm">{getTranslatedText("Right Now")}</span>
+              </button>
 
-              {/* Manual date input (theme-styled, no native picker) */}
-              <div className="mt-3">
-                <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                  {getTranslatedText("Or type a specific date")}
-                </p>
-                <input
-                  type="text"
-                  placeholder="e.g. 2025-01-20"
-                  value={selectedDate || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedDate(value);
-                    if (value && selectedSlot) {
-                      const dateObj = new Date(value);
-                      if (!isNaN(dateObj)) {
-                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                        const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${getTranslatedText(dayName)}, ${value} • ${getTranslatedText(selectedSlot)}`);
-                      } else {
-                        setPreferredTime(`${value} • ${getTranslatedText(selectedSlot)}`);
-                      }
-                    } else {
-                      setPreferredTime('');
-                    }
-                  }}
-                  className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg border-2 focus:outline-none focus:ring-2 text-xs md:text-sm"
-                  style={{
-                    borderColor: selectedDate ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                    color: '#2d3748',
-                    backgroundColor: '#f9f9f9'
-                  }}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setPickupMode('scheduled')}
+                className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${pickupMode === 'scheduled'
+                    ? 'border-green-600 bg-green-50 text-green-700 shadow-md'
+                    : 'border-gray-200 text-gray-500 hover:border-green-200 hover:bg-green-50/50'
+                  }`}
+              >
+                <FaRegCalendarAlt className={`text-2xl mb-2 ${pickupMode === 'scheduled' ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className="font-bold text-sm">{getTranslatedText("Schedule")}</span>
+              </button>
             </div>
 
-            {/* Time slot selection */}
-            <div>
-              <p className="text-xs md:text-sm mb-2" style={{ color: '#718096' }}>
-                {getTranslatedText("Select a time window")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const newSlot = slot === selectedSlot ? '' : slot;
-                      setSelectedSlot(newSlot);
-                      if (selectedDate && newSlot) {
-                        const dateObj = new Date(selectedDate);
-                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                        const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${getTranslatedText(dayName)}, ${selectedDate} • ${getTranslatedText(newSlot)}`);
-                      } else if (!newSlot) {
-                        setPreferredTime('');
-                      }
-                    }}
-                    className={`px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all duration-300 border-2 ${selectedSlot === slot ? 'shadow-md' : ''
-                      }`}
-                    style={{
-                      borderColor: selectedSlot === slot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                      backgroundColor: selectedSlot === slot ? '#64946e' : 'transparent',
-                      color: selectedSlot === slot ? '#ffffff' : '#64946e'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (selectedSlot !== slot) {
-                        e.target.style.backgroundColor = 'rgba(100, 148, 110, 0.1)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (selectedSlot !== slot) {
-                        e.target.style.backgroundColor = 'transparent';
-                      }
-                    }}
-                  >
-                    {getTranslatedText(slot)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Manual time input (theme-styled, no native picker) */}
-              <div className="mt-3">
-                <p className="text-xs md:text-sm mb-1" style={{ color: '#718096' }}>
-                  {getTranslatedText("Or type a specific time")}
+            {pickupMode === 'immediate' ? (
+              <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-lg flex items-center gap-3">
+                <FaBolt className="text-yellow-600 text-xl" />
+                <p className="text-sm text-yellow-800 font-medium">
+                  {getTranslatedText("Scrapper will come immediately")}
                 </p>
-                <input
-                  type="text"
-                  placeholder="e.g. 14:30 or 2:30 PM"
-                  value={selectedSlot || ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setSelectedSlot(value);
-                    if (selectedDate && value) {
-                      const dateObj = new Date(selectedDate);
-                      if (!isNaN(dateObj)) {
-                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                        const dayName = dayNames[dateObj.getDay()];
-                        setPreferredTime(`${getTranslatedText(dayName)}, ${selectedDate} • ${value}`);
-                      } else {
-                        setPreferredTime(`${selectedDate} • ${value}`);
-                      }
-                    } else {
-                      setPreferredTime('');
-                    }
-                  }}
-                  className="w-full py-2 px-3 md:py-2.5 md:px-3.5 rounded-lg border-2 focus:outline-none focus:ring-2 text-xs md:text-sm"
-                  style={{
-                    borderColor: selectedSlot ? '#64946e' : 'rgba(100, 148, 110, 0.3)',
-                    color: '#2d3748',
-                    backgroundColor: '#f9f9f9'
-                  }}
-                />
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Date selection */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <FaCalendarAlt className="text-green-600" />
+                    {getTranslatedText("Select Date")}
+                  </h4>
+                  <div className="flex justify-center">
+                    <Calendar
+                      onChange={(date) => {
+                        // Fix timezone offset issue
+                        const offset = date.getTimezoneOffset();
+                        const dateObj = new Date(date.getTime() - (offset * 60 * 1000));
+                        const isoDate = dateObj.toISOString().split('T')[0];
+                        setSelectedDate(isoDate);
 
-            {/* Small summary line when both selected */}
-            {selectedDate && selectedSlot && (
-              <p className="mt-3 text-xs md:text-sm" style={{ color: '#718096' }}>
-                {getTranslatedText("You selected:")} <span className="font-semibold" style={{ color: '#2d3748' }}>{preferredTime}</span>
-              </p>
+                        // Update preferred time string
+                        if (selectedSlot) {
+                          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                          const dayName = dayNames[date.getDay()];
+                          const [h, m] = selectedSlot.split(':');
+                          const hour = parseInt(h);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const formattedTime = `${hour % 12 || 12}:${m} ${ampm}`;
+                          setPreferredTime(`${getTranslatedText(dayName)}, ${isoDate} • ${formattedTime}`);
+                        }
+                      }}
+                      value={selectedDate ? new Date(selectedDate) : new Date()}
+                      minDate={new Date()}
+                      className="w-full border-none shadow-sm rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                {/* Time selection */}
+                <div>
+                  <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <FaClock className="text-green-600" />
+                    {getTranslatedText("Select Time")}
+                  </h4>
+                  <div className="flex flex-col gap-2">
+                    <TimePicker
+                      onChange={(value) => {
+                        setSelectedSlot(value);
+                        if (selectedDate && value) {
+                          const dateObj = new Date(selectedDate);
+                          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                          const dayName = dayNames[dateObj.getDay()];
+                          const [h, m] = value.split(':');
+                          const hour = parseInt(h);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          const formattedTime = `${hour % 12 || 12}:${m} ${ampm}`;
+                          setPreferredTime(`${getTranslatedText(dayName)}, ${selectedDate} • ${formattedTime}`);
+                        } else {
+                          setPreferredTime('');
+                        }
+                      }}
+                      value={selectedSlot}
+                      className="w-full"
+                      clearIcon={null}
+                      clockIcon={<FaClock className="text-green-600" />}
+                      disableClock={false}
+                      format="h:mm a"
+                    />
+
+                    {selectedSlot && (
+                      <p className="text-sm text-gray-600 mt-2 text-center">
+                        {(() => {
+                          const [h, m] = selectedSlot.split(':');
+                          const hour = parseInt(h);
+                          const ampm = hour >= 12 ? 'PM' : 'AM';
+                          return `${getTranslatedText("Selected Time")}: ${hour % 12 || 12}:${m} ${ampm}`;
+                        })()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Small summary line when both selected */}
+                {selectedDate && selectedSlot && (
+                  <p className="mt-3 text-xs md:text-sm" style={{ color: '#718096' }}>
+                    {getTranslatedText("You selected:")} <span className="font-semibold" style={{ color: '#2d3748' }}>{preferredTime}</span>
+                  </p>
+                )}
+              </>
             )}
           </motion.div>
         </div>
@@ -715,4 +710,3 @@ const PriceConfirmationPage = () => {
 };
 
 export default PriceConfirmationPage;
-
