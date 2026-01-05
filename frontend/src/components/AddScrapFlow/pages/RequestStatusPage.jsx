@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { orderAPI, paymentAPI } from '../../../modules/shared/utils/api';
 import { useAuth } from '../../../modules/shared/context/AuthContext';
@@ -58,6 +58,11 @@ const RequestStatusPage = () => {
   const [scrapperInfo, setScrapperInfo] = useState(null);
   const [eta, setEta] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
+  const [showAcceptanceAlert, setShowAcceptanceAlert] = useState(false);
+
+  // Refs for tracking status changes
+  const prevStatusRef = useRef(null);
+  const isFirstLoadRef = useRef(true);
 
   const mapStatus = (backendStatus) => {
     switch (backendStatus) {
@@ -75,6 +80,27 @@ const RequestStatusPage = () => {
         return 'pending';
     }
   };
+
+  // Monitor status changes for Alert
+  useEffect(() => {
+    if (status) {
+      // First load: just set the ref and skip
+      if (isFirstLoadRef.current) {
+        prevStatusRef.current = status;
+        isFirstLoadRef.current = false;
+        return;
+      }
+
+      // Subsequent updates: check for transition
+      const prev = prevStatusRef.current;
+      // If we moved from pending to accepted or on_way
+      if (prev === 'pending' && ['accepted', 'on_way'].includes(status)) {
+        setShowAcceptanceAlert(true);
+      }
+
+      prevStatusRef.current = status;
+    }
+  }, [status]);
 
   const loadRazorpay = () => {
     return new Promise((resolve, reject) => {
@@ -649,6 +675,32 @@ const RequestStatusPage = () => {
             </motion.button>
           )}
 
+          {/* Track Order Button */}
+          {['accepted', 'on_way', 'arrived'].includes(status) && (
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              onClick={() => navigate(`/track-order/${requestData._id}`)}
+              className="w-full py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm md:text-base shadow-md hover:shadow-lg transition-all duration-300"
+              style={{ backgroundColor: '#ffffff', color: '#ea580c', border: '2px solid #ea580c' }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#ea580c';
+                e.target.style.color = '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#ffffff';
+                e.target.style.color = '#ea580c';
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+                <circle cx="12" cy="9" r="2.5" />
+              </svg>
+              {getTranslatedText("View Scrapper Location")}
+            </motion.button>
+          )}
+
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -667,7 +719,60 @@ const RequestStatusPage = () => {
           </motion.button>
         </div>
       </div>
+      {/* Acceptance Alert Modal */}
+      {showAcceptanceAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 px-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center relative overflow-hidden"
+          >
+            {/* Background Decoration */}
+            <div className="absolute top-0 left-0 w-full h-2" style={{ backgroundColor: '#64946e' }} />
+
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm" style={{ backgroundColor: 'rgba(100, 148, 110, 0.1)' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#64946e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+
+            <h3 className="text-xl font-bold mb-2" style={{ color: '#2d3748' }}>
+              {getTranslatedText("Request Accepted!")}
+            </h3>
+            <p className="text-sm mb-6 px-2" style={{ color: '#718096' }}>
+              {getTranslatedText("Your scrapper is on the way. tap below to track their live location.")}
+            </p>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setShowAcceptanceAlert(false); // Close first to avoid stacking issues logic
+                  navigate(`/track-order/${requestData._id}`);
+                }}
+                className="w-full py-3.5 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95"
+                style={{ backgroundColor: '#64946e' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                {getTranslatedText("View Scrapper Location")}
+              </button>
+
+              <button
+                onClick={() => setShowAcceptanceAlert(false)}
+                className="w-full py-3 rounded-xl font-semibold text-sm transition-colors"
+                style={{ color: '#718096', backgroundColor: '#f7fafc' }}
+              >
+                {getTranslatedText("Dismiss")}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
+
   );
 };
 

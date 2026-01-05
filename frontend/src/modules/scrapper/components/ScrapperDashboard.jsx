@@ -11,6 +11,7 @@ import BannerSlider from '../../shared/components/BannerSlider';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import LanguageSelector from '../../shared/components/LanguageSelector';
 import ScrapperBottomNav from './ScrapperBottomNav';
+import siteLogo from '../../../assets/scraptologo-removebg-preview.png';
 
 const ScrapperDashboard = () => {
   const staticTexts = [
@@ -508,12 +509,7 @@ const ScrapperDashboard = () => {
       <div className="p-4 md:p-6 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold" style={{ color: '#2d3748' }}>
-              {getTranslatedText("Welcome, {name}! 👋", { name: user?.name || getTranslatedText('Scrapper') })}
-            </h1>
-            <p className="text-xs md:text-sm mt-1" style={{ color: '#718096' }}>
-              {getTranslatedText("Ready to start earning?")}
-            </p>
+            <img src={siteLogo} alt="Scrapto" className="h-12 md:h-14 w-auto object-contain" />
           </div>
           <div className="flex items-center gap-3 md:hidden">
             <LanguageSelector />

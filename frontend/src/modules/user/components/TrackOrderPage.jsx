@@ -212,6 +212,22 @@ const TrackOrderPage = () => {
         }
     }, [isLoaded, scrapperLocation, userLocation]);
 
+    // Fit Bounds
+    useEffect(() => {
+        if (mapRef.current && isLoaded && scrapperLocation && userLocation) {
+            const bounds = new window.google.maps.LatLngBounds();
+            bounds.extend(userLocation);
+            bounds.extend(scrapperLocation);
+
+            mapRef.current.fitBounds(bounds, {
+                top: 50,
+                bottom: 50,
+                left: 50,
+                right: 50
+            });
+        }
+    }, [isLoaded, scrapperLocation, userLocation]);
+
     const onLoad = useCallback((map) => {
         mapRef.current = map;
     }, []);
@@ -260,13 +276,20 @@ const TrackOrderPage = () => {
                     <Marker
                         position={userLocation}
                         icon={{
-                            path: window.google.maps.SymbolPath.CIRCLE,
-                            scale: 8,
-                            fillColor: '#ef4444',
-                            fillOpacity: 1,
-                            strokeWeight: 2,
-                            strokeColor: '#ffffff',
+                            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                                <svg width="40" height="48" viewBox="0 0 40 48" xmlns="http://www.w3.org/2000/svg">
+                                    <ellipse cx="20" cy="46" rx="10" ry="2" fill="rgba(0,0,0,0.2)"/>
+                                    <path d="M20 4 C12 4 6 10 6 18 C6 28 20 44 20 44 C20 44 34 28 34 18 C34 10 28 4 20 4 Z" 
+                                          fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
+                                    <circle cx="20" cy="18" r="6" fill="#ffffff"/>
+                                    <circle cx="20" cy="16" r="2.5" fill="#ef4444"/>
+                                    <path d="M16 22 Q20 20 24 22" stroke="#ef4444" stroke-width="1.5" fill="none"/>
+                                </svg>
+                            `),
+                            scaledSize: new window.google.maps.Size(40, 48),
+                            anchor: new window.google.maps.Point(20, 46)
                         }}
+                        animation={window.google.maps.Animation.BOUNCE}
                     />
 
                     {/* Scrapper Truck Marker */}
@@ -276,14 +299,17 @@ const TrackOrderPage = () => {
                             icon={{
                                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                                     <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                        <ellipse cx="24" cy="44" rx="12" ry="3" fill="rgba(0,0,0,0.2)"/>
                                         <path d="M8 20 L8 32 L32 32 L32 20 Z" fill="#64946e" stroke="#ffffff" stroke-width="2"/>
                                         <path d="M8 16 L8 20 L20 20 L20 16 Z" fill="#4a7356" stroke="#ffffff" stroke-width="2"/>
                                         <circle cx="14" cy="32" r="4" fill="#2d3748" stroke="#ffffff" stroke-width="2"/>
                                         <circle cx="26" cy="32" r="4" fill="#2d3748" stroke="#ffffff" stroke-width="2"/>
+                                        <rect x="10" y="17" width="8" height="2" fill="#87ceeb" opacity="0.7"/>
+                                        <text x="20" y="28" font-size="10" fill="white" font-weight="bold">♻</text>
                                     </svg>
                                 `),
                                 scaledSize: new window.google.maps.Size(48, 48),
-                                anchor: new window.google.maps.Point(24, 24)
+                                anchor: new window.google.maps.Point(24, 44)
                             }}
                             zIndex={2}
                         />
@@ -297,8 +323,9 @@ const TrackOrderPage = () => {
                                 suppressMarkers: true,
                                 polylineOptions: {
                                     strokeColor: "#1e1e1e",
-                                    strokeOpacity: 0.8,
-                                    strokeWeight: 5
+                                    strokeOpacity: 0.9,
+                                    strokeWeight: 6,
+                                    geodesic: true,
                                 }
                             }}
                         />

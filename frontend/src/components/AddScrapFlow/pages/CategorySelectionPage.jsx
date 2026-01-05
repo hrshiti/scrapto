@@ -58,7 +58,7 @@ const CategorySelectionPage = () => {
           const mappedCategories = response.data.prices.map(price => ({
             id: price.category.toLowerCase().replace(/\s+/g, '-'),
             name: price.category,
-            image: getCategoryImage(price.category),
+            image: price.image || getCategoryImage(price.category),
             price: price.pricePerKg
           }));
           setCategories(mappedCategories);

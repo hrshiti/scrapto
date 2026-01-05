@@ -19,6 +19,7 @@ import {
   FaGift,
   FaBullhorn
 } from 'react-icons/fa';
+import siteLogo from '../../../assets/scraptologo-removebg-preview.png';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -118,18 +119,8 @@ const AdminLayout = () => {
       >
         {/* Logo */}
         <div className="p-6 border-b flex-shrink-0" style={{ borderColor: '#e2e8f0' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Admin Panel")}</h1>
-              <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Scrapto")}</p>
-            </div>
+          <div className="flex items-center justify-center">
+            <img src={siteLogo} alt="Scrapto" className="h-16 w-auto object-contain" />
           </div>
         </div>
 
@@ -241,18 +232,8 @@ const AdminLayout = () => {
             >
               {/* Mobile Header */}
               <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#e2e8f0' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#64946e' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h1 className="text-lg font-bold" style={{ color: '#2d3748' }}>{getTranslatedText("Admin Panel")}</h1>
-                    <p className="text-xs" style={{ color: '#718096' }}>{getTranslatedText("Scrapto")}</p>
-                  </div>
+                <div className="flex items-center justify-center">
+                  <img src={siteLogo} alt="Scrapto" className="h-12 w-auto object-contain" />
                 </div>
                 <button
                   onClick={() => setSidebarOpen(false)}

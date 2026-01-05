@@ -5,6 +5,7 @@ import { useLanguage } from '../../../contexts/LanguageContext';
 import { usePageTranslation } from '../../../hooks/usePageTranslation';
 import { IoLanguageOutline, IoChevronDownOutline } from 'react-icons/io5';
 import LanguageSelector from './LanguageSelector';
+import siteLogo from '../../../assets/scraptologo-removebg-preview.png';
 
 const WebViewHeader = ({ navItems, userRole = 'user' }) => {
     const location = useLocation();
@@ -25,12 +26,11 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 className="flex items-center gap-2 cursor-pointer"
                 onClick={() => navigate(userRole === 'scrapper' ? '/scrapper/dashboard' : '/')}
             >
-                <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">S</span>
-                </div>
-                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-emerald-800">
-                    Scrapto
-                </span>
+                <img
+                    src={siteLogo}
+                    alt="Scrapto"
+                    className="h-10 w-auto object-contain"
+                />
             </div>
 
             {/* Navigation Items */}

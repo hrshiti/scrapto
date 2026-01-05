@@ -4,6 +4,7 @@ import { useLanguage } from "../../../contexts/LanguageContext";
 import { usePageTranslation } from "../../../hooks/usePageTranslation";
 import { IoLanguageOutline, IoChevronDownOutline } from "react-icons/io5";
 import LanguageSelector from "../../shared/components/LanguageSelector";
+import siteLogo from "../../../assets/scraptologo-removebg-preview.png";
 
 const Header = () => {
   const [hasNotifications, setHasNotifications] = useState(true);
@@ -33,15 +34,12 @@ const Header = () => {
       transition={{ duration: 0.5 }}
       className="px-4 md:px-6 lg:px-8 py-2 md:py-3">
       <div className="max-w-7xl mx-auto flex justify-between items-center">
-        <div>
-          <h2
-            className="text-xl md:text-2xl font-bold"
-            style={{ color: "#2d3748" }}>
-            {getTranslatedText("Hi, User!")}
-          </h2>
-          <p className="text-sm md:text-base" style={{ color: "#718096" }}>
-            {getTranslatedText("Welcome back to Scrapto")}
-          </p>
+        <div className="flex items-center">
+          <img
+            src={siteLogo}
+            alt="Scrapto Logo"
+            className="h-8 md:h-10 w-32 md:w-40 object-contain"
+          />
         </div>
 
         <div className="flex items-center gap-4">
