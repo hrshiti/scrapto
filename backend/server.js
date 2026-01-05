@@ -106,6 +106,9 @@ if (process.env.NODE_ENV === "development") {
 // Rate limiting
 app.use(rateLimiter);
 
+// Serve static files from uploads directory (fallback for missing Cloudinary)
+app.use('/uploads', express.static('uploads'));
+
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.status(200).json({

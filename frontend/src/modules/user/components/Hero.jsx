@@ -971,14 +971,16 @@ const Hero = () => {
               </motion.div>
             </div>
 
-            {/* Promotional Banner Carousel */}
-            <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-4 md:mb-6">
-              <BannerSlider audience="user" />
+            {/* Live Price Ticker */}
+            <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-8">
+              <PriceTicker />
             </div>
 
-            {/* Live Price Ticker */}
-            <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto">
-              <PriceTicker />
+            {/* Promotional Banner Carousel (New Section) */}
+            <div className="px-4 md:px-6 lg:px-8 max-w-7xl mx-auto mb-8">
+              <div className="relative">
+                <BannerSlider audience="user" />
+              </div>
             </div>
 
             {/* Customer Solutions */}

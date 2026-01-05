@@ -57,6 +57,18 @@ export const uploadFile = async (file, options = {}) => {
     const filePath = file.path;
     const folder = options.folder || 'general';
 
+    // Check for Cloudinary credentials
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      logger.warn('Cloudinary credentials missing, using local storage fallback');
+      const filename = path.basename(filePath);
+      return {
+        secure_url: `/uploads/temp/${filename}`, // Frontend needs to handle relative path or proxy
+        public_id: `local_${filename}`,
+        format: path.extname(filename).substring(1),
+        resource_type: 'image'
+      };
+    }
+
     // Upload to Cloudinary
     const result = await uploadToCloudinary(filePath, {
       folder: folder,
@@ -64,7 +76,7 @@ export const uploadFile = async (file, options = {}) => {
       public_id: options.public_id || null
     });
 
-    // Delete temporary file
+    // Delete temporary file only if Cloudinary upload succeeded
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
@@ -72,10 +84,19 @@ export const uploadFile = async (file, options = {}) => {
     return result;
   } catch (error) {
     logger.error('File upload error:', error);
-    // Clean up temp file on error
+
+    // Fallback to local storage if Cloudinary fails
     if (file && file.path && fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+      logger.warn('Falling back to local storage due to upload error');
+      const filename = path.basename(file.path);
+      return {
+        secure_url: `/uploads/temp/${filename}`,
+        public_id: `local_${filename}`,
+        format: path.extname(filename).substring(1),
+        resource_type: 'image'
+      };
     }
+
     throw error;
   }
 };

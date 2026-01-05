@@ -89,11 +89,11 @@ class SocketClient {
    * @param {string} chatId - Chat ID
    */
   joinChat(chatId) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('joinChat', chatId);
       console.log('Joined chat:', chatId);
     } else {
-      console.warn('Socket not connected, cannot join chat');
+      console.warn('Socket not initialized, cannot join chat');
     }
   }
 
@@ -102,7 +102,7 @@ class SocketClient {
    * @param {string} chatId - Chat ID
    */
   leaveChat(chatId) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('leaveChat', chatId);
       console.log('Left chat:', chatId);
     }
@@ -115,10 +115,10 @@ class SocketClient {
    * @param {Array} attachments - Array of attachments
    */
   sendMessage(chatId, message, attachments = []) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('send_message', { chatId, message, attachments });
     } else {
-      console.warn('Socket not connected, message will be sent via API');
+      console.warn('Socket not initialized, message will be sent via API');
     }
   }
 
@@ -176,7 +176,7 @@ class SocketClient {
    * @param {boolean} isTyping - Whether user is typing
    */
   sendTyping(chatId, isTyping) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('typing', { chatId, isTyping });
     }
   }
@@ -186,7 +186,7 @@ class SocketClient {
    * @param {string} chatId - Chat ID
    */
   markAsRead(chatId) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('mark_read', { chatId });
     }
   }
@@ -240,7 +240,7 @@ class SocketClient {
    * @param {string} orderId - Order ID
    */
   joinTracking(orderId) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('join_tracking', { orderId });
       console.log('Joined tracking:', orderId);
     }
@@ -251,7 +251,7 @@ class SocketClient {
    * @param {string} orderId - Order ID
    */
   leaveTracking(orderId) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('leave_tracking', { orderId });
       console.log('Left tracking:', orderId);
     }
@@ -262,7 +262,7 @@ class SocketClient {
    * @param {Object} data - Location data { orderId, location: {lat, lng}, heading }
    */
   sendLocationUpdate(data) {
-    if (this.socket && this.isConnected) {
+    if (this.socket) {
       this.socket.emit('scrapper_location_update', data);
     }
   }
