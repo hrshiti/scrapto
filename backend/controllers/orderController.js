@@ -163,7 +163,7 @@ export const getOrderById = asyncHandler(async (req, res) => {
 
   const order = await Order.findById(id)
     .populate('user', 'name phone email')
-    .populate('scrapper', 'name phone');
+    .populate('scrapper', 'name phone liveLocation');
 
   if (!order) {
     return sendError(res, 'Order not found', 404);

@@ -36,94 +36,90 @@ export const mapOptions = {
     styles: [
         {
             "elementType": "geometry",
-            "stylers": [{ "color": "#f5f5f5" }]
-        },
-        {
-            "elementType": "labels.icon",
-            "stylers": [{ "visibility": "off" }]
-        },
-        {
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
+            "stylers": [{ "color": "#242f3e" }]
         },
         {
             "elementType": "labels.text.stroke",
-            "stylers": [{ "color": "#f5f5f5" }]
+            "stylers": [{ "color": "#242f3e" }]
         },
         {
-            "featureType": "administrative.land_parcel",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#bdbdbd" }]
+            "stylers": [{ "color": "#746855" }]
+        },
+        {
+            "featureType": "administrative.locality",
+            "elementType": "labels.text.fill",
+            "stylers": [{ "color": "#d59563" }]
         },
         {
             "featureType": "poi",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#eeeeee" }]
-        },
-        {
-            "featureType": "poi",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
+            "stylers": [{ "color": "#d59563" }]
         },
         {
             "featureType": "poi.park",
             "elementType": "geometry",
-            "stylers": [{ "color": "#e5e5e5" }]
+            "stylers": [{ "color": "#263c3f" }]
         },
         {
             "featureType": "poi.park",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
+            "stylers": [{ "color": "#6b9a76" }]
         },
         {
             "featureType": "road",
             "elementType": "geometry",
-            "stylers": [{ "color": "#ffffff" }]
+            "stylers": [{ "color": "#38414e" }]
+        },
+        {
+            "featureType": "road",
+            "elementType": "geometry.stroke",
+            "stylers": [{ "color": "#212a37" }]
         },
         {
             "featureType": "road",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
-        },
-        {
-            "featureType": "road.arterial",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#757575" }]
+            "stylers": [{ "color": "#9ca5b3" }]
         },
         {
             "featureType": "road.highway",
             "elementType": "geometry",
-            "stylers": [{ "color": "#dadada" }]
+            "stylers": [{ "color": "#746855" }]
+        },
+        {
+            "featureType": "road.highway",
+            "elementType": "geometry.stroke",
+            "stylers": [{ "color": "#1f2835" }]
         },
         {
             "featureType": "road.highway",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#616161" }]
+            "stylers": [{ "color": "#f3d19c" }]
         },
         {
-            "featureType": "road.local",
-            "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
-        },
-        {
-            "featureType": "transit.line",
+            "featureType": "transit",
             "elementType": "geometry",
-            "stylers": [{ "color": "#e5e5e5" }]
+            "stylers": [{ "color": "#2f3948" }]
         },
         {
             "featureType": "transit.station",
-            "elementType": "geometry",
-            "stylers": [{ "color": "#eeeeee" }]
+            "elementType": "labels.text.fill",
+            "stylers": [{ "color": "#d59563" }]
         },
         {
             "featureType": "water",
             "elementType": "geometry",
-            "stylers": [{ "color": "#c9e9f6" }]
+            "stylers": [{ "color": "#17263c" }]
         },
         {
             "featureType": "water",
             "elementType": "labels.text.fill",
-            "stylers": [{ "color": "#9e9e9e" }]
+            "stylers": [{ "color": "#515c6d" }]
+        },
+        {
+            "featureType": "water",
+            "elementType": "labels.text.stroke",
+            "stylers": [{ "color": "#17263c" }]
         }
     ],
 };
