@@ -627,7 +627,7 @@ const ScrapperDashboard = () => {
       </div>
 
       {/* Content */}
-      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="p-4 pb-24 md:p-6 space-y-4 md:space-y-6">
         {/* Earnings Summary */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

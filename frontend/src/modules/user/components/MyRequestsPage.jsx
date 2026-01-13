@@ -459,7 +459,7 @@ const MyRequestsPage = () => {
 
         {/* Requests List */}
         {!loading && !error && (
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
             {filteredRequests.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -618,9 +618,9 @@ const MyRequestsPage = () => {
                         </div>
                       </div>
                       {request.scrapperName && (
-                        <div className="flex items-center gap-2">
-                          <FaTruck size={14} style={{ color: "#64946e" }} />
-                          <div>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FaTruck size={14} className="flex-shrink-0" style={{ color: "#64946e" }} />
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs" style={{ color: "#718096" }}>
                               {getTranslatedText("Scrapper")}
                             </p>
