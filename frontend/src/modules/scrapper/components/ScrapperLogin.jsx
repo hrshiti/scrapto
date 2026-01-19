@@ -179,8 +179,14 @@ const ScrapperLogin = () => {
           if (kycStatus === 'not_submitted') {
             navigate('/scrapper/kyc', { replace: true });
           } else if (kycStatus === 'pending') {
-            // FORCE redirect to status page if pending
-            navigate('/scrapper/kyc-status', { replace: true });
+            // Check if documents are actually uploaded
+            // If status is pending (default) but no documents, go to upload page
+            if (!kyc?.aadhaarPhotoUrl) {
+              navigate('/scrapper/kyc', { replace: true });
+            } else {
+              // FORCE redirect to status page if pending AND docs exist
+              navigate('/scrapper/kyc-status', { replace: true });
+            }
           } else if (kycStatus === 'rejected') {
             navigate('/scrapper/kyc', { replace: true });
           } else if (kycStatus === 'verified') {

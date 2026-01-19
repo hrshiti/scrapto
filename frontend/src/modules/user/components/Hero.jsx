@@ -182,7 +182,7 @@ const Hero = () => {
     "Getting your location...",
     "Type to search location...",
     "Home Services",
-    "Deep Home Cleaning",
+    "Waste Collection",
     "Professional deep cleaning service including floor scrubbing, cobweb removal, and bathroom cleaning.",
     "Fixed Price: ₹1200",
     "Verified Pros",
@@ -544,7 +544,7 @@ const Hero = () => {
           <div
             ref={heroRef}
             className="min-h-screen relative z-0 pb-20 md:pb-0 overflow-x-hidden"
-            style={{ backgroundColor: "#f4ebe2" }}>
+            style={{ background: "linear-gradient(to bottom, #72c688ff, #dcfce7)" }}>
             {/* Header */}
             <Header />
 
@@ -932,7 +932,7 @@ const Hero = () => {
                         {getTranslatedText("Premium")}
                       </span>
                       <h4 className="text-lg md:text-2xl font-bold text-white">
-                        {getTranslatedText("Deep Home Cleaning")}
+                        {getTranslatedText("Waste Collection")}
                       </h4>
                     </div>
 

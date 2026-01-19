@@ -29,7 +29,7 @@ const WebViewHeader = ({ navItems, userRole = 'user' }) => {
                 <img
                     src={siteLogo}
                     alt="Scrapto"
-                    className="h-10 w-auto object-contain"
+                    className="h-14 w-48 object-contain object-left -ml-2"
                 />
             </div>
 

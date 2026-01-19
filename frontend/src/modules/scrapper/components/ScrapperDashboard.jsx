@@ -509,7 +509,7 @@ const ScrapperDashboard = () => {
       <div className="p-4 md:p-6 border-b" style={{ borderColor: 'rgba(100, 148, 110, 0.2)' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <img src={siteLogo} alt="Scrapto" className="h-12 md:h-14 w-auto object-contain" />
+            <img src={siteLogo} alt="Scrapto" className="h-14 md:h-16 w-52 md:w-64 object-contain object-left -ml-3" />
           </div>
           <div className="flex items-center gap-3 md:hidden">
             <LanguageSelector />
@@ -566,10 +566,10 @@ const ScrapperDashboard = () => {
           </motion.button>
         </motion.div>
 
-        {/* Live Market Prices */}
-        <div className="mt-4 relative">
+        {/* Live Market Prices - Hidden as per request */}
+        {/* <div className="mt-4 relative">
           <PriceTicker />
-        </div>
+        </div> */}
 
         {/* Ad Banners */}
         <div className="mt-4">
@@ -577,7 +577,8 @@ const ScrapperDashboard = () => {
         </div>
 
         {/* Market Price Management Card */}
-        <motion.div
+        {/* Market Price Management Card - Hidden as per request */}
+        {/* <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
@@ -585,7 +586,6 @@ const ScrapperDashboard = () => {
           className="mt-3 rounded-2xl shadow-md p-4 md:p-5 border border-gray-800 cursor-pointer relative overflow-hidden group"
           style={{ backgroundColor: '#020617' }}
         >
-          {/* Shine Effect */}
           <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:left-full transition-all duration-1000 ease-in-out"></div>
 
           <div className="flex items-start justify-between gap-3 relative z-10">
@@ -623,7 +623,7 @@ const ScrapperDashboard = () => {
               </button>
             </div>
           </div>
-        </motion.div>
+        </motion.div> */}
       </div>
 
       {/* Content */}
@@ -665,6 +665,16 @@ const ScrapperDashboard = () => {
               </p>
             </div>
           </div>
+        </motion.div>
+
+        {/* Promotional Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="rounded-2xl shadow-lg overflow-hidden"
+        >
+          <BannerSlider audience="scrapper" />
         </motion.div>
 
         {/* Quick Stats */}

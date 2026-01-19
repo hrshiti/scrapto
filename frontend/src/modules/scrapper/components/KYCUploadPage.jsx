@@ -63,7 +63,10 @@ const KYCUploadPage = () => {
         const status = kyc?.status || 'not_submitted';
 
         if (status === 'pending') {
-          navigate('/scrapper/kyc-status', { replace: true });
+          // Only redirect if documents are present
+          if (kyc?.aadhaarPhotoUrl) {
+            navigate('/scrapper/kyc-status', { replace: true });
+          }
         } else if (status === 'verified') {
           navigate('/scrapper', { replace: true });
         }

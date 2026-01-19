@@ -12,7 +12,7 @@ const isBypassEnabled = process.env.ENABLE_BYPASS_OTP !== 'false' && process.env
 // User test numbers
 const userBypassList = new Set(['9685974247', '9876543210', '9999999999', '7610416911', '6260491554']);
 // Scrapper test numbers (dedicated for scrapper testing)
-const scrapperBypassList = new Set(['8888888888', '7777777777', '6666666666']);
+const scrapperBypassList = new Set(['8888888888', '7777777777', '6666666666', '5555555555']);
 // Combined bypass list
 const bypassList = new Set([...userBypassList, ...scrapperBypassList]);
 const isBypassOtpNumber = (phone) => isBypassEnabled && bypassList.has(phone);
@@ -232,7 +232,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   if (requestedRole) {
     // First try to find with exact role match
     user = await User.findOne({ phone, role: requestedRole });
-    
+
     // If not found with role, try without role (for existing users who might have wrong role)
     if (!user) {
       user = await User.findOne({ phone });
@@ -253,7 +253,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   }
 
   if (!user) {
-    const errorMsg = requestedRole 
+    const errorMsg = requestedRole
       ? `User not found with phone ${phone} and role ${requestedRole}`
       : `User not found with phone ${phone}`;
     return sendError(res, errorMsg, 404);
@@ -335,7 +335,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   // Always issue a fresh access token after successful verification
   // Use user.role which should now be correct (updated above if needed)
   const tokenRole = user.role;
-  
+
   // Final safety check: if requestedRole was specified, ensure we use it
   if (requestedRole && tokenRole !== requestedRole) {
     logger.error('❌ CRITICAL: Role still wrong after update:', {
@@ -355,9 +355,9 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     });
     return;
   }
-  
+
   const token = generateToken(user._id, tokenRole);
-  
+
   // Log token generation for debugging
   logger.info('🔑 Token generated in verifyOTP:', {
     userId: user._id,

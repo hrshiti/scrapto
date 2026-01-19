@@ -75,39 +75,53 @@ const BannerSlider = ({ audience = 'both', autoPlayInterval = 5000 }) => {
                     )}
 
                     {/* Optional: Add title overlay if needed, currently keeping clean image look */}
+
+                    {/* Text Overlay */}
+                    {(banners[currentIndex].title || banners[currentIndex].description) && (
+                        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white">
+                            {banners[currentIndex].title && (
+                                <h3 className="font-bold text-lg">{banners[currentIndex].title}</h3>
+                            )}
+                            {banners[currentIndex].description && (
+                                <p className="text-xs md:text-sm opacity-90 line-clamp-2">{banners[currentIndex].description}</p>
+                            )}
+                        </div>
+                    )}
                 </motion.div>
             </AnimatePresence>
 
             {/* Navigation Buttons - Show on hover */}
-            {banners.length > 1 && (
-                <>
-                    <button
-                        onClick={(e) => { e.preventDefault(); handlePrev(); }}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
-                    >
-                        <FaChevronLeft />
-                    </button>
-                    <button
-                        onClick={(e) => { e.preventDefault(); handleNext(); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
-                    >
-                        <FaChevronRight />
-                    </button>
+            {
+                banners.length > 1 && (
+                    <>
+                        <button
+                            onClick={(e) => { e.preventDefault(); handlePrev(); }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
+                        >
+                            <FaChevronLeft />
+                        </button>
+                        <button
+                            onClick={(e) => { e.preventDefault(); handleNext(); }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/30 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
+                        >
+                            <FaChevronRight />
+                        </button>
 
-                    {/* Dots Indicator */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-                        {banners.map((_, index) => (
-                            <button
-                                key={index}
-                                onClick={() => setCurrentIndex(index)}
-                                className={`w-2 h-2 rounded-full transition-colors ${index === currentIndex ? 'bg-white' : 'bg-white/50'
-                                    }`}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-        </div>
+                        {/* Dots Indicator */}
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                            {banners.map((_, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => setCurrentIndex(index)}
+                                    className={`w-2 h-2 rounded-full transition-colors ${index === currentIndex ? 'bg-white' : 'bg-white/50'
+                                        }`}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )
+            }
+        </div >
     );
 };
 
