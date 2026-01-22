@@ -932,7 +932,7 @@ const Hero = () => {
                         {getTranslatedText("Premium")}
                       </span>
                       <h4 className="text-lg md:text-2xl font-bold text-white">
-                        {getTranslatedText("Waste Collection")}
+                        {getTranslatedText("Garbage")}
                       </h4>
                     </div>
 
@@ -1138,16 +1138,46 @@ const Hero = () => {
             </div>
             <span className={`text-[10px] font-semibold tracking-wide ${!showProfile ? 'text-emerald-600' : 'text-gray-500'}`}>Home</span>
           </div>
+
+          {/* Rate Tab */}
+          <div
+            className="flex-1 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform duration-200 py-2"
+            onClick={() => navigate('/categories')}
+          >
+            <div className="p-1.5 rounded-xl transition-colors duration-300 text-gray-400 hover:text-emerald-600">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold tracking-wide text-gray-500">Rate</span>
+          </div>
           {/* Center Action Button (Floating) */}
           <div className="flex-1 flex flex-col items-center justify-end relative z-10 -top-5 group"
             onClick={() => navigate('/add-scrap/category')}>
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30 transform group-active:scale-95 transition-all duration-300 border-4 border-[#f4ebe2]">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-white transform group-hover:rotate-180 transition-transform duration-500">
                 <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
               </svg>
             </div>
-            <span className="text-[10px] font-bold text-emerald-700 mt-1 tracking-wide">Sell Scrap</span>
+            <span className="text-[10px] font-bold text-emerald-700 mt-1 tracking-wide">Sell</span>
+          </div>
+
+          {/* Refer Tab */}
+          <div
+            className="flex-1 flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform duration-200 py-2"
+            onClick={() => navigate('/my-profile', { state: { activeTab: 'refer' } })}
+          >
+            <div className="p-1.5 rounded-xl transition-colors duration-300 text-gray-400 hover:text-emerald-600">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <span className="text-[10px] font-semibold tracking-wide text-gray-500">Refer</span>
           </div>
 
           {/* Profile Tab */}
@@ -1159,7 +1189,6 @@ const Hero = () => {
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                 <circle cx="12" cy="7" r="4"></circle>
-
               </svg>
             </div>
             <span className={`text-[10px] font-semibold tracking-wide ${showProfile ? 'text-emerald-600' : 'text-gray-500'}`}>Profile</span>
